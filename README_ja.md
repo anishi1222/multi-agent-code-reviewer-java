@@ -229,6 +229,61 @@ mvn clean package -Pnative
 ./target/review run --repo owner/repository --all
 ```
 
+## アーキテクチャ
+
+```mermaid
+flowchart TB
+    subgraph CLI[CLI Application]
+        ReviewApp[ReviewApp<br/>CLI Entry Point]
+        ReviewCommand[ReviewCommand]
+    end
+
+    subgraph Orchestrator[Orchestrator]
+        ReviewOrchestrator[ReviewOrchestrator<br/>Parallel Execution]
+    end
+
+    subgraph Agents[Review Agents]
+        Security[Security Agent]
+        CodeQuality[Code Quality Agent]
+        Performance[Performance Agent]
+        BestPractices[Best Practices Agent]
+    end
+
+    subgraph Reports[Report Generation]
+        ReportGenerator[ReportGenerator]
+        SummaryGenerator[SummaryGenerator]
+    end
+
+    subgraph External[External Services]
+        Copilot[GitHub Copilot API<br/>LLM]
+        GitHub[GitHub API<br/>Repository]
+    end
+
+    ReviewApp --> ReviewCommand
+    ReviewCommand --> ReviewOrchestrator
+    ReviewOrchestrator --> Security
+    ReviewOrchestrator --> CodeQuality
+    ReviewOrchestrator --> Performance
+    ReviewOrchestrator --> BestPractices
+
+    Security --> ReportGenerator
+    CodeQuality --> ReportGenerator
+    Performance --> ReportGenerator
+    BestPractices --> ReportGenerator
+    ReportGenerator --> SummaryGenerator
+
+    Security -.-> Copilot
+    CodeQuality -.-> Copilot
+    Performance -.-> Copilot
+    BestPractices -.-> Copilot
+    SummaryGenerator -.-> Copilot
+
+    Security -.-> GitHub
+    CodeQuality -.-> GitHub
+    Performance -.-> GitHub
+    BestPractices -.-> GitHub
+```
+
 ## プロジェクト構造
 
 ```
@@ -245,20 +300,29 @@ multi-agent-reviewer/
 │   ├── code-quality.agent.md
 │   ├── performance.agent.md
 │   └── best-practices.agent.md
-└── src/main/java/com/example/reviewer/
+└── src/main/java/dev/logicojp/reviewer/
     ├── ReviewApp.java                   # CLIエントリポイント
+    ├── ReviewCommand.java               # reviewサブコマンド
+    ├── ListAgentsCommand.java           # listサブコマンド
     ├── agent/
     │   ├── AgentConfig.java             # 設定モデル
     │   ├── AgentConfigLoader.java       # 設定読込
-    │   └── AgentMarkdownParser.java     # .agent.md パーサー
+    │   ├── AgentMarkdownParser.java     # .agent.md パーサー
+    │   └── ReviewAgent.java             # レビューエージェント
     ├── config/
-    │   └── ModelConfig.java             # LLMモデル設定
+    │   ├── ModelConfig.java             # LLMモデル設定
+    │   └── GithubMcpConfig.java         # GitHub MCP設定
     ├── orchestrator/
     │   └── ReviewOrchestrator.java      # 並列実行制御
-    └── report/
-        ├── ReviewResult.java            # 結果モデル
-        ├── ReportGenerator.java         # 個別レポート生成
-        └── SummaryGenerator.java        # サマリー生成
+    ├── report/
+    │   ├── ReviewResult.java            # 結果モデル
+    │   ├── ReportGenerator.java         # 個別レポート生成
+    │   └── SummaryGenerator.java        # サマリー生成
+    └── service/
+        ├── AgentService.java            # エージェント管理
+        ├── CopilotService.java          # Copilot SDK連携
+        ├── ReportService.java           # レポート生成
+        └── ReviewService.java           # レビュー実行
 ```
 
 ## ライセンス
