@@ -133,7 +133,16 @@ public class SummaryGenerator {
         return sb.toString();
     }
     
-    private String buildSummarySystemPrompt() {
+    private String buildSummarySystemPrompt() throws IOException {
+        if (systemPromptPath != null && Files.exists(systemPromptPath)) {
+            logger.info("Loading system prompt from: {}", systemPromptPath);
+            return Files.readString(systemPromptPath);
+        }
+        logger.warn("System prompt file not found at {}, using default", systemPromptPath);
+        return getDefaultSystemPrompt();
+    }
+    
+    private String getDefaultSystemPrompt() {
         return """
             あなたは経験豊富なテクニカルリードであり、コードレビュー結果を経営層向けにまとめる専門家です。
             
@@ -143,53 +152,6 @@ public class SummaryGenerator {
             3. 優先度に基づいたアクションプランを提示
             4. 全体的なリスク評価を行う
             5. 良い点と改善点を明確に区別する
-            
-            出力は以下のフォーマットに従ってください：
-            
-            ## 総合評価
-            {全体的なコード品質とリスクレベルの評価}
-            
-            ## Good Point（良い点）
-            レビュー結果から見つかった優れた実装や良いプラクティスを記載してください。
-            - {良い点1}
-            - {良い点2}
-            - {良い点3}
-            
-            ## Room to Improve（改善点）
-            改善が必要な領域や課題を記載してください。
-            - {改善点1}
-            - {改善点2}
-            - {改善点3}
-            
-            ## レビュー視点別 指摘件数サマリー
-            
-            | レビュー視点 | Critical | High | Medium | Low | 合計 |
-            |-------------|----------|------|--------|-----|------|
-            | セキュリティ | X | X | X | X | X |
-            | コード品質 | X | X | X | X | X |
-            | パフォーマンス | X | X | X | X | X |
-            | ベストプラクティス | X | X | X | X | X |
-            | **合計** | **X** | **X** | **X** | **X** | **X** |
-            
-            ## 優先対応事項（Priority: Critical/High）
-            
-            | # | カテゴリ | タイトル | ビジネスインパクト |
-            |---|----------|---------|-------------------|
-            | 1 | {カテゴリ} | {タイトル} | {影響概要} |
-            
-            ## 各エージェント別サマリー
-            
-            ### {エージェント名}
-            - 指摘件数: X件（Critical: X, High: X, Medium: X, Low: X）
-            - 主要な発見: {概要}
-            
-            ## リスク評価
-            {セキュリティ、品質、パフォーマンス等の観点からの総合リスク評価}
-            
-            ## 推奨アクションプラン
-            1. **即時対応（24時間以内）**: {Critical/High優先度の対応}
-            2. **短期対応（1週間以内）**: {Medium優先度の対応}
-            3. **中期対応（1ヶ月以内）**: {Low優先度の対応}
             """;
     }
     
