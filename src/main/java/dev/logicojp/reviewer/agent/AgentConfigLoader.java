@@ -1,15 +1,9 @@
 package dev.logicojp.reviewer.agent;
 
-import dev.logicojp.reviewer.skill.SkillDefinition;
-import dev.logicojp.reviewer.skill.SkillParameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
-import org.yaml.snakeyaml.LoaderOptions;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -17,13 +11,11 @@ import java.util.stream.Stream;
 
 /**
  * Loads agent configurations from external files.
- * Supports two formats:
- * 1. YAML files (.yaml, .yml) - Traditional format
- * 2. Markdown files (.agent.md) - GitHub Copilot agent definition format
+ * Supports GitHub Copilot agent definition format (.agent.md).
  * 
  * Files can be placed in:
- * - agents/ directory (YAML or Markdown)
- * - .github/agents/ directory (GitHub Copilot format)
+ * - agents/ directory
+ * - .github/agents/ directory
  */
 public class AgentConfigLoader {
     
@@ -50,7 +42,6 @@ public class AgentConfigLoader {
     
     /**
      * Loads all agent configurations from all configured directories.
-     * Supports both YAML (.yaml, .yml) and Markdown (.agent.md) formats.
      * @return Map of agent name to AgentConfig
      */
     public Map<String, AgentConfig> loadAllAgents() throws IOException {
@@ -81,8 +72,9 @@ public class AgentConfigLoader {
             
             for (Path file : files) {
                 try {
-                    AgentConfig config = loadAgentFile(file);
+                    AgentConfig config = markdownParser.parse(file);
                     if (config != null) {
+                        config.validateRequired();
                         agents.put(config.getName(), config);
                         logger.info("Loaded agent: {} from {}", config.getName(), file.getFileName());
                     }
@@ -95,250 +87,9 @@ public class AgentConfigLoader {
     
     private boolean isAgentFile(Path path) {
         String filename = path.getFileName().toString().toLowerCase();
-        return filename.endsWith(".yaml") || 
-               filename.endsWith(".yml") || 
-               filename.endsWith(".agent.md");
+        return filename.endsWith(".agent.md");
     }
     
-    private AgentConfig loadAgentFile(Path file) throws IOException {
-        String filename = file.getFileName().toString().toLowerCase();
-        
-        if (filename.endsWith(".agent.md")) {
-            return markdownParser.parse(file);
-        } else if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
-            return loadYamlAgent(file);
-        }
-        
-        return null;
-    }
-    
-    private AgentConfig loadYamlAgent(Path yamlFile) throws IOException {
-        LoaderOptions options = new LoaderOptions();
-        Yaml yaml = new Yaml(new Constructor(AgentConfigYaml.class, options));
-
-        try (InputStream is = Files.newInputStream(yamlFile)) {
-            AgentConfigYaml yamlConfig = yaml.load(is);
-            AgentConfig config = yamlConfig != null ? yamlConfig.toAgentConfig() : null;
-            if (config != null) {
-                config.validateRequired();
-            }
-            return config;
-        }
-    }
-
-    private static class AgentConfigYaml {
-        private String name;
-        private String displayName;
-        private String model;
-        private String systemPrompt;
-        private String reviewPrompt;
-        private String outputFormat;
-        private List<String> focusAreas;
-        private List<SkillYaml> skills;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-
-        public void setDisplayName(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getModel() {
-            return model;
-        }
-
-        public void setModel(String model) {
-            this.model = model;
-        }
-
-        public String getSystemPrompt() {
-            return systemPrompt;
-        }
-
-        public void setSystemPrompt(String systemPrompt) {
-            this.systemPrompt = systemPrompt;
-        }
-
-        public String getReviewPrompt() {
-            return reviewPrompt;
-        }
-
-        public void setReviewPrompt(String reviewPrompt) {
-            this.reviewPrompt = reviewPrompt;
-        }
-
-        public String getOutputFormat() {
-            return outputFormat;
-        }
-
-        public void setOutputFormat(String outputFormat) {
-            this.outputFormat = outputFormat;
-        }
-
-        public List<String> getFocusAreas() {
-            return focusAreas;
-        }
-
-        public void setFocusAreas(List<String> focusAreas) {
-            this.focusAreas = focusAreas;
-        }
-
-        public List<SkillYaml> getSkills() {
-            return skills;
-        }
-
-        public void setSkills(List<SkillYaml> skills) {
-            this.skills = skills;
-        }
-
-        public AgentConfig toAgentConfig() {
-            List<SkillDefinition> skillDefinitions = null;
-            if (skills != null) {
-                skillDefinitions = skills.stream()
-                    .map(SkillYaml::toSkillDefinition)
-                    .collect(Collectors.toList());
-            }
-            return new AgentConfig(
-                name,
-                displayName,
-                model,
-                systemPrompt,
-                reviewPrompt,
-                outputFormat,
-                focusAreas,
-                skillDefinitions
-            );
-        }
-    }
-
-    private static class SkillYaml {
-        private String id;
-        private String name;
-        private String description;
-        private String prompt;
-        private List<SkillParameterYaml> parameters;
-        private Map<String, String> metadata;
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public void setDescription(String description) {
-            this.description = description;
-        }
-
-        public String getPrompt() {
-            return prompt;
-        }
-
-        public void setPrompt(String prompt) {
-            this.prompt = prompt;
-        }
-
-        public List<SkillParameterYaml> getParameters() {
-            return parameters;
-        }
-
-        public void setParameters(List<SkillParameterYaml> parameters) {
-            this.parameters = parameters;
-        }
-
-        public Map<String, String> getMetadata() {
-            return metadata;
-        }
-
-        public void setMetadata(Map<String, String> metadata) {
-            this.metadata = metadata;
-        }
-
-        public SkillDefinition toSkillDefinition() {
-            List<SkillParameter> skillParams = null;
-            if (parameters != null) {
-                skillParams = parameters.stream()
-                    .map(SkillParameterYaml::toSkillParameter)
-                    .collect(Collectors.toList());
-            }
-            return new SkillDefinition(id, name, description, prompt, skillParams, metadata);
-        }
-    }
-
-    private static class SkillParameterYaml {
-        private String name;
-        private String description;
-        private String type;
-        private boolean required;
-        private String defaultValue;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public void setDescription(String description) {
-            this.description = description;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public boolean isRequired() {
-            return required;
-        }
-
-        public void setRequired(boolean required) {
-            this.required = required;
-        }
-
-        public String getDefaultValue() {
-            return defaultValue;
-        }
-
-        public void setDefaultValue(String defaultValue) {
-            this.defaultValue = defaultValue;
-        }
-
-        public SkillParameter toSkillParameter() {
-            return new SkillParameter(name, description, type, required, defaultValue);
-        }
-    }
-
     /**
      * Loads specific agents by name.
      * @param agentNames List of agent names to load
@@ -385,10 +136,6 @@ public class AgentConfigLoader {
         
         if (filename.endsWith(".agent.md")) {
             return filename.substring(0, filename.length() - ".agent.md".length());
-        } else if (filename.endsWith(".yaml")) {
-            return filename.substring(0, filename.length() - ".yaml".length());
-        } else if (filename.endsWith(".yml")) {
-            return filename.substring(0, filename.length() - ".yml".length());
         }
         
         return filename;

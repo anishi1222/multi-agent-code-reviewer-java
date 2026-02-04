@@ -5,7 +5,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 ## Features
 
 - **Parallel Multi-Agent Execution**: Simultaneous review from security, code quality, performance, and best practices perspectives
-- **Flexible Agent Definitions**: Define agents in YAML format (.yaml) or GitHub Copilot format (.agent.md)
+- **Flexible Agent Definitions**: Define agents in GitHub Copilot format (.agent.md)
 - **Agent Skill Support**: Define individual skills for agents to execute specific tasks
 - **External Configuration Files**: Agent definitions can be swapped without rebuilding
 - **LLM Model Selection**: Use different models for review, report generation, and summary generation
@@ -117,38 +117,16 @@ export GITHUB_TOKEN=your_github_token
 
 ## Agent Definitions
 
-### Supported Formats
-
-Agents can be defined in two formats:
-
-1. **YAML format** (`.yaml`, `.yml`) - Traditional format
-2. **GitHub Copilot format** (`.agent.md`) - Markdown-based format
-
 ### Agent Directories
 
 The following directories are automatically searched:
 
 - `./agents/` - Default directory
-- `./.github/agents/` - GitHub Copilot format directory
+- `./.github/agents/` - Alternative directory
 
 Additional directories can be specified with the `--agents-dir` option.
 
-### YAML Format (`agents/security.yaml`)
-
-```yaml
-name: security
-displayName: "Security Review"
-model: claude-sonnet-4
-systemPrompt: |
-  You are a security-focused code reviewer.
-  Analyze the code from the following perspectives:
-focusAreas:
-  - SQL Injection
-  - XSS Vulnerabilities
-  - Authentication/Authorization Issues
-```
-
-### GitHub Copilot Format (`.github/agents/security.agent.md`)
+### Agent Definition File (`.agent.md`)
 
 In `Review Prompt`, you can use placeholders: `${repository}`, `${displayName}`, `${focusAreas}`.
 
@@ -251,47 +229,37 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--model` | - | LLM model to use | claude-sonnet-4 |
 | `--agents-dir` | - | Agent definitions directory | - |
 
-### Skill Definition (YAML format)
+### Skill Definition (`.agent.md` format)
 
-Add a `skills` section to your agent definition file:
+Add a `## Skills` section to your agent definition file (`.agent.md`):
 
-```yaml
-name: security
-displayName: "Security Review"
-model: claude-sonnet-4
-# ...existing agent config...
+```markdown
+## Skills
 
-skills:
-  - id: sql-injection-check
-    name: "SQL Injection Check"
-    description: "Checks for SQL injection vulnerabilities in specified file or repository"
-    prompt: |
-      Analyze the following code for SQL injection vulnerabilities.
-      
-      **Target**: ${target}
-      
-      Look for these patterns:
-      - SQL statements built with string concatenation
-      - Non-parameterized queries
-      - Direct embedding of user input in SQL statements
-    parameters:
-      - name: target
-        description: "Target file path or repository"
-        type: string
-        required: true
+### sql-injection-check
+- **Name**: SQL Injection Check
+- **Description**: Checks for SQL injection vulnerabilities in specified file or repository
+- **Parameters**:
+  - `target` (required): Target file path or repository
+- **Prompt**: |
+  Analyze the following code for SQL injection vulnerabilities.
+  
+  **Target**: ${target}
+  
+  Look for these patterns:
+  - SQL statements built with string concatenation
+  - Non-parameterized queries
+  - Direct embedding of user input in SQL statements
 
-  - id: secret-scan
-    name: "Secret Scan"
-    description: "Detects hardcoded secrets in code"
-    prompt: |
-      Analyze the following code for secret leakage.
-      
-      **Target Repository**: ${repository}
-    parameters:
-      - name: repository
-        description: "Target repository"
-        type: string
-        required: true
+### secret-scan
+- **Name**: Secret Scan
+- **Description**: Detects hardcoded secrets in code
+- **Parameters**:
+  - `repository` (required): Target repository
+- **Prompt**: |
+  Analyze the following code for secret leakage.
+  
+  **Target Repository**: ${repository}
 ```
 
 ## GraalVM Native Image
@@ -367,12 +335,7 @@ flowchart TB
 multi-agent-reviewer/
 ├── pom.xml                              # Maven configuration
 ├── .sdkmanrc                            # SDKMAN GraalVM configuration
-├── agents/                              # YAML agent definitions
-│   ├── security.yaml
-│   ├── code-quality.yaml
-│   ├── performance.yaml
-│   └── best-practices.yaml
-├── .github/agents/                      # GitHub Copilot agent definitions
+├── agents/                              # Agent definitions (.agent.md format)
 │   ├── security.agent.md
 │   ├── code-quality.agent.md
 │   ├── performance.agent.md

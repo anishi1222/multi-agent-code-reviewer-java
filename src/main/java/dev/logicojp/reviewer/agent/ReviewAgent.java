@@ -20,21 +20,23 @@ import java.util.concurrent.TimeUnit;
 public class ReviewAgent {
     
     private static final Logger logger = LoggerFactory.getLogger(ReviewAgent.class);
-    private static final long TIMEOUT_MINUTES = 5;
     
     private final AgentConfig config;
     private final CopilotClient client;
     private final String githubToken;
     private final GithubMcpConfig githubMcpConfig;
+    private final long timeoutMinutes;
     
     public ReviewAgent(AgentConfig config,
                        CopilotClient client,
                        String githubToken,
-                       GithubMcpConfig githubMcpConfig) {
+                       GithubMcpConfig githubMcpConfig,
+                       long timeoutMinutes) {
         this.config = config;
         this.client = client;
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
+        this.timeoutMinutes = timeoutMinutes;
     }
     
     /**
@@ -73,7 +75,7 @@ public class ReviewAgent {
                 .setContent(config.buildFullSystemPrompt()))
             .setMcpServers(Map.of("github", githubMcp));
         
-        var session = client.createSession(sessionConfig).get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
+        var session = client.createSession(sessionConfig).get(timeoutMinutes, TimeUnit.MINUTES);
         
         try {
             // Build the review prompt
@@ -81,7 +83,7 @@ public class ReviewAgent {
             
             // Execute the review
             logger.debug("Sending review prompt to agent: {}", config.getName());
-            var response = session.sendAndWait(reviewPrompt).get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
+            var response = session.sendAndWait(reviewPrompt).get(timeoutMinutes, TimeUnit.MINUTES);
             
             String content = response.getData().getContent();
             logger.info("Review completed for agent: {}", config.getName());

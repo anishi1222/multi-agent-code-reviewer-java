@@ -7,6 +7,11 @@ picocli:
   ansi: auto
 
 reviewer:
+  execution:
+    parallelism: 4
+    orchestrator-timeout-minutes: 10
+    agent-timeout-minutes: 5
+    skill-timeout-minutes: 5
   mcp:
     github:
       type: http

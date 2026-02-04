@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.service;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.skill.*;
 import jakarta.inject.Inject;
@@ -24,12 +25,16 @@ public class SkillService {
     private final SkillRegistry skillRegistry;
     private final CopilotService copilotService;
     private final GithubMcpConfig githubMcpConfig;
+    private final ExecutionConfig executionConfig;
 
     @Inject
-    public SkillService(CopilotService copilotService, GithubMcpConfig githubMcpConfig) {
+    public SkillService(CopilotService copilotService,
+                        GithubMcpConfig githubMcpConfig,
+                        ExecutionConfig executionConfig) {
         this.skillRegistry = new SkillRegistry();
         this.copilotService = copilotService;
         this.githubMcpConfig = githubMcpConfig;
+        this.executionConfig = executionConfig;
     }
 
     /**
@@ -95,7 +100,8 @@ public class SkillService {
             copilotService.getClient(),
             githubToken,
             githubMcpConfig,
-            model
+            model,
+            executionConfig.skillTimeoutMinutes()
         );
 
         return executor.execute(skill, parameters);
@@ -120,7 +126,8 @@ public class SkillService {
             copilotService.getClient(),
             githubToken,
             githubMcpConfig,
-            model
+            model,
+            executionConfig.skillTimeoutMinutes()
         );
 
         return executor.execute(skill, parameters, systemPrompt);

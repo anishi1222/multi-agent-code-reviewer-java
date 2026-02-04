@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.orchestrator;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.agent.ReviewAgent;
+import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.report.ReviewResult;
 import com.github.copilot.sdk.CopilotClient;
@@ -17,26 +18,22 @@ import java.util.concurrent.*;
 public class ReviewOrchestrator {
     
     private static final Logger logger = LoggerFactory.getLogger(ReviewOrchestrator.class);
-    private static final int DEFAULT_PARALLELISM = 4;
-    private static final long TIMEOUT_MINUTES = 10;
     
     private final CopilotClient client;
     private final String githubToken;
     private final GithubMcpConfig githubMcpConfig;
+    private final ExecutionConfig executionConfig;
     private final ExecutorService executorService;
-    
-    public ReviewOrchestrator(CopilotClient client, String githubToken, GithubMcpConfig githubMcpConfig) {
-        this(client, githubToken, githubMcpConfig, DEFAULT_PARALLELISM);
-    }
     
     public ReviewOrchestrator(CopilotClient client,
                               String githubToken,
                               GithubMcpConfig githubMcpConfig,
-                              int parallelism) {
+                              ExecutionConfig executionConfig) {
         this.client = client;
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
-        this.executorService = Executors.newFixedThreadPool(parallelism);
+        this.executionConfig = executionConfig;
+        this.executorService = Executors.newFixedThreadPool(executionConfig.parallelism());
     }
     
     /**
@@ -49,11 +46,13 @@ public class ReviewOrchestrator {
         logger.info("Starting parallel review for {} agents on repository: {}", agents.size(), repository);
         
         List<CompletableFuture<ReviewResult>> futures = new ArrayList<>();
+        long timeoutMinutes = executionConfig.orchestratorTimeoutMinutes();
         
         for (AgentConfig config : agents.values()) {
-            ReviewAgent agent = new ReviewAgent(config, client, githubToken, githubMcpConfig);
+            ReviewAgent agent = new ReviewAgent(config, client, githubToken, githubMcpConfig,
+                executionConfig.agentTimeoutMinutes());
             CompletableFuture<ReviewResult> future = agent.review(repository)
-                .orTimeout(TIMEOUT_MINUTES, TimeUnit.MINUTES)
+                .orTimeout(timeoutMinutes, TimeUnit.MINUTES)
                 .exceptionally(ex -> {
                     logger.error("Agent {} failed with timeout or error: {}", 
                         config.getName(), ex.getMessage());
@@ -73,7 +72,7 @@ public class ReviewOrchestrator {
         );
         
         try {
-            allFutures.get(TIMEOUT_MINUTES + 1, TimeUnit.MINUTES);
+            allFutures.get(timeoutMinutes + 1, TimeUnit.MINUTES);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             logger.error("Error waiting for reviews to complete: {}", e.getMessage());
         }

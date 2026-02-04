@@ -16,19 +16,21 @@ import java.util.concurrent.TimeUnit;
 public class SkillExecutor {
 
     private static final Logger logger = LoggerFactory.getLogger(SkillExecutor.class);
-    private static final long TIMEOUT_MINUTES = 5;
 
     private final CopilotClient client;
     private final String githubToken;
     private final GithubMcpConfig githubMcpConfig;
     private final String defaultModel;
+    private final long timeoutMinutes;
 
     public SkillExecutor(CopilotClient client, String githubToken,
-                         GithubMcpConfig githubMcpConfig, String defaultModel) {
+                         GithubMcpConfig githubMcpConfig, String defaultModel,
+                         long timeoutMinutes) {
         this.client = client;
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
         this.defaultModel = defaultModel;
+        this.timeoutMinutes = timeoutMinutes;
     }
 
     /**
@@ -79,11 +81,11 @@ public class SkillExecutor {
                 .setContent(systemPrompt));
         }
 
-        var session = client.createSession(sessionConfigBuilder).get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
+        var session = client.createSession(sessionConfigBuilder).get(timeoutMinutes, TimeUnit.MINUTES);
 
         try {
             logger.debug("Sending skill prompt: {}", skill.id());
-            var response = session.sendAndWait(prompt).get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
+            var response = session.sendAndWait(prompt).get(timeoutMinutes, TimeUnit.MINUTES);
 
             String content = response.getData().getContent();
             logger.info("Skill execution completed: {}", skill.id());

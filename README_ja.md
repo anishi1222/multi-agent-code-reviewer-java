@@ -5,7 +5,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 ## 特徴
 
 - **複数エージェント並列実行**: セキュリティ、コード品質、パフォーマンス、ベストプラクティスの各観点から同時レビュー
-- **柔軟なエージェント定義**: YAML形式 (.yaml) または GitHub Copilot形式 (.agent.md) でエージェントを定義
+- **柔軟なエージェント定義**: GitHub Copilot形式 (.agent.md) でエージェントを定義
 - **外部設定ファイル**: エージェント定義はビルド不要で差し替え可能
 - **LLMモデル指定**: レビュー、レポート生成、サマリー生成で異なるモデルを使用可能
 - **構造化されたレビュー結果**: Priority（Critical/High/Medium/Low）付きの一貫したフォーマット
@@ -116,38 +116,16 @@ export GITHUB_TOKEN=your_github_token
 
 ## エージェント定義
 
-### 対応フォーマット
-
-エージェントは2つの形式で定義できます:
-
-1. **YAML形式** (`.yaml`, `.yml`) - 従来の形式
-2. **GitHub Copilot形式** (`.agent.md`) - Markdownベースの形式
-
 ### エージェントディレクトリ
 
 以下のディレクトリが自動的に検索されます:
 
 - `./agents/` - デフォルトディレクトリ
-- `./.github/agents/` - GitHub Copilot形式のディレクトリ
+- `./.github/agents/` - 代替ディレクトリ
 
 `--agents-dir` オプションで追加のディレクトリを指定できます。
 
-### YAML形式 (`agents/security.yaml`)
-
-```yaml
-name: security
-displayName: "セキュリティレビュー"
-model: claude-sonnet-4
-systemPrompt: |
-  あなたはセキュリティ専門のコードレビュアーです。
-  以下の観点でコードを分析してください：
-focusAreas:
-  - SQLインジェクション
-  - XSS脆弱性
-  - 認証・認可の問題
-```
-
-### GitHub Copilot形式 (`.github/agents/security.agent.md`)
+### エージェント定義ファイル (`.agent.md`)
 
 `Review Prompt` では `${repository}`, `${displayName}`, `${focusAreas}` のプレースホルダーが利用できます。
 
@@ -250,47 +228,37 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--model` | - | 使用するLLMモデル | claude-sonnet-4 |
 | `--agents-dir` | - | エージェント定義ディレクトリ | - |
 
-### スキル定義（YAML形式）
+### スキル定義（.agent.md形式）
 
-エージェント定義ファイル内に `skills` セクションを追加します：
+エージェント定義ファイル（`.agent.md`）内に `## Skills` セクションを追加します：
 
-```yaml
-name: security
-displayName: "セキュリティレビュー"
-model: claude-sonnet-4
-# ...existing agent config...
+```markdown
+## Skills
 
-skills:
-  - id: sql-injection-check
-    name: "SQLインジェクション検査"
-    description: "指定されたファイルまたはリポジトリ内のSQLインジェクション脆弱性を検査します"
-    prompt: |
-      以下のコードをSQLインジェクション脆弱性の観点から分析してください。
-      
-      **対象**: ${target}
-      
-      特に以下のパターンを確認してください：
-      - 文字列連結によるSQL文の構築
-      - パラメータ化されていないクエリ
-      - ユーザー入力の直接的なSQL文への埋め込み
-    parameters:
-      - name: target
-        description: "検査対象のファイルパスまたはリポジトリ"
-        type: string
-        required: true
+### sql-injection-check
+- **Name**: SQLインジェクション検査
+- **Description**: 指定されたファイルまたはリポジトリ内のSQLインジェクション脆弱性を検査します
+- **Parameters**:
+  - `target` (required): 検査対象のファイルパスまたはリポジトリ
+- **Prompt**: |
+  以下のコードをSQLインジェクション脆弱性の観点から分析してください。
+  
+  **対象**: ${target}
+  
+  特に以下のパターンを確認してください：
+  - 文字列連結によるSQL文の構築
+  - パラメータ化されていないクエリ
+  - ユーザー入力の直接的なSQL文への埋め込み
 
-  - id: secret-scan
-    name: "機密情報スキャン"
-    description: "コード内のハードコードされた機密情報を検出します"
-    prompt: |
-      以下のコードを機密情報漏洩の観点から分析してください。
-      
-      **対象リポジトリ**: ${repository}
-    parameters:
-      - name: repository
-        description: "対象リポジトリ"
-        type: string
-        required: true
+### secret-scan
+- **Name**: 機密情報スキャン
+- **Description**: コード内のハードコードされた機密情報を検出します
+- **Parameters**:
+  - `repository` (required): 対象リポジトリ
+- **Prompt**: |
+  以下のコードを機密情報漏洩の観点から分析してください。
+  
+  **対象リポジトリ**: ${repository}
 ```
 
 ## GraalVM Native Image
@@ -365,12 +333,7 @@ flowchart TB
 multi-agent-reviewer/
 ├── pom.xml                              # Maven設定
 ├── .sdkmanrc                            # SDKMAN GraalVM設定
-├── agents/                              # YAML形式のエージェント定義
-│   ├── security.yaml
-│   ├── code-quality.yaml
-│   ├── performance.yaml
-│   └── best-practices.yaml
-├── .github/agents/                      # GitHub Copilot形式のエージェント定義
+├── agents/                              # エージェント定義（.agent.md形式）
 │   ├── security.agent.md
 │   ├── code-quality.agent.md
 │   ├── performance.agent.md
