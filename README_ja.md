@@ -114,6 +114,41 @@ export GITHUB_TOKEN=your_github_token
 └── executive_summary_260204.md
 ```
 
+## 設定ファイル
+
+`application.yml` でアプリケーションの動作をカスタマイズできます。
+
+```yaml
+reviewer:
+  orchestrator:
+    default-parallelism: 4      # デフォルトの並列実行数
+    timeout-minutes: 10         # レビュータイムアウト（分）
+  mcp:
+    github:
+      type: http
+      url: https://api.githubcopilot.com/mcp/
+      tools:
+        - "*"
+      auth-header-name: Authorization
+      auth-header-template: "Bearer ${token}"
+  models:
+    review-model: claude-sonnet-4    # レビュー用モデル
+    report-model: claude-sonnet-4    # レポート生成用モデル
+    summary-model: claude-sonnet-4   # サマリー生成用モデル
+```
+
+### 設定項目
+
+| 項目 | 説明 | デフォルト |
+|------|------|------------|
+| `reviewer.orchestrator.default-parallelism` | デフォルトの並列実行数 | 4 |
+| `reviewer.orchestrator.timeout-minutes` | レビュータイムアウト（分） | 10 |
+| `reviewer.mcp.github.url` | GitHub MCP Server URL | https://api.githubcopilot.com/mcp/ |
+| `reviewer.mcp.github.tools` | 使用するツール | ["*"] |
+| `reviewer.models.review-model` | レビュー用LLMモデル | claude-sonnet-4 |
+| `reviewer.models.report-model` | レポート生成用LLMモデル | claude-sonnet-4 |
+| `reviewer.models.summary-model` | サマリー生成用LLMモデル | claude-sonnet-4 |
+
 ## エージェント定義
 
 ### 対応フォーマット
@@ -311,7 +346,8 @@ multi-agent-reviewer/
     │   └── ReviewAgent.java             # レビューエージェント
     ├── config/
     │   ├── ModelConfig.java             # LLMモデル設定
-    │   └── GithubMcpConfig.java         # GitHub MCP設定
+    │   ├── GithubMcpConfig.java         # GitHub MCP設定
+    │   └── OrchestratorConfig.java      # オーケストレーター設定
     ├── orchestrator/
     │   └── ReviewOrchestrator.java      # 並列実行制御
     ├── report/

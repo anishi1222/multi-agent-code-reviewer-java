@@ -114,6 +114,41 @@ export GITHUB_TOKEN=your_github_token
 └── executive_summary_260204.md
 ```
 
+## Configuration
+
+Customize application behavior via `application.yml`.
+
+```yaml
+reviewer:
+  orchestrator:
+    default-parallelism: 4      # Default parallel execution count
+    timeout-minutes: 10         # Review timeout (minutes)
+  mcp:
+    github:
+      type: http
+      url: https://api.githubcopilot.com/mcp/
+      tools:
+        - "*"
+      auth-header-name: Authorization
+      auth-header-template: "Bearer ${token}"
+  models:
+    review-model: claude-sonnet-4    # Model for review
+    report-model: claude-sonnet-4    # Model for report generation
+    summary-model: claude-sonnet-4   # Model for summary generation
+```
+
+### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|--------|
+| `reviewer.orchestrator.default-parallelism` | Default parallel execution count | 4 |
+| `reviewer.orchestrator.timeout-minutes` | Review timeout (minutes) | 10 |
+| `reviewer.mcp.github.url` | GitHub MCP Server URL | https://api.githubcopilot.com/mcp/ |
+| `reviewer.mcp.github.tools` | Tools to use | ["*"] |
+| `reviewer.models.review-model` | LLM model for review | claude-sonnet-4 |
+| `reviewer.models.report-model` | LLM model for report generation | claude-sonnet-4 |
+| `reviewer.models.summary-model` | LLM model for summary generation | claude-sonnet-4 |
+
 ## Agent Definitions
 
 ### Supported Formats
@@ -311,7 +346,8 @@ multi-agent-reviewer/
     │   └── ReviewAgent.java             # Review agent
     ├── config/
     │   ├── ModelConfig.java             # LLM model config
-    │   └── GithubMcpConfig.java         # GitHub MCP config
+    │   ├── GithubMcpConfig.java         # GitHub MCP config
+    │   └── OrchestratorConfig.java      # Orchestrator config
     ├── orchestrator/
     │   └── ReviewOrchestrator.java      # Parallel execution control
     ├── report/

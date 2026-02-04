@@ -7,6 +7,9 @@ picocli:
   ansi: auto
 
 reviewer:
+  orchestrator:
+    default-parallelism: 4
+    timeout-minutes: 10
   mcp:
     github:
       type: http
