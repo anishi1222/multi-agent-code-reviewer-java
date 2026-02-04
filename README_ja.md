@@ -5,7 +5,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 ## 特徴
 
 - **複数エージェント並列実行**: セキュリティ、コード品質、パフォーマンス、ベストプラクティスの各観点から同時レビュー
-- **柔軟なエージェント定義**: YAML形式 (.yaml) または GitHub Copilot形式 (.agent.md) でエージェントを定義
+- **柔軟なエージェント定義**: GitHub Copilot形式 (.agent.md) でエージェントを定義
 - **外部設定ファイル**: エージェント定義はビルド不要で差し替え可能
 - **LLMモデル指定**: レビュー、レポート生成、サマリー生成で異なるモデルを使用可能
 - **構造化されたレビュー結果**: Priority（Critical/High/Medium/Low）付きの一貫したフォーマット
@@ -151,13 +151,6 @@ reviewer:
 
 ## エージェント定義
 
-### 対応フォーマット
-
-エージェントは2つの形式で定義できます:
-
-1. **YAML形式** (`.yaml`, `.yml`) - 従来の形式
-2. **GitHub Copilot形式** (`.agent.md`) - Markdownベースの形式
-
 ### エージェントディレクトリ
 
 以下のディレクトリが自動的に検索されます:
@@ -167,22 +160,7 @@ reviewer:
 
 `--agents-dir` オプションで追加のディレクトリを指定できます。
 
-### YAML形式 (`agents/security.yaml`)
-
-```yaml
-name: security
-displayName: "セキュリティレビュー"
-model: claude-sonnet-4
-systemPrompt: |
-  あなたはセキュリティ専門のコードレビュアーです。
-  以下の観点でコードを分析してください：
-focusAreas:
-  - SQLインジェクション
-  - XSS脆弱性
-  - 認証・認可の問題
-```
-
-### GitHub Copilot形式 (`.github/agents/security.agent.md`)
+### エージェント定義ファイル (`.agent.md`)
 
 `Review Prompt` では `${repository}`, `${displayName}`, `${focusAreas}` のプレースホルダーが利用できます。
 
@@ -325,12 +303,12 @@ flowchart TB
 multi-agent-reviewer/
 ├── pom.xml                              # Maven設定
 ├── .sdkmanrc                            # SDKMAN GraalVM設定
-├── agents/                              # YAML形式のエージェント定義
-│   ├── security.yaml
-│   ├── code-quality.yaml
-│   ├── performance.yaml
-│   └── best-practices.yaml
-├── .github/agents/                      # GitHub Copilot形式のエージェント定義
+├── agents/                              # エージェント定義
+│   ├── security.agent.md
+│   ├── code-quality.agent.md
+│   ├── performance.agent.md
+│   └── best-practices.agent.md
+├── .github/agents/                      # 代替エージェントディレクトリ
 │   ├── security.agent.md
 │   ├── code-quality.agent.md
 │   ├── performance.agent.md

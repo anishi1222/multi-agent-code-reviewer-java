@@ -5,7 +5,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 ## Features
 
 - **Parallel Multi-Agent Execution**: Simultaneous review from security, code quality, performance, and best practices perspectives
-- **Flexible Agent Definitions**: Define agents in YAML format (.yaml) or GitHub Copilot format (.agent.md)
+- **Flexible Agent Definitions**: Define agents in GitHub Copilot format (.agent.md)
 - **External Configuration Files**: Agent definitions can be swapped without rebuilding
 - **LLM Model Selection**: Use different models for review, report generation, and summary generation
 - **Structured Review Results**: Consistent format with Priority (Critical/High/Medium/Low)
@@ -151,13 +151,6 @@ reviewer:
 
 ## Agent Definitions
 
-### Supported Formats
-
-Agents can be defined in two formats:
-
-1. **YAML format** (`.yaml`, `.yml`) - Traditional format
-2. **GitHub Copilot format** (`.agent.md`) - Markdown-based format
-
 ### Agent Directories
 
 The following directories are automatically searched:
@@ -167,22 +160,7 @@ The following directories are automatically searched:
 
 Additional directories can be specified with the `--agents-dir` option.
 
-### YAML Format (`agents/security.yaml`)
-
-```yaml
-name: security
-displayName: "Security Review"
-model: claude-sonnet-4
-systemPrompt: |
-  You are a security-focused code reviewer.
-  Analyze the code from the following perspectives:
-focusAreas:
-  - SQL Injection
-  - XSS Vulnerabilities
-  - Authentication/Authorization Issues
-```
-
-### GitHub Copilot Format (`.github/agents/security.agent.md`)
+### Agent Definition File (`.agent.md`)
 
 In `Review Prompt`, you can use placeholders: `${repository}`, `${displayName}`, `${focusAreas}`.
 
@@ -325,12 +303,12 @@ flowchart TB
 multi-agent-reviewer/
 ├── pom.xml                              # Maven configuration
 ├── .sdkmanrc                            # SDKMAN GraalVM configuration
-├── agents/                              # YAML agent definitions
-│   ├── security.yaml
-│   ├── code-quality.yaml
-│   ├── performance.yaml
-│   └── best-practices.yaml
-├── .github/agents/                      # GitHub Copilot agent definitions
+├── agents/                              # Agent definitions
+│   ├── security.agent.md
+│   ├── code-quality.agent.md
+│   ├── performance.agent.md
+│   └── best-practices.agent.md
+├── .github/agents/                      # Alternative agent directory
 │   ├── security.agent.md
 │   ├── code-quality.agent.md
 │   ├── performance.agent.md
