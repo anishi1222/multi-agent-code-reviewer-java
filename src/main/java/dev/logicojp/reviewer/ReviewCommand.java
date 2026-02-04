@@ -133,8 +133,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
     
     @Option(
         names = {"--summary-model"},
-        description = "LLM model for executive summary generation",
-        defaultValue = "claude-sonnet-4"
+        description = "LLM model for executive summary generation (default: from application.yml)"
     )
     private String summaryModel;
     
