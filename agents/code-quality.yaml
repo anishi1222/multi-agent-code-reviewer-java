@@ -72,3 +72,89 @@ focusAreas:
   - テストの欠如または不十分なテストカバレッジ
   - 設定のハードコーディング
   - 不適切な依存関係の管理
+
+skills:
+  - id: complexity-analysis
+    name: "複雑度分析"
+    description: "コードの循環的複雑度を分析し、リファクタリング候補を特定します"
+    prompt: |
+      以下のリポジトリのコード複雑度を分析してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下の観点で分析してください：
+      - 循環的複雑度が高い関数/メソッド
+      - ネストが深いコード
+      - 長すぎる関数/メソッド
+      - パラメータが多すぎる関数
+      
+      リファクタリングの優先度と具体的な改善案を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: dead-code-detection
+    name: "デッドコード検出"
+    description: "未使用のコード、到達不能コードを検出します"
+    prompt: |
+      以下のリポジトリ内のデッドコードを検出してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下のパターンを検索してください：
+      - 未使用の変数、関数、クラス
+      - 到達不能なコード
+      - コメントアウトされたコード
+      - 非推奨で使用されていないAPI
+      
+      削除候補と削除時の影響を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: solid-check
+    name: "SOLID原則チェック"
+    description: "SOLID原則への準拠状況を確認します"
+    prompt: |
+      以下のリポジトリのコードをSOLID原則の観点から分析してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      各原則について確認してください：
+      - Single Responsibility Principle（単一責任の原則）
+      - Open/Closed Principle（開放閉鎖の原則）
+      - Liskov Substitution Principle（リスコフの置換原則）
+      - Interface Segregation Principle（インターフェース分離の原則）
+      - Dependency Inversion Principle（依存性逆転の原則）
+      
+      違反箇所と改善案を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: duplication-check
+    name: "重複コード検出"
+    description: "コードの重複を検出し、共通化の提案を行います"
+    prompt: |
+      以下のリポジトリ内の重複コードを検出してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下を検出してください：
+      - 完全に同一のコードブロック
+      - 類似したロジックパターン
+      - コピー&ペーストされたコード
+      
+      共通化の方法と期待される効果を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+

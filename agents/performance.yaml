@@ -72,3 +72,88 @@ focusAreas:
   - 大量データ処理時の問題
   - リソースの適切なクローズ/解放
   - ネットワーク呼び出しの最適化
+
+skills:
+  - id: n-plus-one-check
+    name: "N+1クエリ検出"
+    description: "N+1クエリ問題を検出し、最適化方法を提案します"
+    prompt: |
+      以下のリポジトリのコードをN+1クエリ問題の観点から分析してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下のパターンを検索してください：
+      - ループ内でのデータベースクエリ実行
+      - 遅延ロードによるN+1問題
+      - バッチ処理されていない個別クエリ
+      
+      発見した問題と最適化方法（Eager Loading、バッチクエリ等）を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: memory-leak-check
+    name: "メモリリーク検出"
+    description: "潜在的なメモリリークを検出します"
+    prompt: |
+      以下のリポジトリのコードをメモリリークの観点から分析してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下のパターンを検索してください：
+      - クローズされていないリソース（ファイル、接続、ストリーム）
+      - 静的コレクションへの無制限な追加
+      - リスナー/オブザーバーの解除漏れ
+      - キャッシュの無制限な成長
+      
+      発見した問題と修正方法を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: algorithm-optimization
+    name: "アルゴリズム最適化"
+    description: "非効率なアルゴリズムを検出し、最適化を提案します"
+    prompt: |
+      以下のリポジトリのアルゴリズム効率を分析してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下の観点で分析してください：
+      - 計算量が非効率なアルゴリズム（O(n²)以上）
+      - 不要な繰り返し処理
+      - 最適でないデータ構造の選択
+      - 並列化可能な処理
+      
+      最適化案と期待される改善効果を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: caching-review
+    name: "キャッシュ戦略レビュー"
+    description: "キャッシュの実装と戦略をレビューします"
+    prompt: |
+      以下のリポジトリのキャッシュ実装をレビューしてください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下の観点で分析してください：
+      - キャッシュが有効活用されていない箇所
+      - キャッシュ無効化の適切性
+      - キャッシュサイズとTTL設定
+      - キャッシュスタンピード対策
+      
+      改善提案と期待される効果を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+

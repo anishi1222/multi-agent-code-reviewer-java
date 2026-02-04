@@ -73,3 +73,112 @@ focusAreas:
   - 例外処理のパターン
   - 並行処理・非同期処理のパターン
   - ドキュメンテーション（README、API仕様など）
+
+skills:
+  - id: tech-stack-analysis
+    name: "技術スタック分析"
+    description: "プロジェクトの技術スタックを分析し、最新化の提案を行います"
+    prompt: |
+      以下のリポジトリの技術スタックを分析してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下を確認してください：
+      - 使用されている言語、フレームワーク、ライブラリ
+      - バージョンの新しさ
+      - 非推奨技術の使用
+      - より良い代替技術の提案
+      
+      技術スタックの評価と最新化の提案を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: deprecation-check
+    name: "非推奨API検出"
+    description: "非推奨のAPIや機能の使用を検出します"
+    prompt: |
+      以下のリポジトリ内の非推奨API使用を検出してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下を検出してください：
+      - @Deprecatedアノテーションが付いたAPIの使用
+      - 将来削除予定のAPI
+      - 古いバージョンのみで利用可能な機能
+      
+      代替APIへの移行方法を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: logging-review
+    name: "ログ実装レビュー"
+    description: "ログ出力の実装をベストプラクティスの観点からレビューします"
+    prompt: |
+      以下のリポジトリのログ実装をレビューしてください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下の観点で分析してください：
+      - ログレベルの適切性
+      - 機密情報のログ出力
+      - 構造化ログの使用
+      - エラー時のスタックトレース出力
+      - パフォーマンスへの影響
+      
+      改善提案を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: exception-handling-review
+    name: "例外処理レビュー"
+    description: "例外処理パターンをベストプラクティスの観点からレビューします"
+    prompt: |
+      以下のリポジトリの例外処理をレビューしてください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下の観点で分析してください：
+      - 例外の握りつぶし
+      - 過度に広いcatch句
+      - 例外の適切な伝播
+      - カスタム例外の設計
+      - リソースのクリーンアップ
+      
+      改善提案を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
+  - id: documentation-check
+    name: "ドキュメントチェック"
+    description: "プロジェクトのドキュメント状況を確認します"
+    prompt: |
+      以下のリポジトリのドキュメント状況を確認してください。
+      
+      **対象リポジトリ**: ${repository}
+      
+      以下を確認してください：
+      - READMEの充実度
+      - API仕様書の有無
+      - コード内コメントの適切性
+      - CHANGELOG/リリースノート
+      - 環境構築手順
+      
+      不足しているドキュメントと推奨内容を報告してください。
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+
