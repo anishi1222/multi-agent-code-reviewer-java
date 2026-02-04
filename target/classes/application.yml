@@ -1,7 +1,0 @@
-micronaut:
-  application:
-    name: multi-agent-reviewer
-
-# Picocli integration configuration
-picocli:
-  ansi: auto
