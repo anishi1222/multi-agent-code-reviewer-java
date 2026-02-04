@@ -10,7 +10,8 @@ public record ExecutionConfig(
     int parallelism,
     long orchestratorTimeoutMinutes,
     long agentTimeoutMinutes,
-    long skillTimeoutMinutes
+    long skillTimeoutMinutes,
+    long summaryTimeoutMinutes
 ) {
 
     public ExecutionConfig {
@@ -18,5 +19,6 @@ public record ExecutionConfig(
         orchestratorTimeoutMinutes = (orchestratorTimeoutMinutes <= 0) ? 10 : orchestratorTimeoutMinutes;
         agentTimeoutMinutes = (agentTimeoutMinutes <= 0) ? 5 : agentTimeoutMinutes;
         skillTimeoutMinutes = (skillTimeoutMinutes <= 0) ? 5 : skillTimeoutMinutes;
+        summaryTimeoutMinutes = (summaryTimeoutMinutes <= 0) ? 5 : summaryTimeoutMinutes;
     }
 }

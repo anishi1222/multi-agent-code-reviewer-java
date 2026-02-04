@@ -82,10 +82,13 @@ public class SkillExecutor {
         }
 
         var session = client.createSession(sessionConfigBuilder).get(timeoutMinutes, TimeUnit.MINUTES);
+        long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
 
         try {
             logger.debug("Sending skill prompt: {}", skill.id());
-            var response = session.sendAndWait(prompt).get(timeoutMinutes, TimeUnit.MINUTES);
+            var response = session
+                .sendAndWait(new MessageOptions().setPrompt(prompt), timeoutMs)
+                .get(timeoutMinutes, TimeUnit.MINUTES);
 
             String content = response.getData().getContent();
             logger.info("Skill execution completed: {}", skill.id());

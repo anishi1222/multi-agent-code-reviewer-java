@@ -70,7 +70,8 @@ public class ReviewService {
             parallelism,
             executionConfig.orchestratorTimeoutMinutes(),
             executionConfig.agentTimeoutMinutes(),
-            executionConfig.skillTimeoutMinutes()
+            executionConfig.skillTimeoutMinutes(),
+            executionConfig.summaryTimeoutMinutes()
         );
         
         ReviewOrchestrator orchestrator = new ReviewOrchestrator(

@@ -18,7 +18,7 @@ public class ReportGenerator {
     
     private static final Logger logger = LoggerFactory.getLogger(ReportGenerator.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyMMdd");
+    private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     
     private final Path outputDirectory;
     

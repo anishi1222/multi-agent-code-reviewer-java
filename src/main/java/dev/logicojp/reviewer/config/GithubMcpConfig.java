@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.config;
 
 import io.micronaut.context.annotation.ConfigurationProperties;
+import io.micronaut.core.annotation.Nullable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +17,7 @@ public record GithubMcpConfig(
     List<String> tools,
     Map<String, String> headers,
     String authHeaderName,
-    String authHeaderTemplate
+    @Nullable String authHeaderTemplate
 ) {
 
     public GithubMcpConfig {
@@ -27,7 +28,7 @@ public record GithubMcpConfig(
         authHeaderName = (authHeaderName == null || authHeaderName.isBlank())
             ? "Authorization" : authHeaderName;
         authHeaderTemplate = (authHeaderTemplate == null || authHeaderTemplate.isBlank())
-            ? "Bearer ${token}" : authHeaderTemplate;
+            ? "Bearer {token}" : authHeaderTemplate;
     }
 
     public Map<String, Object> toMcpServer(String token) {
@@ -39,7 +40,10 @@ public record GithubMcpConfig(
         Map<String, String> combinedHeaders = new HashMap<>(headers);
         if (authHeaderName != null && !authHeaderName.isBlank()
             && authHeaderTemplate != null && !authHeaderTemplate.isBlank()) {
-            combinedHeaders.put(authHeaderName, authHeaderTemplate.replace("${token}", token));
+            String headerValue = authHeaderTemplate
+                .replace("${token}", token)
+                .replace("{token}", token);
+            combinedHeaders.put(authHeaderName, headerValue);
         }
         server.put("headers", combinedHeaders);
 

@@ -20,21 +20,28 @@ public class SummaryGenerator {
     
     private static final Logger logger = LoggerFactory.getLogger(SummaryGenerator.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyMMdd");
-    private static final long TIMEOUT_MINUTES = 5;
+    private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     
     private final Path outputDirectory;
     private final CopilotClient client;
     private final String summaryModel;
+    private final long timeoutMinutes;
+    private final Path systemPromptPath;
+    private final Path userPromptPath;
     
-    public SummaryGenerator(Path outputDirectory, CopilotClient client) {
-        this(outputDirectory, client, "claude-sonnet-4");
-    }
-    
-    public SummaryGenerator(Path outputDirectory, CopilotClient client, String summaryModel) {
+    public SummaryGenerator(
+            Path outputDirectory, 
+            CopilotClient client, 
+            String summaryModel, 
+            long timeoutMinutes,
+            Path systemPromptPath,
+            Path userPromptPath) {
         this.outputDirectory = outputDirectory;
         this.client = client;
         this.summaryModel = summaryModel;
+        this.timeoutMinutes = timeoutMinutes;
+        this.systemPromptPath = systemPromptPath;
+        this.userPromptPath = userPromptPath;
     }
     
     /**
@@ -72,15 +79,58 @@ public class SummaryGenerator {
                 .setSystemMessage(new SystemMessageConfig()
                     .setMode(SystemMessageMode.REPLACE)
                     .setContent(buildSummarySystemPrompt()))
-        ).get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
+        ).get(timeoutMinutes, TimeUnit.MINUTES);
+        long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
         
         try {
             String prompt = buildSummaryPrompt(results, repository);
-            var response = session.sendAndWait(prompt).get(TIMEOUT_MINUTES, TimeUnit.MINUTES);
+            var response = session
+                .sendAndWait(new MessageOptions().setPrompt(prompt), timeoutMs)
+                .get(timeoutMinutes, TimeUnit.MINUTES);
             return response.getData().getContent();
+        } catch (java.util.concurrent.TimeoutException ex) {
+            logger.error("Summary generation timed out: {}", ex.getMessage());
+            return buildFallbackSummary(results, repository);
         } finally {
             session.close();
         }
+    }
+
+    private String buildFallbackSummary(List<ReviewResult> results, String repository) {
+        long successCount = results.stream().filter(ReviewResult::isSuccess).count();
+        long failureCount = results.size() - successCount;
+        StringBuilder sb = new StringBuilder();
+        sb.append("## 総合評価\n");
+        sb.append("生成タイムアウトのため、簡易サマリーを出力します。\n\n");
+        sb.append("## Good Point（良い点）\n");
+        sb.append("- タイムアウトのため集計不可。個別レポートを参照してください。\n\n");
+        sb.append("## Room to Improve（改善点）\n");
+        sb.append("- タイムアウトのため集計不可。個別レポートを参照してください。\n\n");
+        sb.append("## レビュー視点別 指摘件数サマリー\n\n");
+        sb.append("| レビュー視点 | Critical | High | Medium | Low | 合計 |\n");
+        sb.append("|-------------|----------|------|--------|-----|------|\n");
+        for (ReviewResult result : results) {
+            sb.append("| ").append(result.getAgentConfig().getDisplayName())
+              .append(" | - | - | - | - | - |\n");
+        }
+        sb.append("\n");
+        sb.append("## 各エージェント別サマリー\n\n");
+        for (ReviewResult result : results) {
+            sb.append("### ").append(result.getAgentConfig().getDisplayName()).append("\n");
+            if (result.isSuccess()) {
+                sb.append("- 指摘件数: 不明（タイムアウトのため集計不可）\n");
+            } else {
+                sb.append("- レビュー失敗: ").append(result.getErrorMessage()).append("\n");
+            }
+            sb.append("\n");
+        }
+        sb.append("## リスク評価\n");
+        sb.append("詳細な評価は個別レポートを参照してください。\n\n");
+        sb.append("## 推奨アクションプラン\n");
+        sb.append("1. **即時対応（24時間以内）**: 失敗原因（タイムアウト）を確認\n");
+        sb.append("2. **短期対応（1週間以内）**: 個別レポートの重要指摘を確認\n");
+        sb.append("3. **中期対応（1ヶ月以内）**: 追加の再レビューを実施\n");
+        return sb.toString();
     }
     
     private String buildSummarySystemPrompt() {
@@ -92,14 +142,34 @@ public class SummaryGenerator {
             2. ビジネスインパクトを明確に伝える
             3. 優先度に基づいたアクションプランを提示
             4. 全体的なリスク評価を行う
+            5. 良い点と改善点を明確に区別する
             
             出力は以下のフォーマットに従ってください：
             
             ## 総合評価
             {全体的なコード品質とリスクレベルの評価}
             
-            ## 主要な発見事項
-            {最も重要な発見事項を3-5点に絞って記載}
+            ## Good Point（良い点）
+            レビュー結果から見つかった優れた実装や良いプラクティスを記載してください。
+            - {良い点1}
+            - {良い点2}
+            - {良い点3}
+            
+            ## Room to Improve（改善点）
+            改善が必要な領域や課題を記載してください。
+            - {改善点1}
+            - {改善点2}
+            - {改善点3}
+            
+            ## レビュー視点別 指摘件数サマリー
+            
+            | レビュー視点 | Critical | High | Medium | Low | 合計 |
+            |-------------|----------|------|--------|-----|------|
+            | セキュリティ | X | X | X | X | X |
+            | コード品質 | X | X | X | X | X |
+            | パフォーマンス | X | X | X | X | X |
+            | ベストプラクティス | X | X | X | X | X |
+            | **合計** | **X** | **X** | **X** | **X** | **X** |
             
             ## 優先対応事項（Priority: Critical/High）
             
@@ -123,26 +193,64 @@ public class SummaryGenerator {
             """;
     }
     
-    private String buildSummaryPrompt(List<ReviewResult> results, String repository) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("以下は複数の専門エージェントによるGitHubリポジトリのコードレビュー結果です。\n");
-        sb.append("これらを総合的に分析し、経営層向けのエグゼクティブサマリーを作成してください。\n\n");
-        sb.append("**対象リポジトリ**: ").append(repository).append("\n\n");
-        sb.append("---\n\n");
+    private String buildSummaryPrompt(List<ReviewResult> results, String repository) throws IOException {
+        String template = loadUserPromptTemplate();
         
+        // Build results section
+        StringBuilder resultsSection = new StringBuilder();
         for (ReviewResult result : results) {
-            sb.append("## ").append(result.getAgentConfig().getDisplayName()).append("\n\n");
+            resultsSection.append("## ").append(result.getAgentConfig().getDisplayName()).append("\n\n");
             
             if (result.isSuccess()) {
-                sb.append(result.getContent());
+                resultsSection.append(result.getContent());
             } else {
-                sb.append("⚠️ レビュー失敗: ").append(result.getErrorMessage());
+                resultsSection.append("⚠️ レビュー失敗: ").append(result.getErrorMessage());
             }
             
-            sb.append("\n\n---\n\n");
+            resultsSection.append("\n\n---\n\n");
         }
         
-        return sb.toString();
+        // Replace placeholders in template
+        return template
+            .replace("{{repository}}", repository)
+            .replace("{{results}}", resultsSection.toString());
+    }
+    
+    private String loadUserPromptTemplate() throws IOException {
+        if (userPromptPath != null && Files.exists(userPromptPath)) {
+            logger.info("Loading user prompt template from: {}", userPromptPath);
+            String template = Files.readString(userPromptPath);
+            // Remove Mustache-style conditionals since we're using simple replacement
+            return cleanMustacheTemplate(template);
+        }
+        logger.warn("User prompt file not found, using default");
+        return getDefaultUserPromptTemplate();
+    }
+    
+    private String cleanMustacheTemplate(String template) {
+        // Remove Mustache notation, keep just the placeholder format
+        return template
+            .replaceAll("\\{\\{#results\\}\\}", "")
+            .replaceAll("\\{\\{/results\\}\\}", "")
+            .replaceAll("\\{\\{#success\\}\\}", "")
+            .replaceAll("\\{\\{/success\\}\\}", "")
+            .replaceAll("\\{\\{\\^success\\}\\}", "")
+            .replaceAll("\\{\\{displayName\\}\\}", "")
+            .replaceAll("\\{\\{content\\}\\}", "")
+            .replaceAll("\\{\\{errorMessage\\}\\}", "");
+    }
+    
+    private String getDefaultUserPromptTemplate() {
+        return """
+            以下は複数の専門エージェントによるGitHubリポジトリのコードレビュー結果です。
+            これらを総合的に分析し、経営層向けのエグゼクティブサマリーを作成してください。
+            
+            **対象リポジトリ**: {{repository}}
+            
+            ---
+            
+            {{results}}
+            """;
     }
     
     private String buildFinalReport(String summaryContent, String repository, 

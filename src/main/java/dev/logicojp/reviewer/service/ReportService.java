@@ -1,5 +1,7 @@
 package dev.logicojp.reviewer.service;
 
+import dev.logicojp.reviewer.config.ExecutionConfig;
+import dev.logicojp.reviewer.config.TemplateConfig;
 import dev.logicojp.reviewer.report.ReportGenerator;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.report.SummaryGenerator;
@@ -21,10 +23,17 @@ public class ReportService {
     private static final Logger logger = LoggerFactory.getLogger(ReportService.class);
     
     private final CopilotService copilotService;
+    private final ExecutionConfig executionConfig;
+    private final TemplateConfig templateConfig;
     
     @Inject
-    public ReportService(CopilotService copilotService) {
+    public ReportService(
+            CopilotService copilotService, 
+            ExecutionConfig executionConfig,
+            TemplateConfig templateConfig) {
         this.copilotService = copilotService;
+        this.executionConfig = executionConfig;
+        this.templateConfig = templateConfig;
     }
     
     /**
@@ -57,8 +66,17 @@ public class ReportService {
         
         logger.info("Generating executive summary using model: {}", summaryModel);
         
+        Path templateDir = Path.of(templateConfig.directory());
+        Path systemPromptPath = templateDir.resolve(templateConfig.summarySystemPrompt());
+        Path userPromptPath = templateDir.resolve(templateConfig.summaryUserPrompt());
+        
         SummaryGenerator generator = new SummaryGenerator(
-            outputDirectory, copilotService.getClient(), summaryModel);
+            outputDirectory, 
+            copilotService.getClient(), 
+            summaryModel, 
+            executionConfig.summaryTimeoutMinutes(),
+            systemPromptPath,
+            userPromptPath);
         
         return generator.generateSummary(results, repository);
     }

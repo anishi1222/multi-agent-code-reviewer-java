@@ -76,6 +76,7 @@ public class ReviewAgent {
             .setMcpServers(Map.of("github", githubMcp));
         
         var session = client.createSession(sessionConfig).get(timeoutMinutes, TimeUnit.MINUTES);
+        long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
         
         try {
             // Build the review prompt
@@ -83,7 +84,9 @@ public class ReviewAgent {
             
             // Execute the review
             logger.debug("Sending review prompt to agent: {}", config.getName());
-            var response = session.sendAndWait(reviewPrompt).get(timeoutMinutes, TimeUnit.MINUTES);
+            var response = session
+                .sendAndWait(new MessageOptions().setPrompt(reviewPrompt), timeoutMs)
+                .get(timeoutMinutes, TimeUnit.MINUTES);
             
             String content = response.getData().getContent();
             logger.info("Review completed for agent: {}", config.getName());

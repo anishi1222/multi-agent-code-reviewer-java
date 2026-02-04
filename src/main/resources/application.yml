@@ -12,6 +12,11 @@ reviewer:
     orchestrator-timeout-minutes: 10
     agent-timeout-minutes: 5
     skill-timeout-minutes: 5
+    summary-timeout-minutes: 5
+  templates:
+    directory: templates
+    summary-system-prompt: summary-system.md
+    summary-user-prompt: summary-prompt.md
   mcp:
     github:
       type: http
@@ -19,8 +24,8 @@ reviewer:
       tools:
         - "*"
       auth-header-name: Authorization
-      auth-header-template: "Bearer ${token}"
+      auth-header-template: "Bearer {token}"
   models:
-    review-model: claude-sonnet-4
-    report-model: claude-sonnet-4
-    summary-model: claude-sonnet-4
+    review-model: gpt-5.2-codex
+    report-model: claude-opus-4.5
+    summary-model: claude-opus-4.5
