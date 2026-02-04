@@ -26,7 +26,8 @@ import picocli.CommandLine.Spec;
     description = "Run multiple AI agents to review a GitHub repository and generate reports.",
     subcommands = {
         ReviewCommand.class,
-        ListAgentsCommand.class
+        ListAgentsCommand.class,
+        SkillCommand.class
     }
 )
 public class ReviewApp implements Runnable {

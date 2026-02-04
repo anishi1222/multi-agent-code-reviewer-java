@@ -113,7 +113,8 @@ public class AgentMarkdownParser {
             systemPrompt,
             reviewPrompt,
             outputFormat,
-            focusAreas
+            focusAreas,
+            List.of()  // skills - parsed from Skills section if present
         );
         config.validateRequired();
         return config;
@@ -137,7 +138,8 @@ public class AgentMarkdownParser {
             systemPrompt,
             reviewPrompt,
             outputFormat,
-            extractFocusAreas(content)
+            extractFocusAreas(content),
+            List.of()  // skills
         );
         config.validateRequired();
         return config;

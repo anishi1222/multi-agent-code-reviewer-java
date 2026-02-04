@@ -6,6 +6,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 
 - **Parallel Multi-Agent Execution**: Simultaneous review from security, code quality, performance, and best practices perspectives
 - **Flexible Agent Definitions**: Define agents in YAML format (.yaml) or GitHub Copilot format (.agent.md)
+- **Agent Skill Support**: Define individual skills for agents to execute specific tasks
 - **External Configuration Files**: Agent definitions can be swapped without rebuilding
 - **LLM Model Selection**: Use different models for review, report generation, and summary generation
 - **Structured Review Results**: Consistent format with Priority (Critical/High/Medium/Low)
@@ -217,6 +218,82 @@ Each finding is output in the following format:
 - **Medium**: Code quality issues, reduced maintainability. Address in planned manner
 - **Low**: Style issues, minor improvement suggestions. Fix when time permits
 
+## Agent Skill
+
+Agents can have individual skills defined to execute specific tasks.
+
+### skill Subcommand
+
+```bash
+# List available skills
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  skill --list
+
+# Execute a skill
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  skill sql-injection-check \
+  --param target=owner/repository
+
+# Execute a skill with parameters
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  skill secret-scan \
+  --param repository=owner/repository \
+  --model claude-sonnet-4
+```
+
+### skill Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--list` | - | List available skills | - |
+| `--param` | `-p` | Parameter (key=value format) | - |
+| `--token` | - | GitHub token | `$GITHUB_TOKEN` |
+| `--model` | - | LLM model to use | claude-sonnet-4 |
+| `--agents-dir` | - | Agent definitions directory | - |
+
+### Skill Definition (YAML format)
+
+Add a `skills` section to your agent definition file:
+
+```yaml
+name: security
+displayName: "Security Review"
+model: claude-sonnet-4
+# ...existing agent config...
+
+skills:
+  - id: sql-injection-check
+    name: "SQL Injection Check"
+    description: "Checks for SQL injection vulnerabilities in specified file or repository"
+    prompt: |
+      Analyze the following code for SQL injection vulnerabilities.
+      
+      **Target**: ${target}
+      
+      Look for these patterns:
+      - SQL statements built with string concatenation
+      - Non-parameterized queries
+      - Direct embedding of user input in SQL statements
+    parameters:
+      - name: target
+        description: "Target file path or repository"
+        type: string
+        required: true
+
+  - id: secret-scan
+    name: "Secret Scan"
+    description: "Detects hardcoded secrets in code"
+    prompt: |
+      Analyze the following code for secret leakage.
+      
+      **Target Repository**: ${repository}
+    parameters:
+      - name: repository
+        description: "Target repository"
+        type: string
+        required: true
+```
+
 ## GraalVM Native Image
 
 To build as a native binary:
@@ -304,6 +381,7 @@ multi-agent-reviewer/
     ├── ReviewApp.java                   # CLI entry point
     ├── ReviewCommand.java               # review subcommand
     ├── ListAgentsCommand.java           # list subcommand
+    ├── SkillCommand.java                # skill subcommand
     ├── agent/
     │   ├── AgentConfig.java             # Config model
     │   ├── AgentConfigLoader.java       # Config loader
@@ -318,11 +396,18 @@ multi-agent-reviewer/
     │   ├── ReviewResult.java            # Result model
     │   ├── ReportGenerator.java         # Individual report generation
     │   └── SummaryGenerator.java        # Summary generation
-    └── service/
-        ├── AgentService.java            # Agent management
-        ├── CopilotService.java          # Copilot SDK integration
-        ├── ReportService.java           # Report generation
-        └── ReviewService.java           # Review execution
+    ├── service/
+    │   ├── AgentService.java            # Agent management
+    │   ├── CopilotService.java          # Copilot SDK integration
+    │   ├── ReportService.java           # Report generation
+    │   ├── ReviewService.java           # Review execution
+    │   └── SkillService.java            # Skill management
+    └── skill/
+        ├── SkillDefinition.java         # Skill definition model
+        ├── SkillParameter.java          # Skill parameter model
+        ├── SkillRegistry.java           # Skill registry
+        ├── SkillExecutor.java           # Skill executor
+        └── SkillResult.java             # Skill result model
 ```
 
 ## License

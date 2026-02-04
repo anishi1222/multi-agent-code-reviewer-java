@@ -228,7 +228,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
             if (!noSummary) {
                 System.out.println("\nGenerating executive summary...");
                 Path summaryPath = reportService.generateSummary(
-                    results, repository, outputDirectory, modelConfig.getSummaryModel());
+                    results, repository, outputDirectory, modelConfig.summaryModel());
                 System.out.println("  ✓ " + summaryPath.getFileName());
             }
             
@@ -280,7 +280,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         System.out.println();
         System.out.println("Models:");
         System.out.println("  Review: " + (reviewModel != null ? reviewModel : "(agent default)"));
-        System.out.println("  Summary: " + modelConfig.getSummaryModel());
+        System.out.println("  Summary: " + modelConfig.summaryModel());
         System.out.println();
     }
     

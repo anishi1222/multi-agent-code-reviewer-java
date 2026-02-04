@@ -18,7 +18,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - GitHub Copilot CLI 0.0.401 以上
 - GitHub トークン（リポジトリアクセス用）
 
-### GraalVM のインストール
+### GraalVM の インストール
 
 SDKMAN を使用する場合:
 
@@ -217,6 +217,82 @@ ${focusAreas}
 - **Medium**: コード品質の問題、保守性の低下。計画的に対応
 - **Low**: スタイルの問題、軽微な改善提案。時間があれば対応
 
+## Agent Skill
+
+エージェントには個別のスキルを定義し、特定のタスクを実行できます。
+
+### skill サブコマンド
+
+```bash
+# 利用可能なスキル一覧
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  skill --list
+
+# スキルを実行
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  skill sql-injection-check \
+  --param target=owner/repository
+
+# パラメータ付きでスキル実行
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  skill secret-scan \
+  --param repository=owner/repository \
+  --model claude-sonnet-4
+```
+
+### skill オプション一覧
+
+| オプション | 短縮形 | 説明 | デフォルト |
+|-----------|--------|------|-----------|
+| `--list` | - | 利用可能なスキル一覧を表示 | - |
+| `--param` | `-p` | パラメータ（key=value形式） | - |
+| `--token` | - | GitHub トークン | `$GITHUB_TOKEN` |
+| `--model` | - | 使用するLLMモデル | claude-sonnet-4 |
+| `--agents-dir` | - | エージェント定義ディレクトリ | - |
+
+### スキル定義（YAML形式）
+
+エージェント定義ファイル内に `skills` セクションを追加します：
+
+```yaml
+name: security
+displayName: "セキュリティレビュー"
+model: claude-sonnet-4
+# ...existing agent config...
+
+skills:
+  - id: sql-injection-check
+    name: "SQLインジェクション検査"
+    description: "指定されたファイルまたはリポジトリ内のSQLインジェクション脆弱性を検査します"
+    prompt: |
+      以下のコードをSQLインジェクション脆弱性の観点から分析してください。
+      
+      **対象**: ${target}
+      
+      特に以下のパターンを確認してください：
+      - 文字列連結によるSQL文の構築
+      - パラメータ化されていないクエリ
+      - ユーザー入力の直接的なSQL文への埋め込み
+    parameters:
+      - name: target
+        description: "検査対象のファイルパスまたはリポジトリ"
+        type: string
+        required: true
+
+  - id: secret-scan
+    name: "機密情報スキャン"
+    description: "コード内のハードコードされた機密情報を検出します"
+    prompt: |
+      以下のコードを機密情報漏洩の観点から分析してください。
+      
+      **対象リポジトリ**: ${repository}
+    parameters:
+      - name: repository
+        description: "対象リポジトリ"
+        type: string
+        required: true
+```
+
 ## GraalVM Native Image
 
 ネイティブバイナリとしてビルドする場合:
@@ -276,7 +352,6 @@ flowchart TB
     CodeQuality -.-> Copilot
     Performance -.-> Copilot
     BestPractices -.-> Copilot
-    SummaryGenerator -.-> Copilot
 
     Security -.-> GitHub
     CodeQuality -.-> GitHub
@@ -304,6 +379,7 @@ multi-agent-reviewer/
     ├── ReviewApp.java                   # CLIエントリポイント
     ├── ReviewCommand.java               # reviewサブコマンド
     ├── ListAgentsCommand.java           # listサブコマンド
+    ├── SkillCommand.java                # skillサブコマンド
     ├── agent/
     │   ├── AgentConfig.java             # 設定モデル
     │   ├── AgentConfigLoader.java       # 設定読込
@@ -318,11 +394,18 @@ multi-agent-reviewer/
     │   ├── ReviewResult.java            # 結果モデル
     │   ├── ReportGenerator.java         # 個別レポート生成
     │   └── SummaryGenerator.java        # サマリー生成
-    └── service/
-        ├── AgentService.java            # エージェント管理
-        ├── CopilotService.java          # Copilot SDK連携
-        ├── ReportService.java           # レポート生成
-        └── ReviewService.java           # レビュー実行
+    ├── service/
+    │   ├── AgentService.java            # エージェント管理
+    │   ├── CopilotService.java          # Copilot SDK連携
+    │   ├── ReportService.java           # レポート生成
+    │   ├── ReviewService.java           # レビュー実行
+    │   └── SkillService.java            # スキル管理
+    └── skill/
+        ├── SkillDefinition.java         # スキル定義モデル
+        ├── SkillParameter.java          # スキルパラメータモデル
+        ├── SkillRegistry.java           # スキルレジストリ
+        ├── SkillExecutor.java           # スキル実行
+        └── SkillResult.java             # スキル結果モデル
 ```
 
 ## ライセンス

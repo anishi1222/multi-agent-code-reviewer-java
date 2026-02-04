@@ -1,5 +1,7 @@
 package dev.logicojp.reviewer.agent;
 
+import dev.logicojp.reviewer.skill.SkillDefinition;
+import dev.logicojp.reviewer.skill.SkillParameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -132,6 +134,7 @@ public class AgentConfigLoader {
         private String reviewPrompt;
         private String outputFormat;
         private List<String> focusAreas;
+        private List<SkillYaml> skills;
 
         public String getName() {
             return name;
@@ -189,7 +192,21 @@ public class AgentConfigLoader {
             this.focusAreas = focusAreas;
         }
 
+        public List<SkillYaml> getSkills() {
+            return skills;
+        }
+
+        public void setSkills(List<SkillYaml> skills) {
+            this.skills = skills;
+        }
+
         public AgentConfig toAgentConfig() {
+            List<SkillDefinition> skillDefinitions = null;
+            if (skills != null) {
+                skillDefinitions = skills.stream()
+                    .map(SkillYaml::toSkillDefinition)
+                    .collect(Collectors.toList());
+            }
             return new AgentConfig(
                 name,
                 displayName,
@@ -197,11 +214,131 @@ public class AgentConfigLoader {
                 systemPrompt,
                 reviewPrompt,
                 outputFormat,
-                focusAreas
+                focusAreas,
+                skillDefinitions
             );
         }
     }
-    
+
+    private static class SkillYaml {
+        private String id;
+        private String name;
+        private String description;
+        private String prompt;
+        private List<SkillParameterYaml> parameters;
+        private Map<String, String> metadata;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public String getPrompt() {
+            return prompt;
+        }
+
+        public void setPrompt(String prompt) {
+            this.prompt = prompt;
+        }
+
+        public List<SkillParameterYaml> getParameters() {
+            return parameters;
+        }
+
+        public void setParameters(List<SkillParameterYaml> parameters) {
+            this.parameters = parameters;
+        }
+
+        public Map<String, String> getMetadata() {
+            return metadata;
+        }
+
+        public void setMetadata(Map<String, String> metadata) {
+            this.metadata = metadata;
+        }
+
+        public SkillDefinition toSkillDefinition() {
+            List<SkillParameter> skillParams = null;
+            if (parameters != null) {
+                skillParams = parameters.stream()
+                    .map(SkillParameterYaml::toSkillParameter)
+                    .collect(Collectors.toList());
+            }
+            return new SkillDefinition(id, name, description, prompt, skillParams, metadata);
+        }
+    }
+
+    private static class SkillParameterYaml {
+        private String name;
+        private String description;
+        private String type;
+        private boolean required;
+        private String defaultValue;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public boolean isRequired() {
+            return required;
+        }
+
+        public void setRequired(boolean required) {
+            this.required = required;
+        }
+
+        public String getDefaultValue() {
+            return defaultValue;
+        }
+
+        public void setDefaultValue(String defaultValue) {
+            this.defaultValue = defaultValue;
+        }
+
+        public SkillParameter toSkillParameter() {
+            return new SkillParameter(name, description, type, required, defaultValue);
+        }
+    }
+
     /**
      * Loads specific agents by name.
      * @param agentNames List of agent names to load
