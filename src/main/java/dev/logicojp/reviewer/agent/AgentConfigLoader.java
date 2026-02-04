@@ -112,10 +112,93 @@ public class AgentConfigLoader {
     
     private AgentConfig loadYamlAgent(Path yamlFile) throws IOException {
         LoaderOptions options = new LoaderOptions();
-        Yaml yaml = new Yaml(new Constructor(AgentConfig.class, options));
-        
+        Yaml yaml = new Yaml(new Constructor(AgentConfigYaml.class, options));
+
         try (InputStream is = Files.newInputStream(yamlFile)) {
-            return yaml.load(is);
+            AgentConfigYaml yamlConfig = yaml.load(is);
+            AgentConfig config = yamlConfig != null ? yamlConfig.toAgentConfig() : null;
+            if (config != null) {
+                config.validateRequired();
+            }
+            return config;
+        }
+    }
+
+    private static class AgentConfigYaml {
+        private String name;
+        private String displayName;
+        private String model;
+        private String systemPrompt;
+        private String reviewPrompt;
+        private String outputFormat;
+        private List<String> focusAreas;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public void setDisplayName(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getModel() {
+            return model;
+        }
+
+        public void setModel(String model) {
+            this.model = model;
+        }
+
+        public String getSystemPrompt() {
+            return systemPrompt;
+        }
+
+        public void setSystemPrompt(String systemPrompt) {
+            this.systemPrompt = systemPrompt;
+        }
+
+        public String getReviewPrompt() {
+            return reviewPrompt;
+        }
+
+        public void setReviewPrompt(String reviewPrompt) {
+            this.reviewPrompt = reviewPrompt;
+        }
+
+        public String getOutputFormat() {
+            return outputFormat;
+        }
+
+        public void setOutputFormat(String outputFormat) {
+            this.outputFormat = outputFormat;
+        }
+
+        public List<String> getFocusAreas() {
+            return focusAreas;
+        }
+
+        public void setFocusAreas(List<String> focusAreas) {
+            this.focusAreas = focusAreas;
+        }
+
+        public AgentConfig toAgentConfig() {
+            return new AgentConfig(
+                name,
+                displayName,
+                model,
+                systemPrompt,
+                reviewPrompt,
+                outputFormat,
+                focusAreas
+            );
         }
     }
     

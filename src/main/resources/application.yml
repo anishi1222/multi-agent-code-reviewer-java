@@ -15,3 +15,7 @@ reviewer:
         - "*"
       auth-header-name: Authorization
       auth-header-template: "Bearer ${token}"
+  models:
+    review-model: claude-sonnet-4
+    report-model: claude-sonnet-4
+    summary-model: claude-sonnet-4

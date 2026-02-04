@@ -73,22 +73,22 @@ public class AgentMarkdownParser {
      */
     public AgentConfig parseContent(String content, String filename) {
         Matcher frontmatterMatcher = FRONTMATTER_PATTERN.matcher(content);
-        
+
         if (!frontmatterMatcher.matches()) {
             logger.warn("No valid frontmatter found in {}", filename);
             // Try to parse without frontmatter
             return parseWithoutFrontmatter(content, filename);
         }
-        
+
         String frontmatter = frontmatterMatcher.group(1);
         String body = frontmatterMatcher.group(2);
-        
+
         // Parse frontmatter as simple key-value pairs
         Map<String, String> metadata = parseFrontmatter(frontmatter);
-        
+
         // Extract name from filename if not in frontmatter
         String name = metadata.getOrDefault("name", extractNameFromFilename(filename));
-        String displayName = metadata.getOrDefault("description", 
+        String displayName = metadata.getOrDefault("description",
             metadata.getOrDefault("displayName", name));
         String model = metadata.getOrDefault("model", "claude-sonnet-4");
 
@@ -105,26 +105,23 @@ public class AgentMarkdownParser {
         List<String> focusAreas = focusAreasSection != null
             ? extractFocusAreas(focusAreasSection)
             : extractFocusAreas(body);
-        
-        AgentConfig config = new AgentConfig();
-        config.setName(name);
-        config.setDisplayName(displayName);
-        config.setModel(model);
-        config.setSystemPrompt(systemPrompt);
-        config.setReviewPrompt(reviewPrompt);
-        config.setOutputFormat(outputFormat);
-        config.setFocusAreas(focusAreas);
-        
+
+        AgentConfig config = new AgentConfig(
+            name,
+            displayName,
+            model,
+            systemPrompt,
+            reviewPrompt,
+            outputFormat,
+            focusAreas
+        );
+        config.validateRequired();
         return config;
     }
-    
+
     private AgentConfig parseWithoutFrontmatter(String content, String filename) {
         String name = extractNameFromFilename(filename);
-        
-        AgentConfig config = new AgentConfig();
-        config.setName(name);
-        config.setDisplayName(name);
-        config.setModel("claude-sonnet-4");
+
         Map<String, String> sections = extractSections(content);
         String systemPrompt = getSection(sections, "system prompt", "システムプロンプト");
         String reviewPrompt = getSection(sections, "review prompt", "レビュー依頼", "レビュー用プロンプト");
@@ -132,11 +129,17 @@ public class AgentMarkdownParser {
         if (systemPrompt == null || systemPrompt.isBlank()) {
             systemPrompt = content.trim();
         }
-        config.setSystemPrompt(systemPrompt);
-        config.setReviewPrompt(reviewPrompt);
-        config.setOutputFormat(outputFormat);
-        config.setFocusAreas(extractFocusAreas(content));
-        
+
+        AgentConfig config = new AgentConfig(
+            name,
+            name,
+            "claude-sonnet-4",
+            systemPrompt,
+            reviewPrompt,
+            outputFormat,
+            extractFocusAreas(content)
+        );
+        config.validateRequired();
         return config;
     }
     

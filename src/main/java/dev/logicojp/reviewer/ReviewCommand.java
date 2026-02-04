@@ -54,6 +54,9 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
     @Inject
     private ReportService reportService;
 
+    @Inject
+    private ModelConfig defaultModelConfig;
+
     private int exitCode = CommandLine.ExitCode.OK;
     
     @Option(
@@ -198,8 +201,8 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         
         // Apply model overrides if specified
         if (reviewModel != null) {
-            for (AgentConfig config : agentConfigs.values()) {
-                config.setModel(reviewModel);
+            for (Map.Entry<String, AgentConfig> entry : agentConfigs.entrySet()) {
+                entry.setValue(entry.getValue().withModel(reviewModel));
             }
         }
         
@@ -238,8 +241,12 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
     }
     
     private ModelConfig buildModelConfig() {
-        ModelConfig.Builder builder = ModelConfig.builder();
-        
+        ModelConfig baseConfig = defaultModelConfig != null ? defaultModelConfig : new ModelConfig();
+        ModelConfig.Builder builder = ModelConfig.builder()
+            .reviewModel(baseConfig.reviewModel())
+            .reportModel(baseConfig.reportModel())
+            .summaryModel(baseConfig.summaryModel());
+
         if (defaultModel != null) {
             builder.defaultModel(defaultModel);
         }
@@ -252,7 +259,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         if (summaryModel != null) {
             builder.summaryModel(summaryModel);
         }
-        
+
         return builder.build();
     }
     
