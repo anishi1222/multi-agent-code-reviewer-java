@@ -187,7 +187,28 @@ During local directory review, custom instructions are automatically loaded from
 └── executive_summary_260204.md
 ```
 
-## Agent Definitions
+## Configuration
+
+Customize application behavior via `application.yml`.
+
+```yaml
+reviewer:
+  orchestrator:
+    default-parallelism: 4      # Default parallel execution count
+    timeout-minutes: 10         # Review timeout (minutes)
+  mcp:
+    github:
+      type: http
+      url: https://api.githubcopilot.com/mcp/
+      tools:
+        - "*"
+      auth-header-name: Authorization
+      auth-header-template: "Bearer ${token}"
+  models:
+    review-model: claude-sonnet-4    # Model for review
+    report-model: claude-sonnet-4    # Model for report generation
+    summary-model: claude-sonnet-4   # Model for summary generation
+```
 
 ### Agent Directories
 

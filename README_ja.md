@@ -186,7 +186,28 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 └── executive_summary_260204.md
 ```
 
-## エージェント定義
+## 設定ファイル
+
+`application.yml` でアプリケーションの動作をカスタマイズできます。
+
+```yaml
+reviewer:
+  orchestrator:
+    default-parallelism: 4      # デフォルトの並列実行数
+    timeout-minutes: 10         # レビュータイムアウト（分）
+  mcp:
+    github:
+      type: http
+      url: https://api.githubcopilot.com/mcp/
+      tools:
+        - "*"
+      auth-header-name: Authorization
+      auth-header-template: "Bearer ${token}"
+  models:
+    review-model: claude-sonnet-4    # レビュー用モデル
+    report-model: claude-sonnet-4    # レポート生成用モデル
+    summary-model: claude-sonnet-4   # サマリー生成用モデル
+```
 
 ### エージェントディレクトリ
 
