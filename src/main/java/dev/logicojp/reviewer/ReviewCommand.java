@@ -2,11 +2,13 @@ package dev.logicojp.reviewer;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ModelConfig;
+import dev.logicojp.reviewer.instruction.CustomInstructionLoader;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.service.AgentService;
 import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.ReportService;
 import dev.logicojp.reviewer.service.ReviewService;
+import dev.logicojp.reviewer.target.ReviewTarget;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,12 +61,25 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
 
     private int exitCode = CommandLine.ExitCode.OK;
     
-    @Option(
-        names = {"-r", "--repo"},
-        description = "Target GitHub repository (e.g., owner/repo)",
-        required = true
-    )
-    private String repository;
+    /**
+     * Target selection - either GitHub repository or local directory.
+     */
+    static class TargetSelection {
+        @Option(
+            names = {"-r", "--repo"},
+            description = "Target GitHub repository (e.g., owner/repo)"
+        )
+        private String repository;
+
+        @Option(
+            names = {"-l", "--local"},
+            description = "Target local directory path"
+        )
+        private Path localDirectory;
+    }
+
+    @ArgGroup(exclusive = true, multiplicity = "1")
+    private TargetSelection targetSelection;
     
     static class AgentSelection {
         @Option(
@@ -143,6 +158,20 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
     )
     private String defaultModel;
     
+    // Custom instruction options
+    @Option(
+        names = {"--instructions"},
+        description = "Path to custom instruction file (Markdown). Can be specified multiple times.",
+        arity = "1..*"
+    )
+    private List<Path> instructionPaths;
+    
+    @Option(
+        names = {"--no-instructions"},
+        description = "Disable automatic loading of custom instructions"
+    )
+    private boolean noInstructions;
+    
     @Override
     public void run() {
         try {
@@ -166,13 +195,40 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         if (agentSelection == null) {
             throw new ParameterException(spec.commandLine(), "Either --all or --agents must be specified.");
         }
-        
-        // Validate GitHub token
-        if (githubToken == null || githubToken.isEmpty() || githubToken.equals("${GITHUB_TOKEN}")) {
-            throw new ParameterException(
-                spec.commandLine(),
-                "GitHub token is required. Set GITHUB_TOKEN environment variable or use --token option."
-            );
+
+        if (targetSelection == null) {
+            throw new ParameterException(spec.commandLine(), "Either --repo or --local must be specified.");
+        }
+
+        // Build review target
+        ReviewTarget target;
+        if (targetSelection.repository != null) {
+            target = ReviewTarget.gitHub(targetSelection.repository);
+            
+            // Validate GitHub token for repository access
+            if (githubToken == null || githubToken.isEmpty() || githubToken.equals("${GITHUB_TOKEN}")) {
+                throw new ParameterException(
+                    spec.commandLine(),
+                    "GitHub token is required for repository review. Set GITHUB_TOKEN environment variable or use --token option."
+                );
+            }
+        } else if (targetSelection.localDirectory != null) {
+            Path localPath = targetSelection.localDirectory.toAbsolutePath();
+            if (!Files.exists(localPath)) {
+                throw new ParameterException(
+                    spec.commandLine(),
+                    "Local directory does not exist: " + localPath
+                );
+            }
+            if (!Files.isDirectory(localPath)) {
+                throw new ParameterException(
+                    spec.commandLine(),
+                    "Path is not a directory: " + localPath
+                );
+            }
+            target = ReviewTarget.local(localPath);
+        } else {
+            throw new ParameterException(spec.commandLine(), "Either --repo or --local must be specified.");
         }
         
         // Build model configuration
@@ -205,7 +261,10 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
             }
         }
         
-        printBanner(agentConfigs, agentDirs, modelConfig);
+        printBanner(agentConfigs, agentDirs, modelConfig, target);
+        
+        // Load custom instructions
+        String customInstruction = loadCustomInstructions(target);
         
         // Execute reviews using the Copilot service
         copilotService.initialize();
@@ -213,7 +272,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         try {
             System.out.println("Starting reviews...");
             List<ReviewResult> results = reviewService.executeReviews(
-                agentConfigs, repository, githubToken, parallelism);
+                agentConfigs, target, githubToken, parallelism, customInstruction);
             
             // Generate individual reports
             System.out.println("\nGenerating reports...");
@@ -227,7 +286,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
             if (!noSummary) {
                 System.out.println("\nGenerating executive summary...");
                 Path summaryPath = reportService.generateSummary(
-                    results, repository, outputDirectory, modelConfig.summaryModel());
+                    results, target.getDisplayName(), outputDirectory, modelConfig.summaryModel());
                 System.out.println("  ✓ " + summaryPath.getFileName());
             }
             
@@ -262,13 +321,65 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         return builder.build();
     }
     
+    /**
+     * Loads custom instructions from specified paths or target directory.
+     */
+    private String loadCustomInstructions(ReviewTarget target) {
+        if (noInstructions) {
+            logger.info("Custom instructions disabled by --no-instructions flag");
+            return null;
+        }
+        
+        StringBuilder combined = new StringBuilder();
+        
+        // Load from explicitly specified paths
+        if (instructionPaths != null && !instructionPaths.isEmpty()) {
+            for (Path path : instructionPaths) {
+                try {
+                    if (Files.exists(path) && Files.isRegularFile(path)) {
+                        String content = Files.readString(path);
+                        if (!content.isBlank()) {
+                            if (!combined.isEmpty()) {
+                                combined.append("\n\n---\n\n");
+                            }
+                            combined.append("<!-- Source: ").append(path).append(" -->\n");
+                            combined.append(content.trim());
+                            System.out.println("  ✓ Loaded instructions: " + path);
+                        }
+                    } else {
+                        logger.warn("Instruction file not found: {}", path);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to read instruction file {}: {}", path, e.getMessage());
+                }
+            }
+        }
+        
+        // Also try to load from target directory (for local targets)
+        if (target.isLocal()) {
+            CustomInstructionLoader loader = new CustomInstructionLoader();
+            loader.loadForTarget(target).ifPresent(instruction -> {
+                if (!combined.isEmpty()) {
+                    combined.append("\n\n---\n\n");
+                }
+                combined.append(instruction.content());
+                System.out.println("  ✓ Loaded instructions from target: " + instruction.sourcePath());
+            });
+        }
+        
+        String result = combined.toString().trim();
+        return result.isEmpty() ? null : result;
+    }
+    
     private void printBanner(Map<String, AgentConfig> agentConfigs, 
-                             List<Path> agentDirs, ModelConfig modelConfig) {
+                             List<Path> agentDirs, ModelConfig modelConfig,
+                             ReviewTarget target) {
         System.out.println("╔════════════════════════════════════════════════════════════╗");
         System.out.println("║           Multi-Agent Code Reviewer                       ║");
         System.out.println("╚════════════════════════════════════════════════════════════╝");
         System.out.println();
-        System.out.println("Repository: " + repository);
+        System.out.println("Target: " + target.getDisplayName() + 
+            (target.isLocal() ? " (local)" : " (GitHub)"));
         System.out.println("Agents: " + agentConfigs.keySet());
         System.out.println("Output: " + outputDirectory.toAbsolutePath());
         System.out.println();

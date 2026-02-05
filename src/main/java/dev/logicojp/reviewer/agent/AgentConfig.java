@@ -242,6 +242,38 @@ public record AgentConfig(
             .replace("${focusAreas}", focusAreaText);
     }
 
+    /**
+     * Builds the review prompt for a local directory review.
+     * Embeds the source code content directly in the prompt.
+     * @param targetName Display name of the target directory
+     * @param sourceContent Collected source code content
+     * @return The formatted review prompt with embedded source code
+     */
+    public String buildLocalReviewPrompt(String targetName, String sourceContent) {
+        if (reviewPrompt == null || reviewPrompt.isBlank()) {
+            throw new IllegalStateException("Review prompt is not configured for agent: " + name);
+        }
+
+        String focusAreaText = formatFocusAreas();
+        
+        // Build embedded source content section
+        String embeddedContent = """
+            
+            以下は対象ディレクトリのソースコードです:
+            
+            %s
+            """.formatted(sourceContent);
+        
+        // Replace placeholders and append source content
+        String basePrompt = reviewPrompt
+            .replace("${repository}", targetName)
+            .replace("${displayName}", displayName != null ? displayName : name)
+            .replace("${name}", name)
+            .replace("${focusAreas}", focusAreaText);
+        
+        return basePrompt + embeddedContent;
+    }
+
     private String formatFocusAreas() {
         if (focusAreas == null || focusAreas.isEmpty()) {
             return "";

@@ -5,6 +5,7 @@ import dev.logicojp.reviewer.agent.ReviewAgent;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.target.ReviewTarget;
 import com.github.copilot.sdk.CopilotClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,41 +25,56 @@ public class ReviewOrchestrator {
     private final GithubMcpConfig githubMcpConfig;
     private final ExecutionConfig executionConfig;
     private final ExecutorService executorService;
+    private final String customInstruction;
     
     public ReviewOrchestrator(CopilotClient client,
                               String githubToken,
                               GithubMcpConfig githubMcpConfig,
                               ExecutionConfig executionConfig) {
+        this(client, githubToken, githubMcpConfig, executionConfig, null);
+    }
+    
+    public ReviewOrchestrator(CopilotClient client,
+                              String githubToken,
+                              GithubMcpConfig githubMcpConfig,
+                              ExecutionConfig executionConfig,
+                              String customInstruction) {
         this.client = client;
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
         this.executionConfig = executionConfig;
         this.executorService = Executors.newFixedThreadPool(executionConfig.parallelism());
+        this.customInstruction = customInstruction;
+        
+        if (customInstruction != null && !customInstruction.isBlank()) {
+            logger.info("Custom instruction loaded ({} characters)", customInstruction.length());
+        }
     }
     
     /**
      * Executes reviews for all provided agents in parallel.
      * @param agents Map of agent name to AgentConfig
-     * @param repository The repository to review
+     * @param target The target to review (GitHub repository or local directory)
      * @return List of ReviewResults from all agents
      */
-    public List<ReviewResult> executeReviews(Map<String, AgentConfig> agents, String repository) {
-        logger.info("Starting parallel review for {} agents on repository: {}", agents.size(), repository);
+    public List<ReviewResult> executeReviews(Map<String, AgentConfig> agents, ReviewTarget target) {
+        logger.info("Starting parallel review for {} agents on target: {}", 
+            agents.size(), target.getDisplayName());
         
         List<CompletableFuture<ReviewResult>> futures = new ArrayList<>();
         long timeoutMinutes = executionConfig.orchestratorTimeoutMinutes();
         
         for (AgentConfig config : agents.values()) {
             ReviewAgent agent = new ReviewAgent(config, client, githubToken, githubMcpConfig,
-                executionConfig.agentTimeoutMinutes());
-            CompletableFuture<ReviewResult> future = agent.review(repository)
+                executionConfig.agentTimeoutMinutes(), customInstruction);
+            CompletableFuture<ReviewResult> future = agent.review(target)
                 .orTimeout(timeoutMinutes, TimeUnit.MINUTES)
                 .exceptionally(ex -> {
                     logger.error("Agent {} failed with timeout or error: {}", 
                         config.getName(), ex.getMessage());
                     return ReviewResult.builder()
                         .agentConfig(config)
-                        .repository(repository)
+                        .repository(target.getDisplayName())
                         .success(false)
                         .errorMessage("Review timed out or failed: " + ex.getMessage())
                         .build();
