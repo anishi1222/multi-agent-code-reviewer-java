@@ -401,6 +401,47 @@ flowchart TB
     BestPractices -.-> GitHub
 ```
 
+## Template Customization
+
+Report and summary formats are externalized in template files.
+
+### Template Directory
+
+By default, templates in the `templates/` directory are used.
+
+```
+templates/
+├── summary-system.md          # Summary generation system prompt
+├── summary-prompt.md          # Summary generation user prompt
+├── default-output-format.md   # Default output format
+├── report.md                  # Individual report template
+├── executive-summary.md       # Executive summary template
+├── fallback-summary.md        # Fallback summary template
+├── custom-instruction-section.md  # Custom instruction section
+├── local-review-content.md    # Local review content
+└── review-custom-instruction.md   # Review custom instruction
+```
+
+### Template Configuration
+
+You can customize template paths in `application.yml`:
+
+```yaml
+reviewer:
+  templates:
+    directory: templates                    # Template directory
+    summary-system-prompt: summary-system.md
+    summary-user-prompt: summary-prompt.md
+    default-output-format: default-output-format.md
+    report: report.md
+    executive-summary: executive-summary.md
+    fallback-summary: fallback-summary.md
+```
+
+### Placeholders
+
+Templates support `{{placeholder}}` format placeholders. See each template file for available placeholders.
+
 ## Project Structure
 
 ```
@@ -412,6 +453,11 @@ multi-agent-reviewer/
 │   ├── code-quality.agent.md
 │   ├── performance.agent.md
 │   └── best-practices.agent.md
+├── templates/                           # Template files
+│   ├── summary-system.md
+│   ├── summary-prompt.md
+│   ├── report.md
+│   └── ...
 └── src/main/java/dev/logicojp/reviewer/
     ├── ReviewApp.java                   # CLI entry point
     ├── ReviewCommand.java               # review subcommand
@@ -425,7 +471,8 @@ multi-agent-reviewer/
     ├── config/
     │   ├── ModelConfig.java             # LLM model config
     │   ├── ExecutionConfig.java         # Execution config
-    │   └── GithubMcpConfig.java         # GitHub MCP config
+    │   ├── GithubMcpConfig.java         # GitHub MCP config
+    │   └── TemplateConfig.java          # Template config
     ├── instruction/
     │   ├── CustomInstruction.java       # Custom instruction model
     │   ├── CustomInstructionLoader.java # Instruction loader
@@ -441,7 +488,8 @@ multi-agent-reviewer/
     │   ├── CopilotService.java          # Copilot SDK integration
     │   ├── ReportService.java           # Report generation
     │   ├── ReviewService.java           # Review execution
-    │   └── SkillService.java            # Skill management
+    │   ├── SkillService.java            # Skill management
+    │   └── TemplateService.java         # Template loading
     ├── skill/
     │   ├── SkillDefinition.java         # Skill definition model
     │   ├── SkillParameter.java          # Skill parameter model

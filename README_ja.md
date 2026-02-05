@@ -399,6 +399,47 @@ flowchart TB
     BestPractices -.-> GitHub
 ```
 
+## テンプレートのカスタマイズ
+
+レポートやサマリーのフォーマットは、テンプレートファイルで外部化されています。
+
+### テンプレートディレクトリ
+
+デフォルトでは `templates/` ディレクトリ内のテンプレートが使用されます。
+
+```
+templates/
+├── summary-system.md          # サマリー生成システムプロンプト
+├── summary-prompt.md          # サマリー生成ユーザープロンプト
+├── default-output-format.md   # デフォルト出力フォーマット
+├── report.md                  # 個別レポートテンプレート
+├── executive-summary.md       # エグゼクティブサマリーテンプレート
+├── fallback-summary.md        # フォールバックサマリーテンプレート
+├── custom-instruction-section.md  # カスタムインストラクションセクション
+├── local-review-content.md    # ローカルレビューコンテンツ
+└── review-custom-instruction.md   # レビュー用カスタムインストラクション
+```
+
+### テンプレート設定
+
+`application.yml` でテンプレートパスをカスタマイズできます:
+
+```yaml
+reviewer:
+  templates:
+    directory: templates                    # テンプレートディレクトリ
+    summary-system-prompt: summary-system.md
+    summary-user-prompt: summary-prompt.md
+    default-output-format: default-output-format.md
+    report: report.md
+    executive-summary: executive-summary.md
+    fallback-summary: fallback-summary.md
+```
+
+### プレースホルダー
+
+テンプレート内では `{{placeholder}}` 形式のプレースホルダーが使用できます。各テンプレートで使用可能なプレースホルダーはテンプレートファイルを参照してください。
+
 ## プロジェクト構造
 
 ```
@@ -410,6 +451,11 @@ multi-agent-reviewer/
 │   ├── code-quality.agent.md
 │   ├── performance.agent.md
 │   └── best-practices.agent.md
+├── templates/                           # テンプレートファイル
+│   ├── summary-system.md
+│   ├── summary-prompt.md
+│   ├── report.md
+│   └── ...
 └── src/main/java/dev/logicojp/reviewer/
     ├── ReviewApp.java                   # CLIエントリポイント
     ├── ReviewCommand.java               # reviewサブコマンド
@@ -423,7 +469,8 @@ multi-agent-reviewer/
     ├── config/
     │   ├── ModelConfig.java             # LLMモデル設定
     │   ├── ExecutionConfig.java         # 実行設定
-    │   └── GithubMcpConfig.java         # GitHub MCP設定
+    │   ├── GithubMcpConfig.java         # GitHub MCP設定
+    │   └── TemplateConfig.java          # テンプレート設定
     ├── instruction/
     │   ├── CustomInstruction.java       # カスタムインストラクションモデル
     │   ├── CustomInstructionLoader.java # インストラクション読込
@@ -439,7 +486,8 @@ multi-agent-reviewer/
     │   ├── CopilotService.java          # Copilot SDK連携
     │   ├── ReportService.java           # レポート生成
     │   ├── ReviewService.java           # レビュー実行
-    │   └── SkillService.java            # スキル管理
+    │   ├── SkillService.java            # スキル管理
+    │   └── TemplateService.java         # テンプレート読込
     ├── skill/
     │   ├── SkillDefinition.java         # スキル定義モデル
     │   ├── SkillParameter.java          # スキルパラメータモデル
