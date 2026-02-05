@@ -101,7 +101,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.10.2</version>
+            <version>5.14.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -217,6 +217,7 @@
                             <imageName>review</imageName>
                             <buildArgs combine.children="append">
                                 <buildArg>--no-fallback</buildArg>
+                                <buildArg>-O1</buildArg>
                                 <buildArg>--enable-url-protocols=https</buildArg>
                                 <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                             </buildArgs>
