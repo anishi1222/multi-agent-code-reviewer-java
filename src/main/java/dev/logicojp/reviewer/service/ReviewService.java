@@ -3,6 +3,7 @@ package dev.logicojp.reviewer.service;
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
+import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.instruction.CustomInstructionLoader;
 import dev.logicojp.reviewer.orchestrator.ReviewOrchestrator;
 import dev.logicojp.reviewer.report.ReviewResult;
@@ -90,7 +91,7 @@ public class ReviewService {
         if (effectiveCustomInstruction == null || effectiveCustomInstruction.isBlank()) {
             CustomInstructionLoader loader = new CustomInstructionLoader();
             effectiveCustomInstruction = loader.loadForTarget(target)
-                .map(CustomInstructionLoader.CustomInstruction::content)
+                .map(CustomInstruction::content)
                 .orElse(null);
             
             if (effectiveCustomInstruction != null) {

@@ -132,7 +132,7 @@ public class CustomInstructionLoader {
      */
     private CustomInstruction mergeInstructions(List<CustomInstruction> instructions) {
         if (instructions.size() == 1) {
-            return instructions.get(0);
+            return instructions.getFirst();
         }
 
         StringBuilder mergedContent = new StringBuilder();
@@ -152,40 +152,5 @@ public class CustomInstructionLoader {
             mergedContent.toString(),
             InstructionSource.MERGED
         );
-    }
-
-    /**
-     * Creates a prompt section for custom instructions.
-     */
-    public static String formatAsPromptSection(CustomInstruction instruction) {
-        return """
-            ## カスタムインストラクション
-            
-            以下のプロジェクト固有の指示に従ってください:
-            
-            %s
-            """.formatted(instruction.content());
-    }
-
-    /**
-     * Represents a loaded custom instruction.
-     */
-    public record CustomInstruction(
-        String sourcePath,
-        String content,
-        InstructionSource source
-    ) {
-        public boolean isEmpty() {
-            return content == null || content.isBlank();
-        }
-    }
-
-    /**
-     * Source type of the instruction.
-     */
-    public enum InstructionSource {
-        LOCAL_FILE,
-        GITHUB_REPOSITORY,
-        MERGED
     }
 }

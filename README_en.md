@@ -2,9 +2,13 @@
 
 A parallel code review application using multiple AI agents with GitHub Copilot SDK for Java.
 
+![alt text](image.png)
+
 ## Features
 
 - **Parallel Multi-Agent Execution**: Simultaneous review from security, code quality, performance, and best practices perspectives
+- **GitHub Repository / Local Directory Support**: Review source code from GitHub repositories or local directories
+- **Custom Instructions**: Incorporate project-specific rules and guidelines into the review
 - **Flexible Agent Definitions**: Define agents in GitHub Copilot format (.agent.md)
 - **Agent Skill Support**: Define individual skills for agents to execute specific tasks
 - **External Configuration Files**: Agent definitions can be swapped without rebuilding
@@ -50,10 +54,16 @@ mvn clean package -Pnative
 ### Basic Usage
 
 ```bash
-# Run review with all agents
+# Run review with all agents (GitHub repository)
 java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
   run \
   --repo owner/repository \
+  --all
+
+# Review a local directory
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
   --all
 
 # Run only specific agents
@@ -70,6 +80,13 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
   --review-model gpt-4.1 \
   --summary-model claude-sonnet-4
 
+# Review with custom instructions
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
+  --all \
+  --instructions ./my-instructions.md
+
 # List available agents
 java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
   list
@@ -79,7 +96,8 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
-| `--repo` | `-r` | Target repository (required) | - |
+| `--repo` | `-r` | Target GitHub repository (exclusive with `--local`) | - |
+| `--local` | `-l` | Target local directory (exclusive with `--repo`) | - |
 | `--agents` | `-a` | Agents to run (comma-separated) | - |
 | `--all` | - | Run all agents | false |
 | `--output` | `-o` | Output directory | `./report` |
@@ -91,6 +109,8 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--review-model` | - | Model for review | Agent config |
 | `--report-model` | - | Model for report generation | review-model |
 | `--summary-model` | - | Model for summary generation | claude-sonnet-4 |
+| `--instructions` | - | Custom instruction file (can be specified multiple times) | - |
+| `--no-instructions` | - | Disable automatic loading of custom instructions | false |
 | `--help` | `-h` | Show help | - |
 | `--version` | `-V` | Show version | - |
 
@@ -103,6 +123,58 @@ Displays a list of available agents. Additional directories can be specified wit
 ```bash
 export GITHUB_TOKEN=your_github_token
 ```
+
+### Local Directory Review
+
+You can review source code from a local directory even when you cannot access a GitHub repository.
+
+```bash
+# Review a local project
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local /path/to/project \
+  --all
+```
+
+Supported file extensions:
+- Java: `.java`
+- Kotlin: `.kt`, `.kts`
+- JavaScript/TypeScript: `.js`, `.ts`, `.jsx`, `.tsx`
+- Python: `.py`
+- Go: `.go`
+- Ruby: `.rb`
+- Others: `.c`, `.cpp`, `.h`, `.cs`, `.rs`, `.swift`, `.php`
+
+### Custom Instructions
+
+You can incorporate project-specific rules and guidelines into the review.
+
+```bash
+# Specify instruction files
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
+  --all \
+  --instructions ./coding-standards.md \
+  --instructions ./security-guidelines.md
+
+# Disable automatic loading
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
+  --all \
+  --no-instructions
+```
+
+#### Auto-detected Instruction Files
+
+During local directory review, custom instructions are automatically loaded from the following paths (in order of priority):
+
+1. `.github/copilot-instructions.md`
+2. `.copilot/instructions.md`
+3. `INSTRUCTIONS.md`
+4. `.instructions.md`
+5. `copilot-instructions.md`
 
 ### Output Example
 
@@ -352,7 +424,12 @@ multi-agent-reviewer/
     │   └── ReviewAgent.java             # Review agent
     ├── config/
     │   ├── ModelConfig.java             # LLM model config
+    │   ├── ExecutionConfig.java         # Execution config
     │   └── GithubMcpConfig.java         # GitHub MCP config
+    ├── instruction/
+    │   ├── CustomInstruction.java       # Custom instruction model
+    │   ├── CustomInstructionLoader.java # Instruction loader
+    │   └── InstructionSource.java       # Source type
     ├── orchestrator/
     │   └── ReviewOrchestrator.java      # Parallel execution control
     ├── report/
@@ -365,12 +442,17 @@ multi-agent-reviewer/
     │   ├── ReportService.java           # Report generation
     │   ├── ReviewService.java           # Review execution
     │   └── SkillService.java            # Skill management
-    └── skill/
-        ├── SkillDefinition.java         # Skill definition model
-        ├── SkillParameter.java          # Skill parameter model
-        ├── SkillRegistry.java           # Skill registry
-        ├── SkillExecutor.java           # Skill executor
-        └── SkillResult.java             # Skill result model
+    ├── skill/
+    │   ├── SkillDefinition.java         # Skill definition model
+    │   ├── SkillParameter.java          # Skill parameter model
+    │   ├── SkillRegistry.java           # Skill registry
+    │   ├── SkillExecutor.java           # Skill executor
+    │   └── SkillResult.java             # Skill result model
+    ├── target/
+    │   ├── ReviewTarget.java            # Review target interface
+    │   └── LocalFileProvider.java       # Local file collector
+    └── util/
+        └── FileExtensionUtils.java      # File extension utilities
 ```
 
 ## License

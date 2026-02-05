@@ -2,9 +2,13 @@
 
 GitHub Copilot SDK for Java を使用した、複数のAIエージェントによる並列コードレビューアプリケーションです。
 
+![alt text](image.png)
+
 ## 特徴
 
 - **複数エージェント並列実行**: セキュリティ、コード品質、パフォーマンス、ベストプラクティスの各観点から同時レビュー
+- **GitHubリポジトリ/ローカルディレクトリ対応**: GitHubリポジトリまたはローカルディレクトリのソースコードをレビュー
+- **カスタムインストラクション**: プロジェクト固有のルールやガイドラインをレビューに反映
 - **柔軟なエージェント定義**: GitHub Copilot形式 (.agent.md) でエージェントを定義
 - **外部設定ファイル**: エージェント定義はビルド不要で差し替え可能
 - **LLMモデル指定**: レビュー、レポート生成、サマリー生成で異なるモデルを使用可能
@@ -49,10 +53,16 @@ mvn clean package -Pnative
 ### 基本的な使用方法
 
 ```bash
-# 全エージェントでレビュー実行
+# 全エージェントでレビュー実行（GitHubリポジトリ）
 java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
   run \
   --repo owner/repository \
+  --all
+
+# ローカルディレクトリのレビュー
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
   --all
 
 # 特定のエージェントのみ実行
@@ -69,6 +79,13 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
   --review-model gpt-4.1 \
   --summary-model claude-sonnet-4
 
+# カスタムインストラクションを指定してレビュー
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
+  --all \
+  --instructions ./my-instructions.md
+
 # 利用可能なエージェント一覧
 java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
   list
@@ -78,7 +95,8 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 
 | オプション | 短縮形 | 説明 | デフォルト |
 |-----------|--------|------|-----------|
-| `--repo` | `-r` | 対象リポジトリ（必須） | - |
+| `--repo` | `-r` | 対象GitHubリポジトリ（`--local`と排他） | - |
+| `--local` | `-l` | 対象ローカルディレクトリ（`--repo`と排他） | - |
 | `--agents` | `-a` | 実行するエージェント（カンマ区切り） | - |
 | `--all` | - | 全エージェント実行 | false |
 | `--output` | `-o` | 出力ディレクトリ | `./report` |
@@ -90,6 +108,8 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--review-model` | - | レビュー用モデル | エージェント設定 |
 | `--report-model` | - | レポート生成用モデル | review-model |
 | `--summary-model` | - | サマリー生成用モデル | claude-sonnet-4 |
+| `--instructions` | - | カスタムインストラクションファイル（複数指定可） | - |
+| `--no-instructions` | - | カスタムインストラクションの自動読込を無効化 | false |
 | `--help` | `-h` | ヘルプ表示 | - |
 | `--version` | `-V` | バージョン表示 | - |
 
@@ -102,6 +122,58 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 ```bash
 export GITHUB_TOKEN=your_github_token
 ```
+
+### ローカルディレクトリレビュー
+
+GitHubリポジトリにアクセスできない環境でも、ローカルディレクトリのソースコードをレビューできます。
+
+```bash
+# ローカルプロジェクトをレビュー
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local /path/to/project \
+  --all
+```
+
+対応しているファイル拡張子:
+- Java: `.java`
+- Kotlin: `.kt`, `.kts`
+- JavaScript/TypeScript: `.js`, `.ts`, `.jsx`, `.tsx`
+- Python: `.py`
+- Go: `.go`
+- Ruby: `.rb`
+- その他: `.c`, `.cpp`, `.h`, `.cs`, `.rs`, `.swift`, `.php`
+
+### カスタムインストラクション
+
+プロジェクト固有のルールやガイドラインをレビューに反映できます。
+
+```bash
+# インストラクションファイルを指定
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
+  --all \
+  --instructions ./coding-standards.md \
+  --instructions ./security-guidelines.md
+
+# 自動読込を無効化
+java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
+  run \
+  --local ./my-project \
+  --all \
+  --no-instructions
+```
+
+#### 自動検出されるインストラクションファイル
+
+ローカルディレクトリレビュー時、以下のパスからカスタムインストラクションが自動的に読み込まれます（優先度順）:
+
+1. `.github/copilot-instructions.md`
+2. `.copilot/instructions.md`
+3. `INSTRUCTIONS.md`
+4. `.instructions.md`
+5. `copilot-instructions.md`
 
 ### 出力例
 
@@ -350,7 +422,12 @@ multi-agent-reviewer/
     │   └── ReviewAgent.java             # レビューエージェント
     ├── config/
     │   ├── ModelConfig.java             # LLMモデル設定
+    │   ├── ExecutionConfig.java         # 実行設定
     │   └── GithubMcpConfig.java         # GitHub MCP設定
+    ├── instruction/
+    │   ├── CustomInstruction.java       # カスタムインストラクションモデル
+    │   ├── CustomInstructionLoader.java # インストラクション読込
+    │   └── InstructionSource.java       # ソース種別
     ├── orchestrator/
     │   └── ReviewOrchestrator.java      # 並列実行制御
     ├── report/
@@ -363,12 +440,17 @@ multi-agent-reviewer/
     │   ├── ReportService.java           # レポート生成
     │   ├── ReviewService.java           # レビュー実行
     │   └── SkillService.java            # スキル管理
-    └── skill/
-        ├── SkillDefinition.java         # スキル定義モデル
-        ├── SkillParameter.java          # スキルパラメータモデル
-        ├── SkillRegistry.java           # スキルレジストリ
-        ├── SkillExecutor.java           # スキル実行
-        └── SkillResult.java             # スキル結果モデル
+    ├── skill/
+    │   ├── SkillDefinition.java         # スキル定義モデル
+    │   ├── SkillParameter.java          # スキルパラメータモデル
+    │   ├── SkillRegistry.java           # スキルレジストリ
+    │   ├── SkillExecutor.java           # スキル実行
+    │   └── SkillResult.java             # スキル結果モデル
+    ├── target/
+    │   ├── ReviewTarget.java            # レビュー対象インターフェース
+    │   └── LocalFileProvider.java       # ローカルファイル収集
+    └── util/
+        └── FileExtensionUtils.java      # ファイル拡張子ユーティリティ
 ```
 
 ## ライセンス
