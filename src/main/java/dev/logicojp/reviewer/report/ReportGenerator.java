@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.report;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.service.TemplateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Generates markdown report files for individual agent reviews.
@@ -21,9 +24,11 @@ public class ReportGenerator {
     private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     
     private final Path outputDirectory;
+    private final TemplateService templateService;
     
-    public ReportGenerator(Path outputDirectory) {
+    public ReportGenerator(Path outputDirectory, TemplateService templateService) {
         this.outputDirectory = outputDirectory;
+        this.templateService = templateService;
     }
     
     /**
@@ -71,31 +76,30 @@ public class ReportGenerator {
     
     private String buildReportContent(ReviewResult result) {
         AgentConfig config = result.getAgentConfig();
-        StringBuilder sb = new StringBuilder();
         
-        // Header
-        sb.append("# ").append(config.getDisplayName()).append(" レビュー結果\n\n");
-        sb.append("**日付**: ").append(LocalDate.now().format(DATE_FORMATTER)).append("  \n");
-        sb.append("**対象リポジトリ**: ").append(result.getRepository()).append("\n\n");
-        sb.append("---\n\n");
-        
-        // Review focus areas
-        sb.append("## レビュー観点\n\n");
+        // Build focus areas list
+        StringBuilder focusAreasBuilder = new StringBuilder();
         for (String area : config.getFocusAreas()) {
-            sb.append("- ").append(area).append("\n");
+            focusAreasBuilder.append("- ").append(area).append("\n");
         }
-        sb.append("\n---\n\n");
         
-        // Review content or error
-        sb.append("## 指摘事項\n\n");
+        // Build content section
+        String content;
         if (result.isSuccess()) {
-            sb.append(result.getContent());
+            content = result.getContent();
         } else {
-            sb.append("⚠️ **レビュー失敗**\n\n");
-            sb.append("エラー: ").append(result.getErrorMessage()).append("\n");
+            content = "⚠️ **レビュー失敗**\n\nエラー: " + result.getErrorMessage();
         }
         
-        return sb.toString();
+        // Apply template
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("displayName", config.getDisplayName());
+        placeholders.put("date", LocalDate.now().format(DATE_FORMATTER));
+        placeholders.put("repository", result.getRepository());
+        placeholders.put("focusAreas", focusAreasBuilder.toString());
+        placeholders.put("content", content);
+        
+        return templateService.getReportTemplate(placeholders);
     }
     
     private void ensureOutputDirectory() throws IOException {

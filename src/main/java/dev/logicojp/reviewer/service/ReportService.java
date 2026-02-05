@@ -25,15 +25,18 @@ public class ReportService {
     private final CopilotService copilotService;
     private final ExecutionConfig executionConfig;
     private final TemplateConfig templateConfig;
+    private final TemplateService templateService;
     
     @Inject
     public ReportService(
             CopilotService copilotService, 
             ExecutionConfig executionConfig,
-            TemplateConfig templateConfig) {
+            TemplateConfig templateConfig,
+            TemplateService templateService) {
         this.copilotService = copilotService;
         this.executionConfig = executionConfig;
         this.templateConfig = templateConfig;
+        this.templateService = templateService;
     }
     
     /**
@@ -46,7 +49,7 @@ public class ReportService {
             throws IOException {
         logger.info("Generating {} individual reports", results.size());
         
-        ReportGenerator generator = new ReportGenerator(outputDirectory);
+        ReportGenerator generator = new ReportGenerator(outputDirectory, templateService);
         return generator.generateReports(results);
     }
     
@@ -76,7 +79,8 @@ public class ReportService {
             summaryModel, 
             executionConfig.summaryTimeoutMinutes(),
             systemPromptPath,
-            userPromptPath);
+            userPromptPath,
+            templateService);
         
         return generator.generateSummary(results, repository);
     }

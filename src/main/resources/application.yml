@@ -17,6 +17,13 @@ reviewer:
     directory: templates
     summary-system-prompt: summary-system.md
     summary-user-prompt: summary-prompt.md
+    default-output-format: default-output-format.md
+    report: report.md
+    executive-summary: executive-summary.md
+    fallback-summary: fallback-summary.md
+    custom-instruction-section: custom-instruction-section.md
+    local-review-content: local-review-content.md
+    review-custom-instruction: review-custom-instruction.md
   mcp:
     github:
       type: http

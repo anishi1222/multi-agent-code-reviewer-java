@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.report;
 
 import com.github.copilot.sdk.*;
 import com.github.copilot.sdk.json.*;
+import dev.logicojp.reviewer.service.TemplateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,7 +11,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -28,6 +31,7 @@ public class SummaryGenerator {
     private final long timeoutMinutes;
     private final Path systemPromptPath;
     private final Path userPromptPath;
+    private final TemplateService templateService;
     
     public SummaryGenerator(
             Path outputDirectory, 
@@ -35,13 +39,15 @@ public class SummaryGenerator {
             String summaryModel, 
             long timeoutMinutes,
             Path systemPromptPath,
-            Path userPromptPath) {
+            Path userPromptPath,
+            TemplateService templateService) {
         this.outputDirectory = outputDirectory;
         this.client = client;
         this.summaryModel = summaryModel;
         this.timeoutMinutes = timeoutMinutes;
         this.systemPromptPath = systemPromptPath;
         this.userPromptPath = userPromptPath;
+        this.templateService = templateService;
     }
     
     /**
@@ -97,40 +103,31 @@ public class SummaryGenerator {
     }
 
     private String buildFallbackSummary(List<ReviewResult> results, String repository) {
-        long successCount = results.stream().filter(ReviewResult::isSuccess).count();
-        long failureCount = results.size() - successCount;
-        StringBuilder sb = new StringBuilder();
-        sb.append("## 総合評価\n");
-        sb.append("生成タイムアウトのため、簡易サマリーを出力します。\n\n");
-        sb.append("## Good Point（良い点）\n");
-        sb.append("- タイムアウトのため集計不可。個別レポートを参照してください。\n\n");
-        sb.append("## Room to Improve（改善点）\n");
-        sb.append("- タイムアウトのため集計不可。個別レポートを参照してください。\n\n");
-        sb.append("## レビュー視点別 指摘件数サマリー\n\n");
-        sb.append("| レビュー視点 | Critical | High | Medium | Low | 合計 |\n");
-        sb.append("|-------------|----------|------|--------|-----|------|\n");
+        // Build table rows
+        StringBuilder tableRowsBuilder = new StringBuilder();
         for (ReviewResult result : results) {
-            sb.append("| ").append(result.getAgentConfig().getDisplayName())
+            tableRowsBuilder.append("| ").append(result.getAgentConfig().getDisplayName())
               .append(" | - | - | - | - | - |\n");
         }
-        sb.append("\n");
-        sb.append("## 各エージェント別サマリー\n\n");
+        
+        // Build agent summaries
+        StringBuilder agentSummariesBuilder = new StringBuilder();
         for (ReviewResult result : results) {
-            sb.append("### ").append(result.getAgentConfig().getDisplayName()).append("\n");
+            agentSummariesBuilder.append("### ").append(result.getAgentConfig().getDisplayName()).append("\n");
             if (result.isSuccess()) {
-                sb.append("- 指摘件数: 不明（タイムアウトのため集計不可）\n");
+                agentSummariesBuilder.append("- 指摘件数: 不明（タイムアウトのため集計不可）\n");
             } else {
-                sb.append("- レビュー失敗: ").append(result.getErrorMessage()).append("\n");
+                agentSummariesBuilder.append("- レビュー失敗: ").append(result.getErrorMessage()).append("\n");
             }
-            sb.append("\n");
+            agentSummariesBuilder.append("\n");
         }
-        sb.append("## リスク評価\n");
-        sb.append("詳細な評価は個別レポートを参照してください。\n\n");
-        sb.append("## 推奨アクションプラン\n");
-        sb.append("1. **即時対応（24時間以内）**: 失敗原因（タイムアウト）を確認\n");
-        sb.append("2. **短期対応（1週間以内）**: 個別レポートの重要指摘を確認\n");
-        sb.append("3. **中期対応（1ヶ月以内）**: 追加の再レビューを実施\n");
-        return sb.toString();
+        
+        // Apply template
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("tableRows", tableRowsBuilder.toString());
+        placeholders.put("agentSummaries", agentSummariesBuilder.toString());
+        
+        return templateService.getFallbackSummaryTemplate(placeholders);
     }
     
     private String buildSummarySystemPrompt() throws IOException {
@@ -217,32 +214,27 @@ public class SummaryGenerator {
     
     private String buildFinalReport(String summaryContent, String repository, 
                                      List<ReviewResult> results) {
-        StringBuilder sb = new StringBuilder();
-        
-        // Header
-        sb.append("# エグゼクティブサマリー\n\n");
-        sb.append("**日付**: ").append(LocalDate.now().format(DATE_FORMATTER)).append("  \n");
-        sb.append("**対象リポジトリ**: ").append(repository).append("  \n");
-        sb.append("**実施エージェント数**: ").append(results.size()).append("  \n");
-        sb.append("**成功**: ").append(results.stream().filter(ReviewResult::isSuccess).count()).append("  \n");
-        sb.append("**失敗**: ").append(results.stream().filter(r -> !r.isSuccess()).count()).append("\n\n");
-        sb.append("---\n\n");
-        
-        // AI-generated summary content
-        sb.append(summaryContent);
-        
-        // Individual report links
-        sb.append("\n\n---\n\n");
-        sb.append("## 個別レポート\n\n");
+        // Build individual report links
+        StringBuilder reportLinksBuilder = new StringBuilder();
         for (ReviewResult result : results) {
             String filename = String.format("%s_%s.md", 
                 result.getAgentConfig().getName(),
                 LocalDate.now().format(FILE_DATE_FORMATTER));
-            sb.append("- [").append(result.getAgentConfig().getDisplayName())
+            reportLinksBuilder.append("- [").append(result.getAgentConfig().getDisplayName())
               .append("](").append(filename).append(")\n");
         }
         
-        return sb.toString();
+        // Apply template
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("date", LocalDate.now().format(DATE_FORMATTER));
+        placeholders.put("repository", repository);
+        placeholders.put("agentCount", String.valueOf(results.size()));
+        placeholders.put("successCount", String.valueOf(results.stream().filter(ReviewResult::isSuccess).count()));
+        placeholders.put("failureCount", String.valueOf(results.stream().filter(r -> !r.isSuccess()).count()));
+        placeholders.put("summaryContent", summaryContent);
+        placeholders.put("reportLinks", reportLinksBuilder.toString());
+        
+        return templateService.getExecutiveSummaryTemplate(placeholders);
     }
     
     private void ensureOutputDirectory() throws IOException {

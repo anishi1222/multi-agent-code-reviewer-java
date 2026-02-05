@@ -77,16 +77,14 @@ public class ReviewAgent {
         logger.info("Starting review with agent: {} for target: {}", 
             config.getName(), target.getDisplayName());
         
-        if (target.isLocal()) {
-            return executeLocalReview(target);
-        } else {
-            return executeGitHubReview(target);
-        }
+        // Java 21+: Pattern matching for switch with record patterns
+        return switch (target) {
+            case ReviewTarget.LocalTarget(Path directory) -> executeLocalReview(directory, target);
+            case ReviewTarget.GitHubTarget(String repository) -> executeGitHubReview(repository, target);
+        };
     }
     
-    private ReviewResult executeGitHubReview(ReviewTarget target) throws Exception {
-        String repository = target.getRepository()
-            .orElseThrow(() -> new IllegalStateException("GitHub target must have repository"));
+    private ReviewResult executeGitHubReview(String repository, ReviewTarget target) throws Exception {
         
         // Configure GitHub MCP server for repository access
         Map<String, Object> githubMcp = githubMcpConfig.toMcpServer(githubToken);
@@ -129,9 +127,7 @@ public class ReviewAgent {
         }
     }
     
-    private ReviewResult executeLocalReview(ReviewTarget target) throws Exception {
-        Path localPath = target.getLocalPath()
-            .orElseThrow(() -> new IllegalStateException("Local target must have path"));
+    private ReviewResult executeLocalReview(Path localPath, ReviewTarget target) throws Exception {
         
         // Collect files from local directory
         LocalFileProvider fileProvider = new LocalFileProvider(localPath);

@@ -43,7 +43,8 @@ public class ReviewOrchestrator {
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
         this.executionConfig = executionConfig;
-        this.executorService = Executors.newFixedThreadPool(executionConfig.parallelism());
+        // Java 21+: Use virtual threads for better scalability with I/O-bound tasks
+        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
         this.customInstruction = customInstruction;
         
         if (customInstruction != null && !customInstruction.isBlank()) {
@@ -123,7 +124,8 @@ public class ReviewOrchestrator {
             if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
                 executorService.shutdownNow();
             }
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
+            // Java 22+: Unnamed variable - exception not used
             executorService.shutdownNow();
             Thread.currentThread().interrupt();
         }
