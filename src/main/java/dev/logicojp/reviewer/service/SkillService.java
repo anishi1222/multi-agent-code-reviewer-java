@@ -4,6 +4,7 @@ import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.skill.*;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Service for managing and executing skills.
@@ -26,6 +29,7 @@ public class SkillService {
     private final CopilotService copilotService;
     private final GithubMcpConfig githubMcpConfig;
     private final ExecutionConfig executionConfig;
+    private final ExecutorService executorService;
 
     @Inject
     public SkillService(CopilotService copilotService,
@@ -35,6 +39,7 @@ public class SkillService {
         this.copilotService = copilotService;
         this.githubMcpConfig = githubMcpConfig;
         this.executionConfig = executionConfig;
+        this.executorService = Executors.newFixedThreadPool(executionConfig.parallelism());
     }
 
     /**
@@ -101,7 +106,8 @@ public class SkillService {
             githubToken,
             githubMcpConfig,
             model,
-            executionConfig.skillTimeoutMinutes()
+            executionConfig.skillTimeoutMinutes(),
+            executorService
         );
 
         return executor.execute(skill, parameters);
@@ -127,9 +133,15 @@ public class SkillService {
             githubToken,
             githubMcpConfig,
             model,
-            executionConfig.skillTimeoutMinutes()
+            executionConfig.skillTimeoutMinutes(),
+            executorService
         );
 
         return executor.execute(skill, parameters, systemPrompt);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        executorService.shutdown();
     }
 }

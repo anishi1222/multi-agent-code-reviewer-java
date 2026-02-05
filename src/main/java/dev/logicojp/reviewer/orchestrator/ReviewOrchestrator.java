@@ -68,7 +68,7 @@ public class ReviewOrchestrator {
         for (AgentConfig config : agents.values()) {
             ReviewAgent agent = new ReviewAgent(config, client, githubToken, githubMcpConfig,
                 executionConfig.agentTimeoutMinutes(), customInstruction);
-            CompletableFuture<ReviewResult> future = agent.review(target)
+            CompletableFuture<ReviewResult> future = agent.review(target, executorService)
                 .orTimeout(timeoutMinutes, TimeUnit.MINUTES)
                 .exceptionally(ex -> {
                     logger.error("Agent {} failed with timeout or error: {}", 

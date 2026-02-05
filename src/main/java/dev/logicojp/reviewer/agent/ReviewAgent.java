@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -57,20 +58,29 @@ public class ReviewAgent {
      * @return ReviewResult containing the review content
      */
     public CompletableFuture<ReviewResult> review(ReviewTarget target) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return executeReview(target);
-            } catch (Exception e) {
-                logger.error("Review failed for agent {}: {}", config.getName(), e.getMessage(), e);
-                return ReviewResult.builder()
-                    .agentConfig(config)
-                    .repository(target.getDisplayName())
-                    .success(false)
-                    .errorMessage(e.getMessage())
-                    .timestamp(LocalDateTime.now())
-                    .build();
-            }
-        });
+        return review(target, null);
+    }
+
+    public CompletableFuture<ReviewResult> review(ReviewTarget target, Executor executor) {
+        if (executor == null) {
+            return CompletableFuture.supplyAsync(() -> runReview(target));
+        }
+        return CompletableFuture.supplyAsync(() -> runReview(target), executor);
+    }
+
+    private ReviewResult runReview(ReviewTarget target) {
+        try {
+            return executeReview(target);
+        } catch (Exception e) {
+            logger.error("Review failed for agent {}: {}", config.getName(), e.getMessage(), e);
+            return ReviewResult.builder()
+                .agentConfig(config)
+                .repository(target.getDisplayName())
+                .success(false)
+                .errorMessage(e.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+        }
     }
     
     private ReviewResult executeReview(ReviewTarget target) throws Exception {
@@ -131,8 +141,9 @@ public class ReviewAgent {
         
         // Collect files from local directory
         LocalFileProvider fileProvider = new LocalFileProvider(localPath);
-        String sourceContent = fileProvider.generateReviewContent();
-        String directorySummary = fileProvider.generateDirectorySummary();
+        var localFiles = fileProvider.collectFiles();
+        String sourceContent = fileProvider.generateReviewContent(localFiles);
+        String directorySummary = fileProvider.generateDirectorySummary(localFiles);
         
         logger.info("Collected source files from local directory: {}", localPath);
         logger.debug("Directory summary:\n{}", directorySummary);

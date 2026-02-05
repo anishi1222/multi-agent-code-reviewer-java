@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -22,15 +23,23 @@ public class SkillExecutor {
     private final GithubMcpConfig githubMcpConfig;
     private final String defaultModel;
     private final long timeoutMinutes;
+    private final Executor executor;
 
     public SkillExecutor(CopilotClient client, String githubToken,
                          GithubMcpConfig githubMcpConfig, String defaultModel,
                          long timeoutMinutes) {
+        this(client, githubToken, githubMcpConfig, defaultModel, timeoutMinutes, null);
+    }
+
+    public SkillExecutor(CopilotClient client, String githubToken,
+                         GithubMcpConfig githubMcpConfig, String defaultModel,
+                         long timeoutMinutes, Executor executor) {
         this.client = client;
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
         this.defaultModel = defaultModel;
         this.timeoutMinutes = timeoutMinutes;
+        this.executor = executor;
     }
 
     /**
@@ -44,16 +53,23 @@ public class SkillExecutor {
      * Executes a skill with the given parameters and system prompt.
      */
     public CompletableFuture<SkillResult> execute(SkillDefinition skill,
-                                                   Map<String, String> parameters,
-                                                   String systemPrompt) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return executeSync(skill, parameters, systemPrompt);
-            } catch (Exception e) {
-                logger.error("Skill execution failed for {}: {}", skill.id(), e.getMessage(), e);
-                return SkillResult.failure(skill.id(), e.getMessage());
-            }
-        });
+                                                  Map<String, String> parameters,
+                                                  String systemPrompt) {
+        if (executor == null) {
+            return CompletableFuture.supplyAsync(() -> executeSafely(skill, parameters, systemPrompt));
+        }
+        return CompletableFuture.supplyAsync(() -> executeSafely(skill, parameters, systemPrompt), executor);
+    }
+
+    private SkillResult executeSafely(SkillDefinition skill,
+                                      Map<String, String> parameters,
+                                      String systemPrompt) {
+        try {
+            return executeSync(skill, parameters, systemPrompt);
+        } catch (Exception e) {
+            logger.error("Skill execution failed for {}: {}", skill.id(), e.getMessage(), e);
+            return SkillResult.failure(skill.id(), e.getMessage());
+        }
     }
 
     private SkillResult executeSync(SkillDefinition skill,
