@@ -1,15 +1,5 @@
 [
   {
-    "name": "ch.qos.logback.core.rolling.TimeBasedRollingPolicy",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true
-  },
-  {
-    "name": "ch.qos.logback.core.rolling.RollingFileAppender",
-    "allDeclaredConstructors": true,
-    "allPublicConstructors": true
-  },
-  {
     "name": "ch.qos.logback.core.ConsoleAppender",
     "allDeclaredConstructors": true,
     "allPublicConstructors": true

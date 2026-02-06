@@ -29,8 +29,7 @@ public class ListAgentsCommand implements Runnable, IExitCodeGenerator {
     @Spec
     private CommandSpec spec;
     
-    @Inject
-    private AgentService agentService;
+    private final AgentService agentService;
 
     private int exitCode = CommandLine.ExitCode.OK;
     
@@ -40,6 +39,11 @@ public class ListAgentsCommand implements Runnable, IExitCodeGenerator {
         arity = "1..*"
     )
     private List<Path> additionalAgentDirs;
+
+    @Inject
+    public ListAgentsCommand(AgentService agentService) {
+        this.agentService = agentService;
+    }
     
     @Override
     public void run() {

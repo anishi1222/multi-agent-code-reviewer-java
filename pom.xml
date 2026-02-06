@@ -228,7 +228,7 @@
                                 <buildArg>-O1</buildArg>
                                 <buildArg>--enable-url-protocols=https</buildArg>
                                 <buildArg>-H:+ReportExceptionStackTraces</buildArg>
-                                <buildArg>-Dlogback.configurationFile=logback-native.xml</buildArg>
+                                <buildArg>--initialize-at-build-time=org.junit.platform.commons.logging.LoggerFactory$DelegatingLogger</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>

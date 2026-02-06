@@ -28,12 +28,9 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
     private ReviewApp parent;
     @Spec
     private CommandSpec spec;
-    @Inject
-    private AgentService agentService;
-    @Inject
-    private CopilotService copilotService;
-    @Inject
-    private SkillService skillService;
+    private final AgentService agentService;
+    private final CopilotService copilotService;
+    private final SkillService skillService;
     private int exitCode = CommandLine.ExitCode.OK;
     @Parameters(index = "0", description = "Skill ID to execute", arity = "0..1")
     private String skillId;
@@ -47,6 +44,17 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
     private List<Path> additionalAgentDirs;
     @Option(names = {"--list"}, description = "List available skills")
     private boolean listSkills;
+
+    @Inject
+    public SkillCommand(
+        AgentService agentService,
+        CopilotService copilotService,
+        SkillService skillService
+    ) {
+        this.agentService = agentService;
+        this.copilotService = copilotService;
+        this.skillService = skillService;
+    }
     @Override
     public void run() {
         try {
@@ -83,7 +91,7 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
             exitCode = CommandLine.ExitCode.USAGE;
             return;
         }
-        copilotService.initialize();
+        copilotService.initialize(githubToken);
         try {
             System.out.println("Executing skill: " + skillId);
             System.out.println("Parameters: " + parameters);

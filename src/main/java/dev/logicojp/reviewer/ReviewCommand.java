@@ -44,20 +44,15 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
     @Spec
     private CommandSpec spec;
     
-    @Inject
-    private AgentService agentService;
+    private final AgentService agentService;
     
-    @Inject
-    private CopilotService copilotService;
+    private final CopilotService copilotService;
     
-    @Inject
-    private ReviewService reviewService;
+    private final ReviewService reviewService;
     
-    @Inject
-    private ReportService reportService;
+    private final ReportService reportService;
 
-    @Inject
-    private ModelConfig defaultModelConfig;
+    private final ModelConfig defaultModelConfig;
 
     private int exitCode = CommandLine.ExitCode.OK;
     
@@ -171,6 +166,21 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         description = "Disable automatic loading of custom instructions"
     )
     private boolean noInstructions;
+
+    @Inject
+    public ReviewCommand(
+        AgentService agentService,
+        CopilotService copilotService,
+        ReviewService reviewService,
+        ReportService reportService,
+        ModelConfig defaultModelConfig
+    ) {
+        this.agentService = agentService;
+        this.copilotService = copilotService;
+        this.reviewService = reviewService;
+        this.reportService = reportService;
+        this.defaultModelConfig = defaultModelConfig;
+    }
     
     @Override
     public void run() {
@@ -184,6 +194,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
             exitCode = CommandLine.ExitCode.SOFTWARE;
             logger.error("Execution failed: {}", e.getMessage(), e);
             spec.commandLine().getErr().println("Error: " + e.getMessage());
+            e.printStackTrace(spec.commandLine().getErr());
         }
     }
 
@@ -267,7 +278,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         String customInstruction = loadCustomInstructions(target);
         
         // Execute reviews using the Copilot service
-        copilotService.initialize();
+        copilotService.initialize(githubToken);
         
         try {
             System.out.println("Starting reviews...");

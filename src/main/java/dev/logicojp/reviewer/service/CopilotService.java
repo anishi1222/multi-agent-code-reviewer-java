@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.service;
 
 import com.github.copilot.sdk.CopilotClient;
+import com.github.copilot.sdk.json.CopilotClientOptions;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -22,11 +23,30 @@ public class CopilotService {
     /**
      * Initializes the Copilot client.
      */
-    public synchronized void initialize() throws ExecutionException, InterruptedException {
+    public synchronized void initialize(String githubToken) throws ExecutionException, InterruptedException {
         if (!initialized) {
             logger.info("Initializing Copilot client...");
-            client = new CopilotClient();
-            client.start().get();
+            CopilotClientOptions options = new CopilotClientOptions();
+            String cliPath = System.getenv("COPILOT_CLI_PATH");
+            if (cliPath != null && !cliPath.isBlank()) {
+                options.setCliPath(cliPath);
+            }
+            if (githubToken != null && !githubToken.isBlank() && !githubToken.equals("${GITHUB_TOKEN}")) {
+                options.setGithubToken(githubToken);
+                options.setUseLoggedInUser(Boolean.FALSE);
+            } else {
+                options.setUseLoggedInUser(Boolean.TRUE);
+            }
+            client = new CopilotClient(options);
+            try {
+                client.start().get();
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                if (cause != null) {
+                    throw new ExecutionException("Copilot client start failed: " + cause.getMessage(), cause);
+                }
+                throw e;
+            }
             initialized = true;
             logger.info("Copilot client initialized");
         }
