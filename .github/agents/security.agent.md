@@ -1,7 +1,7 @@
 ---
 name: security
 description: "セキュリティレビュー"
-model: GPT-5.2-Codex
+model: gpt-5.2-codex
 ---
 
 # セキュリティレビューエージェント

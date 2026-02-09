@@ -1,7 +1,7 @@
 ---
 name: code-quality
 description: "コード品質レビュー"
-model: GPT-5.2-Codex
+model: gpt-5.2-codex
 ---
 
 # コード品質レビューエージェント

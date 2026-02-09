@@ -1,7 +1,7 @@
 ---
 name: performance
 description: "パフォーマンスレビュー"
-model: GPT-5.2-Codex
+model: gpt-5.2-codex
 ---
 
 # パフォーマンスレビューエージェント

@@ -35,5 +35,5 @@ reviewer:
       auth-header-template: "Bearer {token}"
   models:
     review-model: gpt-5.2-codex
-    report-model: claude-opus-4.6
-    summary-model: claude-opus-4.6
+    report-model: claude-opus-4.6-fast
+    summary-model: claude-opus-4.6-fast
