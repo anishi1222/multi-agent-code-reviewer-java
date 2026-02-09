@@ -16,6 +16,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
+import static dev.logicojp.reviewer.report.SummaryGenerator.resolveReasoningEffort;
+
 /**
  * Executes a code review using the Copilot SDK with a specific agent configuration.
  */
@@ -29,13 +31,14 @@ public class ReviewAgent {
     private final GithubMcpConfig githubMcpConfig;
     private final long timeoutMinutes;
     private final String customInstruction;
+    private final String reasoningEffort;
     
     public ReviewAgent(AgentConfig config,
                        CopilotClient client,
                        String githubToken,
                        GithubMcpConfig githubMcpConfig,
                        long timeoutMinutes) {
-        this(config, client, githubToken, githubMcpConfig, timeoutMinutes, null);
+        this(config, client, githubToken, githubMcpConfig, timeoutMinutes, null, null);
     }
     
     public ReviewAgent(AgentConfig config,
@@ -44,12 +47,23 @@ public class ReviewAgent {
                        GithubMcpConfig githubMcpConfig,
                        long timeoutMinutes,
                        String customInstruction) {
+        this(config, client, githubToken, githubMcpConfig, timeoutMinutes, customInstruction, null);
+    }
+
+    public ReviewAgent(AgentConfig config,
+                       CopilotClient client,
+                       String githubToken,
+                       GithubMcpConfig githubMcpConfig,
+                       long timeoutMinutes,
+                       String customInstruction,
+                       String reasoningEffort) {
         this.config = config;
         this.client = client;
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
         this.timeoutMinutes = timeoutMinutes;
         this.customInstruction = customInstruction;
+        this.reasoningEffort = reasoningEffort;
     }
     
     /**
@@ -107,7 +121,14 @@ public class ReviewAgent {
                 .setMode(SystemMessageMode.APPEND)
                 .setContent(systemPrompt))
             .setMcpServers(Map.of("github", githubMcp));
-        
+
+        // Explicitly set reasoning effort for reasoning models (e.g. Claude Opus)
+        String effort = resolveReasoningEffort(config.getModel(), reasoningEffort);
+        if (effort != null) {
+            logger.info("Setting reasoning effort '{}' for model: {}", effort, config.getModel());
+            sessionConfig.setReasoningEffort(effort);
+        }
+
         var session = client.createSession(sessionConfig).get(timeoutMinutes, TimeUnit.MINUTES);
         long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
         
@@ -155,7 +176,14 @@ public class ReviewAgent {
             .setSystemMessage(new SystemMessageConfig()
                 .setMode(SystemMessageMode.APPEND)
                 .setContent(systemPrompt));
-        
+
+        // Explicitly set reasoning effort for reasoning models (e.g. Claude Opus)
+        String effort = resolveReasoningEffort(config.getModel(), reasoningEffort);
+        if (effort != null) {
+            logger.info("Setting reasoning effort '{}' for model: {}", effort, config.getModel());
+            sessionConfig.setReasoningEffort(effort);
+        }
+
         var session = client.createSession(sessionConfig).get(timeoutMinutes, TimeUnit.MINUTES);
         long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
         

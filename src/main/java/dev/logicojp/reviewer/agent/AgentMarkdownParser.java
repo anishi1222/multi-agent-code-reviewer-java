@@ -204,8 +204,11 @@ public class AgentMarkdownParser {
             if (matcher.matches()) {
                 String sectionKey = normalizeSectionKey(matcher.group(1));
                 if (RECOGNIZED_SECTIONS.contains(sectionKey)) {
+                    if (sectionBuilders.containsKey(sectionKey)) {
+                        logger.warn("Duplicate section '## {}' found; using the last occurrence.", matcher.group(1));
+                    }
                     currentKey = sectionKey;
-                    sectionBuilders.putIfAbsent(currentKey, new StringBuilder());
+                    sectionBuilders.put(currentKey, new StringBuilder());
                     continue;
                 }
             }

@@ -211,7 +211,8 @@ public record AgentConfig(
         }
 
         if (focusAreas != null && !focusAreas.isEmpty()) {
-            sb.append("## レビュー観点\n");
+            sb.append("## レビュー観点\n\n");
+            sb.append("以下の観点 **のみ** に基づいてレビューしてください。これ以外の観点での指摘は行わないでください。\n\n");
             for (String area : focusAreas) {
                 sb.append("- ").append(area).append("\n");
             }

@@ -366,7 +366,8 @@ public class ReviewCommand {
         try {
             System.out.println("Starting reviews...");
             List<ReviewResult> results = reviewService.executeReviews(
-                agentConfigs, target, resolvedToken, parallelism, customInstruction);
+                agentConfigs, target, resolvedToken, parallelism,
+                customInstruction, modelConfig.reasoningEffort());
 
             // Generate individual reports
             System.out.println("\nGenerating reports...");
@@ -380,7 +381,8 @@ public class ReviewCommand {
             if (!noSummary) {
                 System.out.println("\nGenerating executive summary...");
                 Path summaryPath = reportService.generateSummary(
-                    results, target.getDisplayName(), outputDirectory, modelConfig.summaryModel());
+                    results, target.getDisplayName(), outputDirectory,
+                    modelConfig.summaryModel(), modelConfig.reasoningEffort());
                 System.out.println("  ✓ " + summaryPath.getFileName());
             }
 
