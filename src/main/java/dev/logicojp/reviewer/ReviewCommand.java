@@ -9,6 +9,7 @@ import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.ReportService;
 import dev.logicojp.reviewer.service.ReviewService;
 import dev.logicojp.reviewer.target.ReviewTarget;
+import dev.logicojp.reviewer.util.GitHubTokenResolver;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -213,14 +214,17 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
 
         // Build review target
         ReviewTarget target;
+        String resolvedToken = null;
         if (targetSelection.repository != null) {
+            GitHubTokenResolver tokenResolver = new GitHubTokenResolver();
+            resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
             target = ReviewTarget.gitHub(targetSelection.repository);
             
             // Validate GitHub token for repository access
-            if (githubToken == null || githubToken.isEmpty() || githubToken.equals("${GITHUB_TOKEN}")) {
+            if (resolvedToken == null || resolvedToken.isBlank()) {
                 throw new ParameterException(
                     spec.commandLine(),
-                    "GitHub token is required for repository review. Set GITHUB_TOKEN environment variable or use --token option."
+                    "GitHub token is required for repository review. Set GITHUB_TOKEN, use --token, or login with `gh auth login`."
                 );
             }
         } else if (targetSelection.localDirectory != null) {
@@ -277,13 +281,14 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         // Load custom instructions
         String customInstruction = loadCustomInstructions(target);
         
+
         // Execute reviews using the Copilot service
-        copilotService.initialize(githubToken);
+        copilotService.initialize(resolvedToken);
         
         try {
             System.out.println("Starting reviews...");
             List<ReviewResult> results = reviewService.executeReviews(
-                agentConfigs, target, githubToken, parallelism, customInstruction);
+                agentConfigs, target, resolvedToken, parallelism, customInstruction);
             
             // Generate individual reports
             System.out.println("\nGenerating reports...");
