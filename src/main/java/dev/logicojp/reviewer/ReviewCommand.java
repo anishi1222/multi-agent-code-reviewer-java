@@ -9,7 +9,7 @@ import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.ReportService;
 import dev.logicojp.reviewer.service.ReviewService;
 import dev.logicojp.reviewer.target.ReviewTarget;
-import dev.logicojp.reviewer.util.GithubTokenResolver;
+import dev.logicojp.reviewer.util.GitHubTokenResolver;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -214,7 +214,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
 
         // Build review target
         ReviewTarget target;
-        GithubTokenResolver tokenResolver = new GithubTokenResolver();
+        GitHubTokenResolver tokenResolver = new GitHubTokenResolver();
         String resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
         if (targetSelection.repository != null) {
             target = ReviewTarget.gitHub(targetSelection.repository);
@@ -279,6 +279,15 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         
         // Load custom instructions
         String customInstruction = loadCustomInstructions(target);
+        
+        // Ensure we have a valid token before initializing Copilot
+        if (resolvedToken == null || resolvedToken.trim().isEmpty()) {
+            throw new ParameterException(
+                spec.commandLine(),
+                "Error: GitHub token is required to run Copilot reviews. " +
+                "Please provide it via --github-token or the GITHUB_TOKEN environment variable."
+            );
+        }
         
         // Execute reviews using the Copilot service
         copilotService.initialize(resolvedToken);

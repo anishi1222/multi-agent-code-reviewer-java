@@ -5,7 +5,7 @@ import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.SkillService;
 import dev.logicojp.reviewer.skill.SkillDefinition;
 import dev.logicojp.reviewer.skill.SkillResult;
-import dev.logicojp.reviewer.util.GithubTokenResolver;
+import dev.logicojp.reviewer.util.GitHubTokenResolver;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +83,7 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
             exitCode = CommandLine.ExitCode.USAGE;
             return;
         }
-        GithubTokenResolver tokenResolver = new GithubTokenResolver();
+        GitHubTokenResolver tokenResolver = new GitHubTokenResolver();
         String resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
         if (resolvedToken == null || resolvedToken.isBlank()) {
             throw new IllegalArgumentException("GitHub token is required. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.");

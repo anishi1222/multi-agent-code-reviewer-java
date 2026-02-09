@@ -11,9 +11,9 @@ import java.util.Optional;
 /**
  * Resolves a GitHub token from CLI options, environment, or gh auth.
  */
-public final class GithubTokenResolver {
+public final class GitHubTokenResolver {
 
-    private static final Logger logger = LoggerFactory.getLogger(GithubTokenResolver.class);
+    private static final Logger logger = LoggerFactory.getLogger(GitHubTokenResolver.class);
     private static final String PLACEHOLDER = "${GITHUB_TOKEN}";
 
     public Optional<String> resolve(String providedToken) {
@@ -54,8 +54,12 @@ public final class GithubTokenResolver {
                 }
                 return Optional.of(line.trim());
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Interrupted while resolving token from gh auth", e);
+            return Optional.empty();
         } catch (Exception e) {
-            logger.warn("Failed to resolve token from gh auth: {}", e.getMessage());
+            logger.warn("Failed to resolve token from gh auth", e);
             return Optional.empty();
         }
     }
