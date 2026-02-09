@@ -38,7 +38,8 @@ public record GithubMcpConfig(
         server.put("tools", tools);
 
         Map<String, String> combinedHeaders = new HashMap<>(headers);
-        if (authHeaderName != null && !authHeaderName.isBlank()
+        if (token != null && !token.isBlank()
+            && authHeaderName != null && !authHeaderName.isBlank()
             && authHeaderTemplate != null && !authHeaderTemplate.isBlank()) {
             String headerValue = authHeaderTemplate
                 .replace("${token}", token)

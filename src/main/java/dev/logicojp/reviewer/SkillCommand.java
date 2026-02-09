@@ -5,6 +5,7 @@ import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.SkillService;
 import dev.logicojp.reviewer.skill.SkillDefinition;
 import dev.logicojp.reviewer.skill.SkillResult;
+import dev.logicojp.reviewer.util.GithubTokenResolver;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,8 +83,10 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
             exitCode = CommandLine.ExitCode.USAGE;
             return;
         }
-        if (githubToken == null || githubToken.isEmpty() || githubToken.equals("${GITHUB_TOKEN}")) {
-            throw new IllegalArgumentException("GitHub token is required.");
+        GithubTokenResolver tokenResolver = new GithubTokenResolver();
+        String resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
+        if (resolvedToken == null || resolvedToken.isBlank()) {
+            throw new IllegalArgumentException("GitHub token is required. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.");
         }
         Map<String, String> parameters = parseParameters();
         if (!skillService.getSkill(skillId).isPresent()) {
@@ -91,11 +94,11 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
             exitCode = CommandLine.ExitCode.USAGE;
             return;
         }
-        copilotService.initialize(githubToken);
+        copilotService.initialize(resolvedToken);
         try {
             System.out.println("Executing skill: " + skillId);
             System.out.println("Parameters: " + parameters);
-            SkillResult result = skillService.executeSkill(skillId, parameters, githubToken, model)
+            SkillResult result = skillService.executeSkill(skillId, parameters, resolvedToken, model)
                 .get(10, TimeUnit.MINUTES);
             if (result.isSuccess()) {
                 System.out.println("=== Skill Result ===\n");
