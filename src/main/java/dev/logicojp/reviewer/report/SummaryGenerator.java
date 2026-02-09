@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.report;
 
 import com.github.copilot.sdk.*;
 import com.github.copilot.sdk.json.*;
+import dev.logicojp.reviewer.config.ModelConfig;
 import dev.logicojp.reviewer.service.TemplateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Generates executive summary by aggregating all agent review results.
+ * All prompt/template content is loaded from external templates via {@link TemplateService}.
  */
 public class SummaryGenerator {
     
@@ -28,25 +30,22 @@ public class SummaryGenerator {
     private final Path outputDirectory;
     private final CopilotClient client;
     private final String summaryModel;
+    private final String reasoningEffort;
     private final long timeoutMinutes;
-    private final Path systemPromptPath;
-    private final Path userPromptPath;
     private final TemplateService templateService;
     
     public SummaryGenerator(
             Path outputDirectory, 
             CopilotClient client, 
-            String summaryModel, 
+            String summaryModel,
+            String reasoningEffort,
             long timeoutMinutes,
-            Path systemPromptPath,
-            Path userPromptPath,
             TemplateService templateService) {
         this.outputDirectory = outputDirectory;
         this.client = client;
         this.summaryModel = summaryModel;
+        this.reasoningEffort = reasoningEffort;
         this.timeoutMinutes = timeoutMinutes;
-        this.systemPromptPath = systemPromptPath;
-        this.userPromptPath = userPromptPath;
         this.templateService = templateService;
     }
     
@@ -76,15 +75,41 @@ public class SummaryGenerator {
         return summaryPath;
     }
     
+    /**
+     * Determines the appropriate reasoning effort for a model.
+     * <p>If the model is a reasoning model, returns the configured
+     * {@code reasoningEffort} value. Otherwise returns {@code null}.</p>
+     *
+     * @param model the model name
+     * @param configuredEffort the configured reasoning effort value
+     * @return the reasoning effort level, or null if not a reasoning model
+     */
+    public static String resolveReasoningEffort(String model, String configuredEffort) {
+        if (ModelConfig.isReasoningModel(model)) {
+            return configuredEffort != null ? configuredEffort : ModelConfig.DEFAULT_REASONING_EFFORT;
+        }
+        return null;
+    }
+
     private String buildSummaryWithAI(List<ReviewResult> results, String repository) throws Exception {
         // Create a new session for summary generation
         logger.info("Using model for summary: {}", summaryModel);
-        var session = client.createSession(
-            new SessionConfig()
+        String systemPrompt = templateService.getSummarySystemPrompt();
+        var sessionConfig = new SessionConfig()
                 .setModel(summaryModel)
                 .setSystemMessage(new SystemMessageConfig()
                     .setMode(SystemMessageMode.REPLACE)
-                    .setContent(buildSummarySystemPrompt()))
+                    .setContent(systemPrompt));
+
+        // Explicitly set reasoning effort for reasoning models to override
+        // the Copilot CLI's auto-detection which may send invalid effort values.
+        String effort = resolveReasoningEffort(summaryModel, reasoningEffort);
+        if (effort != null) {
+            logger.info("Setting reasoning effort '{}' for model: {}", effort, summaryModel);
+            sessionConfig.setReasoningEffort(effort);
+        }
+
+        var session = client.createSession(sessionConfig
         ).get(timeoutMinutes, TimeUnit.MINUTES);
         long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
         
@@ -96,33 +121,38 @@ public class SummaryGenerator {
             return response.getData().getContent();
         } catch (java.util.concurrent.TimeoutException ex) {
             logger.error("Summary generation timed out: {}", ex.getMessage());
-            return buildFallbackSummary(results, repository);
+            return buildFallbackSummary(results);
         } finally {
             session.close();
         }
     }
 
-    private String buildFallbackSummary(List<ReviewResult> results, String repository) {
-        // Build table rows
+    private String buildFallbackSummary(List<ReviewResult> results) {
+        // Build table rows using template
         StringBuilder tableRowsBuilder = new StringBuilder();
         for (ReviewResult result : results) {
-            tableRowsBuilder.append("| ").append(result.getAgentConfig().getDisplayName())
-              .append(" | - | - | - | - | - |\n");
+            Map<String, String> rowPlaceholders = Map.of(
+                "displayName", result.getAgentConfig().getDisplayName());
+            tableRowsBuilder.append(templateService.getFallbackAgentRow(rowPlaceholders));
         }
         
-        // Build agent summaries
+        // Build agent summaries using templates
         StringBuilder agentSummariesBuilder = new StringBuilder();
         for (ReviewResult result : results) {
-            agentSummariesBuilder.append("### ").append(result.getAgentConfig().getDisplayName()).append("\n");
             if (result.isSuccess()) {
-                agentSummariesBuilder.append("- 指摘件数: 不明（タイムアウトのため集計不可）\n");
+                Map<String, String> successPlaceholders = Map.of(
+                    "displayName", result.getAgentConfig().getDisplayName());
+                agentSummariesBuilder.append(templateService.getFallbackAgentSuccess(successPlaceholders));
             } else {
-                agentSummariesBuilder.append("- レビュー失敗: ").append(result.getErrorMessage()).append("\n");
+                Map<String, String> failurePlaceholders = Map.of(
+                    "displayName", result.getAgentConfig().getDisplayName(),
+                    "errorMessage", result.getErrorMessage() != null ? result.getErrorMessage() : "");
+                agentSummariesBuilder.append(templateService.getFallbackAgentFailure(failurePlaceholders));
             }
             agentSummariesBuilder.append("\n");
         }
         
-        // Apply template
+        // Apply fallback summary template
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("tableRows", tableRowsBuilder.toString());
         placeholders.put("agentSummaries", agentSummariesBuilder.toString());
@@ -130,101 +160,45 @@ public class SummaryGenerator {
         return templateService.getFallbackSummaryTemplate(placeholders);
     }
     
-    private String buildSummarySystemPrompt() throws IOException {
-        if (systemPromptPath != null && Files.exists(systemPromptPath)) {
-            logger.info("Loading system prompt from: {}", systemPromptPath);
-            return Files.readString(systemPromptPath);
-        }
-        logger.warn("System prompt file not found at {}, using default", systemPromptPath);
-        return getDefaultSystemPrompt();
-    }
-    
-    private String getDefaultSystemPrompt() {
-        return """
-            あなたは経験豊富なテクニカルリードであり、コードレビュー結果を経営層向けにまとめる専門家です。
-            
-            以下の点を重視してエグゼクティブサマリーを作成してください：
-            1. 技術的な問題を非技術者にも理解できるように説明
-            2. ビジネスインパクトを明確に伝える
-            3. 優先度に基づいたアクションプランを提示
-            4. 全体的なリスク評価を行う
-            5. 良い点と改善点を明確に区別する
-            """;
-    }
-    
-    private String buildSummaryPrompt(List<ReviewResult> results, String repository) throws IOException {
-        String template = loadUserPromptTemplate();
-        
-        // Build results section
+    private String buildSummaryPrompt(List<ReviewResult> results, String repository) {
+        // Build results section using templates
         StringBuilder resultsSection = new StringBuilder();
         for (ReviewResult result : results) {
-            resultsSection.append("## ").append(result.getAgentConfig().getDisplayName()).append("\n\n");
-            
             if (result.isSuccess()) {
-                resultsSection.append(result.getContent());
+                Map<String, String> entryPlaceholders = Map.of(
+                    "displayName", result.getAgentConfig().getDisplayName(),
+                    "content", result.getContent() != null ? result.getContent() : "");
+                resultsSection.append(templateService.getSummaryResultEntry(entryPlaceholders));
             } else {
-                resultsSection.append("⚠️ レビュー失敗: ").append(result.getErrorMessage());
+                Map<String, String> errorPlaceholders = Map.of(
+                    "displayName", result.getAgentConfig().getDisplayName(),
+                    "errorMessage", result.getErrorMessage() != null ? result.getErrorMessage() : "");
+                resultsSection.append(templateService.getSummaryResultErrorEntry(errorPlaceholders));
             }
-            
-            resultsSection.append("\n\n---\n\n");
         }
         
-        // Replace placeholders in template
-        return template
-            .replace("{{repository}}", repository)
-            .replace("{{results}}", resultsSection.toString());
-    }
-    
-    private String loadUserPromptTemplate() throws IOException {
-        if (userPromptPath != null && Files.exists(userPromptPath)) {
-            logger.info("Loading user prompt template from: {}", userPromptPath);
-            String template = Files.readString(userPromptPath);
-            // Remove Mustache-style conditionals since we're using simple replacement
-            return cleanMustacheTemplate(template);
-        }
-        logger.warn("User prompt file not found, using default");
-        return getDefaultUserPromptTemplate();
-    }
-    
-    private String cleanMustacheTemplate(String template) {
-        // Remove Mustache notation, keep just the placeholder format
-        return template
-            .replaceAll("\\{\\{#results\\}\\}", "")
-            .replaceAll("\\{\\{/results\\}\\}", "")
-            .replaceAll("\\{\\{#success\\}\\}", "")
-            .replaceAll("\\{\\{/success\\}\\}", "")
-            .replaceAll("\\{\\{\\^success\\}\\}", "")
-            .replaceAll("\\{\\{displayName\\}\\}", "")
-            .replaceAll("\\{\\{content\\}\\}", "")
-            .replaceAll("\\{\\{errorMessage\\}\\}", "");
-    }
-    
-    private String getDefaultUserPromptTemplate() {
-        return """
-            以下は複数の専門エージェントによるGitHubリポジトリのコードレビュー結果です。
-            これらを総合的に分析し、経営層向けのエグゼクティブサマリーを作成してください。
-            
-            **対象リポジトリ**: {{repository}}
-            
-            ---
-            
-            {{results}}
-            """;
+        // Apply summary prompt template
+        Map<String, String> placeholders = Map.of(
+            "repository", repository,
+            "results", resultsSection.toString());
+        return templateService.getSummaryUserPrompt(placeholders);
     }
     
     private String buildFinalReport(String summaryContent, String repository, 
                                      List<ReviewResult> results) {
-        // Build individual report links
+        // Build individual report links using template
         StringBuilder reportLinksBuilder = new StringBuilder();
         for (ReviewResult result : results) {
             String filename = String.format("%s_%s.md", 
                 result.getAgentConfig().getName(),
                 LocalDate.now().format(FILE_DATE_FORMATTER));
-            reportLinksBuilder.append("- [").append(result.getAgentConfig().getDisplayName())
-              .append("](").append(filename).append(")\n");
+            Map<String, String> linkPlaceholders = Map.of(
+                "displayName", result.getAgentConfig().getDisplayName(),
+                "filename", filename);
+            reportLinksBuilder.append(templateService.getReportLinkEntry(linkPlaceholders));
         }
         
-        // Apply template
+        // Apply executive summary template
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("date", LocalDate.now().format(DATE_FORMATTER));
         placeholders.put("repository", repository);

@@ -17,7 +17,13 @@ public record TemplateConfig(
     @Nullable String fallbackSummary,
     @Nullable String customInstructionSection,
     @Nullable String localReviewContent,
-    @Nullable String reviewCustomInstruction
+    @Nullable String reviewCustomInstruction,
+    @Nullable String summaryResultEntry,
+    @Nullable String summaryResultErrorEntry,
+    @Nullable String fallbackAgentRow,
+    @Nullable String fallbackAgentSuccess,
+    @Nullable String fallbackAgentFailure,
+    @Nullable String reportLinkEntry
 ) {
 
     private static final String DEFAULT_DIRECTORY = "templates";
@@ -30,6 +36,12 @@ public record TemplateConfig(
     private static final String DEFAULT_CUSTOM_INSTRUCTION_SECTION = "custom-instruction-section.md";
     private static final String DEFAULT_LOCAL_REVIEW_CONTENT = "local-review-content.md";
     private static final String DEFAULT_REVIEW_CUSTOM_INSTRUCTION = "review-custom-instruction.md";
+    private static final String DEFAULT_SUMMARY_RESULT_ENTRY = "summary-result-entry.md";
+    private static final String DEFAULT_SUMMARY_RESULT_ERROR_ENTRY = "summary-result-error-entry.md";
+    private static final String DEFAULT_FALLBACK_AGENT_ROW = "fallback-agent-row.md";
+    private static final String DEFAULT_FALLBACK_AGENT_SUCCESS = "fallback-agent-success.md";
+    private static final String DEFAULT_FALLBACK_AGENT_FAILURE = "fallback-agent-failure.md";
+    private static final String DEFAULT_REPORT_LINK_ENTRY = "report-link-entry.md";
 
     public TemplateConfig {
         directory = (directory == null || directory.isBlank()) ? DEFAULT_DIRECTORY : directory;
@@ -51,5 +63,17 @@ public record TemplateConfig(
             ? DEFAULT_LOCAL_REVIEW_CONTENT : localReviewContent;
         reviewCustomInstruction = (reviewCustomInstruction == null || reviewCustomInstruction.isBlank())
             ? DEFAULT_REVIEW_CUSTOM_INSTRUCTION : reviewCustomInstruction;
+        summaryResultEntry = (summaryResultEntry == null || summaryResultEntry.isBlank())
+            ? DEFAULT_SUMMARY_RESULT_ENTRY : summaryResultEntry;
+        summaryResultErrorEntry = (summaryResultErrorEntry == null || summaryResultErrorEntry.isBlank())
+            ? DEFAULT_SUMMARY_RESULT_ERROR_ENTRY : summaryResultErrorEntry;
+        fallbackAgentRow = (fallbackAgentRow == null || fallbackAgentRow.isBlank())
+            ? DEFAULT_FALLBACK_AGENT_ROW : fallbackAgentRow;
+        fallbackAgentSuccess = (fallbackAgentSuccess == null || fallbackAgentSuccess.isBlank())
+            ? DEFAULT_FALLBACK_AGENT_SUCCESS : fallbackAgentSuccess;
+        fallbackAgentFailure = (fallbackAgentFailure == null || fallbackAgentFailure.isBlank())
+            ? DEFAULT_FALLBACK_AGENT_FAILURE : fallbackAgentFailure;
+        reportLinkEntry = (reportLinkEntry == null || reportLinkEntry.isBlank())
+            ? DEFAULT_REPORT_LINK_ENTRY : reportLinkEntry;
     }
 }

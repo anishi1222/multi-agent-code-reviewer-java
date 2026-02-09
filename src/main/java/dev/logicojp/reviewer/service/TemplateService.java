@@ -167,6 +167,48 @@ public class TemplateService {
     }
 
     /**
+     * Loads the summary result entry template (per-agent success) with placeholders applied.
+     */
+    public String getSummaryResultEntry(Map<String, String> placeholders) {
+        return loadTemplate(config.summaryResultEntry(), placeholders);
+    }
+
+    /**
+     * Loads the summary result error entry template (per-agent failure) with placeholders applied.
+     */
+    public String getSummaryResultErrorEntry(Map<String, String> placeholders) {
+        return loadTemplate(config.summaryResultErrorEntry(), placeholders);
+    }
+
+    /**
+     * Loads the fallback agent row template (table row) with placeholders applied.
+     */
+    public String getFallbackAgentRow(Map<String, String> placeholders) {
+        return loadTemplate(config.fallbackAgentRow(), placeholders);
+    }
+
+    /**
+     * Loads the fallback agent success detail template with placeholders applied.
+     */
+    public String getFallbackAgentSuccess(Map<String, String> placeholders) {
+        return loadTemplate(config.fallbackAgentSuccess(), placeholders);
+    }
+
+    /**
+     * Loads the fallback agent failure detail template with placeholders applied.
+     */
+    public String getFallbackAgentFailure(Map<String, String> placeholders) {
+        return loadTemplate(config.fallbackAgentFailure(), placeholders);
+    }
+
+    /**
+     * Loads the report link entry template with placeholders applied.
+     */
+    public String getReportLinkEntry(Map<String, String> placeholders) {
+        return loadTemplate(config.reportLinkEntry(), placeholders);
+    }
+
+    /**
      * Gets the template configuration.
      */
     public TemplateConfig getConfig() {

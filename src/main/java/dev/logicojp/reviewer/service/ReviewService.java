@@ -48,7 +48,7 @@ public class ReviewService {
             Map<String, AgentConfig> agentConfigs,
             ReviewTarget target,
             String githubToken) {
-        return executeReviews(agentConfigs, target, githubToken, executionConfig.parallelism(), null);
+        return executeReviews(agentConfigs, target, githubToken, executionConfig.parallelism(), null, null);
     }
     
     /**
@@ -64,7 +64,7 @@ public class ReviewService {
             ReviewTarget target,
             String githubToken,
             int parallelism) {
-        return executeReviews(agentConfigs, target, githubToken, parallelism, null);
+        return executeReviews(agentConfigs, target, githubToken, parallelism, null, null);
     }
     
     /**
@@ -74,6 +74,7 @@ public class ReviewService {
      * @param githubToken GitHub authentication token (required for GitHub targets)
      * @param parallelism Number of parallel agents (overrides config)
      * @param customInstruction Custom instruction content (optional)
+     * @param reasoningEffort Reasoning effort level for reasoning models (optional)
      * @return List of review results from all agents
      */
     public List<ReviewResult> executeReviews(
@@ -81,7 +82,8 @@ public class ReviewService {
             ReviewTarget target,
             String githubToken,
             int parallelism,
-            String customInstruction) {
+            String customInstruction,
+            String reasoningEffort) {
         
         logger.info("Executing reviews for {} agents on target: {}", 
             agentConfigs.size(), target.getDisplayName());
@@ -111,7 +113,7 @@ public class ReviewService {
         
         ReviewOrchestrator orchestrator = new ReviewOrchestrator(
             copilotService.getClient(), githubToken, githubMcpConfig, overriddenConfig,
-            effectiveCustomInstruction);
+            effectiveCustomInstruction, reasoningEffort);
         
         try {
             return orchestrator.executeReviews(agentConfigs, target);

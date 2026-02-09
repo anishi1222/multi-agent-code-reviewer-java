@@ -14,11 +14,11 @@
 
 | レビュー視点 | Critical | High | Medium | Low | 合計 |
 |-------------|----------|------|--------|-----|------|
-{{agentSummaryRows}}
+{{tableRows}}
 
 ## 各エージェント別サマリー
 
-{{agentDetails}}
+{{agentSummaries}}
 
 ## リスク評価
 

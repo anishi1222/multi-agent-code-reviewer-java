@@ -27,12 +27,13 @@ public class ReviewOrchestrator {
     private final ExecutionConfig executionConfig;
     private final ExecutorService executorService;
     private final String customInstruction;
+    private final String reasoningEffort;
     
     public ReviewOrchestrator(CopilotClient client,
                               String githubToken,
                               GithubMcpConfig githubMcpConfig,
                               ExecutionConfig executionConfig) {
-        this(client, githubToken, githubMcpConfig, executionConfig, null);
+        this(client, githubToken, githubMcpConfig, executionConfig, null, null);
     }
     
     public ReviewOrchestrator(CopilotClient client,
@@ -40,6 +41,15 @@ public class ReviewOrchestrator {
                               GithubMcpConfig githubMcpConfig,
                               ExecutionConfig executionConfig,
                               String customInstruction) {
+        this(client, githubToken, githubMcpConfig, executionConfig, customInstruction, null);
+    }
+
+    public ReviewOrchestrator(CopilotClient client,
+                              String githubToken,
+                              GithubMcpConfig githubMcpConfig,
+                              ExecutionConfig executionConfig,
+                              String customInstruction,
+                              String reasoningEffort) {
         this.client = client;
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
@@ -47,6 +57,7 @@ public class ReviewOrchestrator {
         // Java 21+: Use virtual threads for better scalability with I/O-bound tasks
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
         this.customInstruction = customInstruction;
+        this.reasoningEffort = reasoningEffort;
         
         if (customInstruction != null && !customInstruction.isBlank()) {
             logger.info("Custom instruction loaded ({} characters)", customInstruction.length());
@@ -68,7 +79,7 @@ public class ReviewOrchestrator {
         
         for (AgentConfig config : agents.values()) {
             ReviewAgent agent = new ReviewAgent(config, client, githubToken, githubMcpConfig,
-                executionConfig.agentTimeoutMinutes(), customInstruction);
+                executionConfig.agentTimeoutMinutes(), customInstruction, reasoningEffort);
             CompletableFuture<ReviewResult> future = agent.review(target, executorService)
                 .orTimeout(timeoutMinutes, TimeUnit.MINUTES)
                 .exceptionally(ex -> {

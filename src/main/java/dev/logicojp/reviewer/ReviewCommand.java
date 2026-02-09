@@ -1,6 +1,10 @@
 package dev.logicojp.reviewer;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.cli.CliParsing;
+import dev.logicojp.reviewer.cli.CliUsage;
+import dev.logicojp.reviewer.cli.CliValidationException;
+import dev.logicojp.reviewer.cli.ExitCodes;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.ModelConfig;
 import dev.logicojp.reviewer.instruction.CustomInstructionLoader;
@@ -12,164 +16,80 @@ import dev.logicojp.reviewer.service.ReviewService;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import dev.logicojp.reviewer.util.GitHubTokenResolver;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
-import picocli.CommandLine.ArgGroup;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.IExitCodeGenerator;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Option;
-import picocli.CommandLine.ParentCommand;
-import picocli.CommandLine.ParameterException;
-import picocli.CommandLine.Spec;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Main review command that executes the multi-agent code review.
  */
-@Command(
-    name = "run",
-    description = "Execute a multi-agent code review on a GitHub repository."
-)
-public class ReviewCommand implements Runnable, IExitCodeGenerator {
-    
-    private static final Logger logger = LoggerFactory.getLogger(ReviewCommand.class);
-    
-    @ParentCommand
-    private ReviewApp parent;
+@Singleton
+public class ReviewCommand {
 
-    @Spec
-    private CommandSpec spec;
-    
+    private static final Logger logger = LoggerFactory.getLogger(ReviewCommand.class);
+
     private final AgentService agentService;
-    
+
     private final CopilotService copilotService;
-    
+
     private final ReviewService reviewService;
-    
+
     private final ReportService reportService;
 
     private final ModelConfig defaultModelConfig;
 
     private final ExecutionConfig executionConfig;
 
-    private int exitCode = CommandLine.ExitCode.OK;
-    
+    private int exitCode = ExitCodes.OK;
+
     /**
      * Target selection - either GitHub repository or local directory.
      */
     static class TargetSelection {
-        @Option(
-            names = {"-r", "--repo"},
-            description = "Target GitHub repository (e.g., owner/repo)"
-        )
         private String repository;
-
-        @Option(
-            names = {"-l", "--local"},
-            description = "Target local directory path"
-        )
         private Path localDirectory;
     }
 
-    @ArgGroup(exclusive = true, multiplicity = "1")
     private TargetSelection targetSelection;
-    
-    static class AgentSelection {
-        @Option(
-            names = {"--all"},
-            description = "Run all available agents"
-        )
-        private boolean allAgents;
 
-        @Option(
-            names = {"-a", "--agents"},
-            description = "Comma-separated list of agent names to run",
-            split = ","
-        )
+    static class AgentSelection {
+        private boolean allAgents;
         private List<String> agents;
     }
 
-    @ArgGroup(exclusive = true, multiplicity = "1")
     private AgentSelection agentSelection;
-    
-    @Option(
-        names = {"-o", "--output"},
-        description = "Output directory for reports (default: ./report)",
-        defaultValue = "./report"
-    )
+
     private Path outputDirectory;
-    
-    @Option(
-        names = {"--agents-dir"},
-        description = "Additional directory for agent definitions. Can be specified multiple times.",
-        arity = "1..*"
-    )
+
     private List<Path> additionalAgentDirs;
-    
-    @Option(
-        names = {"--token"},
-        description = "GitHub token (or set GITHUB_TOKEN env variable)",
-        defaultValue = "${GITHUB_TOKEN}"
-    )
+
     private String githubToken;
-    
-    @Option(
-        names = {"--parallelism"},
-        description = "Number of agents to run in parallel (default: 4)",
-        defaultValue = "4"
-    )
+
     private int parallelism;
-    
-    @Option(
-        names = {"--no-summary"},
-        description = "Skip generating executive summary"
-    )
+
     private boolean noSummary;
-    
+
     // LLM Model options
-    @Option(
-        names = {"--review-model"},
-        description = "LLM model for code review (default: agent's configured model or claude-sonnet-4)"
-    )
     private String reviewModel;
-    
-    @Option(
-        names = {"--report-model"},
-        description = "LLM model for report generation (default: same as review-model)"
-    )
+
     private String reportModel;
-    
-    @Option(
-        names = {"--summary-model"},
-        description = "LLM model for executive summary generation (default: from application.yml)"
-    )
+
     private String summaryModel;
-    
-    @Option(
-        names = {"--model"},
-        description = "Default LLM model for all stages (can be overridden by specific model options)"
-    )
+
     private String defaultModel;
-    
+
     // Custom instruction options
-    @Option(
-        names = {"--instructions"},
-        description = "Path to custom instruction file (Markdown). Can be specified multiple times.",
-        arity = "1..*"
-    )
     private List<Path> instructionPaths;
-    
-    @Option(
-        names = {"--no-instructions"},
-        description = "Disable automatic loading of custom instructions"
-    )
+
     private boolean noInstructions;
+
+    private boolean helpRequested;
 
     @Inject
     public ReviewCommand(
@@ -187,36 +107,189 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         this.defaultModelConfig = defaultModelConfig;
         this.executionConfig = executionConfig;
     }
-    
-    @Override
-    public void run() {
-        try {
-            execute();
-        } catch (ParameterException e) {
-            exitCode = CommandLine.ExitCode.USAGE;
-            spec.commandLine().getErr().println(e.getMessage());
-            spec.commandLine().usage(spec.commandLine().getErr());
-        } catch (Exception e) {
-            exitCode = CommandLine.ExitCode.SOFTWARE;
-            logger.error("Execution failed: {}", e.getMessage(), e);
-            spec.commandLine().getErr().println("Error: " + e.getMessage());
-            e.printStackTrace(spec.commandLine().getErr());
-        }
-    }
 
-    public int getExitCode() {
+    public int execute(String[] args) {
+        resetDefaults();
+        try {
+            parseArgs(args);
+            if (helpRequested) {
+                return ExitCodes.OK;
+            }
+            executeInternal();
+        } catch (CliValidationException e) {
+            exitCode = ExitCodes.USAGE;
+            System.err.println(e.getMessage());
+            if (e.showUsage()) {
+                CliUsage.printRun(System.err);
+            }
+        } catch (Exception e) {
+            exitCode = ExitCodes.SOFTWARE;
+            logger.error("Execution failed: {}", e.getMessage(), e);
+            System.err.println("Error: " + e.getMessage());
+            e.printStackTrace(System.err);
+        }
         return exitCode;
     }
-    
-    private void execute() throws Exception {
-        if (agentSelection == null) {
-            throw new ParameterException(spec.commandLine(), "Either --all or --agents must be specified.");
+
+    private void resetDefaults() {
+        exitCode = ExitCodes.OK;
+        targetSelection = null;
+        agentSelection = null;
+        outputDirectory = Path.of("./report");
+        additionalAgentDirs = new ArrayList<>();
+        githubToken = System.getenv("GITHUB_TOKEN");
+        parallelism = executionConfig.parallelism();
+        noSummary = false;
+        reviewModel = null;
+        reportModel = null;
+        summaryModel = null;
+        defaultModel = null;
+        instructionPaths = new ArrayList<>();
+        noInstructions = false;
+        helpRequested = false;
+    }
+
+    private void parseArgs(String[] args) {
+        if (args == null) {
+            args = new String[0];
+        }
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            switch (arg) {
+                case "-h", "--help" -> {
+                    CliUsage.printRun(System.out);
+                    helpRequested = true;
+                    return;
+                }
+                case "-r", "--repo" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--repo");
+                    i = value.newIndex();
+                    ensureTargetSelection().repository = value.value();
+                }
+                case "-l", "--local" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--local");
+                    i = value.newIndex();
+                    ensureTargetSelection().localDirectory = Path.of(value.value());
+                }
+                case "--all" -> ensureAgentSelection().allAgents = true;
+                case "-a", "--agents" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--agents");
+                    i = value.newIndex();
+                    List<String> agents = CliParsing.splitComma(value.value());
+                    if (agents.isEmpty()) {
+                        throw new CliValidationException("--agents requires at least one value", true);
+                    }
+                    AgentSelection selection = ensureAgentSelection();
+                    if (selection.agents == null) {
+                        selection.agents = new ArrayList<>();
+                    }
+                    selection.agents.addAll(agents);
+                }
+                case "-o", "--output" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--output");
+                    i = value.newIndex();
+                    outputDirectory = Path.of(value.value());
+                }
+                case "--agents-dir" -> {
+                    CliParsing.MultiValue values = CliParsing.readMultiValues(arg, args, i, "--agents-dir");
+                    i = values.newIndex();
+                    for (String path : values.values()) {
+                        additionalAgentDirs.add(Path.of(path));
+                    }
+                }
+                case "--token" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--token");
+                    i = value.newIndex();
+                    githubToken = value.value();
+                }
+                case "--parallelism" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--parallelism");
+                    i = value.newIndex();
+                    parallelism = parseInt(value.value(), "--parallelism");
+                }
+                case "--no-summary" -> noSummary = true;
+                case "--review-model" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--review-model");
+                    i = value.newIndex();
+                    reviewModel = value.value();
+                }
+                case "--report-model" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--report-model");
+                    i = value.newIndex();
+                    reportModel = value.value();
+                }
+                case "--summary-model" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--summary-model");
+                    i = value.newIndex();
+                    summaryModel = value.value();
+                }
+                case "--model" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--model");
+                    i = value.newIndex();
+                    defaultModel = value.value();
+                }
+                case "--instructions" -> {
+                    CliParsing.MultiValue values = CliParsing.readMultiValues(arg, args, i, "--instructions");
+                    i = values.newIndex();
+                    for (String path : values.values()) {
+                        instructionPaths.add(Path.of(path));
+                    }
+                }
+                case "--no-instructions" -> noInstructions = true;
+                default -> {
+                    if (arg.startsWith("-")) {
+                        throw new CliValidationException("Unknown option: " + arg, true);
+                    }
+                    throw new CliValidationException("Unexpected argument: " + arg, true);
+                }
+            }
         }
 
+        validateSelections();
+    }
+
+    private TargetSelection ensureTargetSelection() {
         if (targetSelection == null) {
-            throw new ParameterException(spec.commandLine(), "Either --repo or --local must be specified.");
+            targetSelection = new TargetSelection();
         }
+        return targetSelection;
+    }
 
+    private AgentSelection ensureAgentSelection() {
+        if (agentSelection == null) {
+            agentSelection = new AgentSelection();
+        }
+        return agentSelection;
+    }
+
+    private void validateSelections() {
+        if (agentSelection == null) {
+            throw new CliValidationException("Either --all or --agents must be specified.", true);
+        }
+        boolean hasAll = agentSelection.allAgents;
+        boolean hasAgents = agentSelection.agents != null && !agentSelection.agents.isEmpty();
+        if (hasAll == hasAgents) {
+            throw new CliValidationException("Specify either --all or --agents (not both).", true);
+        }
+        if (targetSelection == null) {
+            throw new CliValidationException("Either --repo or --local must be specified.", true);
+        }
+        boolean hasRepo = targetSelection.repository != null && !targetSelection.repository.isBlank();
+        boolean hasLocal = targetSelection.localDirectory != null;
+        if (hasRepo == hasLocal) {
+            throw new CliValidationException("Specify either --repo or --local (not both).", true);
+        }
+    }
+
+    private int parseInt(String value, String optionName) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new CliValidationException("Invalid value for " + optionName + ": " + value, true);
+        }
+    }
+
+    private void executeInternal() throws Exception {
         // Build review target
         ReviewTarget target;
         String resolvedToken = null;
@@ -224,39 +297,39 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
             GitHubTokenResolver tokenResolver = new GitHubTokenResolver(executionConfig.ghAuthTimeoutSeconds());
             resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
             target = ReviewTarget.gitHub(targetSelection.repository);
-            
+
             // Validate GitHub token for repository access
             if (resolvedToken == null || resolvedToken.isBlank()) {
-                throw new ParameterException(
-                    spec.commandLine(),
-                    "GitHub token is required for repository review. Set GITHUB_TOKEN, use --token, or login with `gh auth login`."
+                throw new CliValidationException(
+                    "GitHub token is required for repository review. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.",
+                    true
                 );
             }
         } else if (targetSelection.localDirectory != null) {
             Path localPath = targetSelection.localDirectory.toAbsolutePath();
             if (!Files.exists(localPath)) {
-                throw new ParameterException(
-                    spec.commandLine(),
-                    "Local directory does not exist: " + localPath
+                throw new CliValidationException(
+                    "Local directory does not exist: " + localPath,
+                    true
                 );
             }
             if (!Files.isDirectory(localPath)) {
-                throw new ParameterException(
-                    spec.commandLine(),
-                    "Path is not a directory: " + localPath
+                throw new CliValidationException(
+                    "Path is not a directory: " + localPath,
+                    true
                 );
             }
             target = ReviewTarget.local(localPath);
         } else {
-            throw new ParameterException(spec.commandLine(), "Either --repo or --local must be specified.");
+            throw new CliValidationException("Either --repo or --local must be specified.", true);
         }
-        
+
         // Build model configuration
         ModelConfig modelConfig = buildModelConfig();
-        
+
         // Configure agent directories
         List<Path> agentDirs = agentService.buildAgentDirectories(additionalAgentDirs);
-        
+
         // Load agent configurations
         Map<String, AgentConfig> agentConfigs;
         if (agentSelection.allAgents) {
@@ -264,61 +337,63 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         } else {
             agentConfigs = agentService.loadAgents(agentDirs, agentSelection.agents);
         }
-        
+
         if (agentConfigs.isEmpty()) {
-            exitCode = CommandLine.ExitCode.SOFTWARE;
-            spec.commandLine().getErr().println("Error: No agents found. Check the agents directories:");
+            exitCode = ExitCodes.SOFTWARE;
+            System.err.println("Error: No agents found. Check the agents directories:");
             for (Path dir : agentDirs) {
-                spec.commandLine().getErr().println("  - " + dir);
+                System.err.println("  - " + dir);
             }
             return;
         }
-        
+
         // Apply model overrides if specified
         if (reviewModel != null) {
             for (Map.Entry<String, AgentConfig> entry : agentConfigs.entrySet()) {
                 entry.setValue(entry.getValue().withModel(reviewModel));
             }
         }
-        
+
         printBanner(agentConfigs, agentDirs, modelConfig, target);
-        
+
         // Load custom instructions
         String customInstruction = loadCustomInstructions(target);
-        
+
 
         // Execute reviews using the Copilot service
         copilotService.initialize(resolvedToken);
-        
+
         try {
             System.out.println("Starting reviews...");
             List<ReviewResult> results = reviewService.executeReviews(
-                agentConfigs, target, resolvedToken, parallelism, customInstruction);
-            
+                agentConfigs, target, resolvedToken, parallelism,
+                customInstruction, modelConfig.reasoningEffort());
+
             // Generate individual reports
             System.out.println("\nGenerating reports...");
             List<Path> reports = reportService.generateReports(results, outputDirectory);
-            
+
             for (Path report : reports) {
                 System.out.println("  ✓ " + report.getFileName());
             }
-            
+
             // Generate executive summary
             if (!noSummary) {
                 System.out.println("\nGenerating executive summary...");
                 Path summaryPath = reportService.generateSummary(
-                    results, target.getDisplayName(), outputDirectory, modelConfig.summaryModel());
+                    results, target.getDisplayName(), outputDirectory,
+                    modelConfig.summaryModel(), modelConfig.reasoningEffort());
                 System.out.println("  ✓ " + summaryPath.getFileName());
             }
-            
+
             // Print summary
             printCompletionSummary(results);
-            
+
         } finally {
             copilotService.shutdown();
         }
     }
-    
+
     private ModelConfig buildModelConfig() {
         ModelConfig baseConfig = defaultModelConfig != null ? defaultModelConfig : new ModelConfig();
         ModelConfig.Builder builder = ModelConfig.builder()
@@ -341,7 +416,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
 
         return builder.build();
     }
-    
+
     /**
      * Loads custom instructions from specified paths or target directory.
      */
@@ -350,9 +425,9 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
             logger.info("Custom instructions disabled by --no-instructions flag");
             return null;
         }
-        
+
         StringBuilder combined = new StringBuilder();
-        
+
         // Load from explicitly specified paths
         if (instructionPaths != null && !instructionPaths.isEmpty()) {
             for (Path path : instructionPaths) {
@@ -375,7 +450,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
                 }
             }
         }
-        
+
         // Also try to load from target directory (for local targets)
         if (target.isLocal()) {
             CustomInstructionLoader loader = new CustomInstructionLoader();
@@ -387,19 +462,19 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
                 System.out.println("  ✓ Loaded instructions from target: " + instruction.sourcePath());
             });
         }
-        
+
         String result = combined.toString().trim();
         return result.isEmpty() ? null : result;
     }
-    
-    private void printBanner(Map<String, AgentConfig> agentConfigs, 
+
+    private void printBanner(Map<String, AgentConfig> agentConfigs,
                              List<Path> agentDirs, ModelConfig modelConfig,
                              ReviewTarget target) {
         System.out.println("╔════════════════════════════════════════════════════════════╗");
         System.out.println("║           Multi-Agent Code Reviewer                       ║");
         System.out.println("╚════════════════════════════════════════════════════════════╝");
         System.out.println();
-        System.out.println("Target: " + target.getDisplayName() + 
+        System.out.println("Target: " + target.getDisplayName() +
             (target.isLocal() ? " (local)" : " (GitHub)"));
         System.out.println("Agents: " + agentConfigs.keySet());
         System.out.println("Output: " + outputDirectory.toAbsolutePath());
@@ -414,7 +489,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         System.out.println("  Summary: " + modelConfig.summaryModel());
         System.out.println();
     }
-    
+
     private void printCompletionSummary(List<ReviewResult> results) {
         System.out.println();
         System.out.println("════════════════════════════════════════════════════════════");

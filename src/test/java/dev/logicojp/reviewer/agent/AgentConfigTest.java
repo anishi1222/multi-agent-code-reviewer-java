@@ -15,7 +15,7 @@ class AgentConfigTest {
 
     private static final String VALID_NAME = "test-agent";
     private static final String VALID_SYSTEM_PROMPT = "You are a helpful reviewer.";
-    private static final String VALID_REVIEW_PROMPT = "Review ${repository} for ${displayName}";
+    private static final String VALID_INSTRUCTION = "Review ${repository} for ${displayName}";
     private static final String VALID_OUTPUT_FORMAT = """
         ## Output
         | 項目 | 内容 |
@@ -33,7 +33,7 @@ class AgentConfigTest {
         @DisplayName("nameがnullの場合は空文字列に設定される")
         void nullNameDefaultsToEmptyString() {
             AgentConfig config = new AgentConfig(
-                null, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                null, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             assertThat(config.name()).isEmpty();
@@ -43,7 +43,7 @@ class AgentConfigTest {
         @DisplayName("displayNameがnullの場合はnameが使用される")
         void nullDisplayNameDefaultsToName() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, null, "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, null, "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             assertThat(config.displayName()).isEqualTo(VALID_NAME);
@@ -53,7 +53,7 @@ class AgentConfigTest {
         @DisplayName("displayNameが空白の場合はnameが使用される")
         void blankDisplayNameDefaultsToName() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "  ", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "  ", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             assertThat(config.displayName()).isEqualTo(VALID_NAME);
@@ -63,7 +63,7 @@ class AgentConfigTest {
         @DisplayName("modelがnullの場合はデフォルトモデルが使用される")
         void nullModelDefaultsToClaudeSonnet() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", null, VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", null, VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             assertThat(config.model()).isEqualTo("claude-sonnet-4");
@@ -73,7 +73,7 @@ class AgentConfigTest {
         @DisplayName("modelが空白の場合はデフォルトモデルが使用される")
         void blankModelDefaultsToClaudeSonnet() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "  ", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "  ", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             assertThat(config.model()).isEqualTo("claude-sonnet-4");
@@ -83,7 +83,7 @@ class AgentConfigTest {
         @DisplayName("focusAreasがnullの場合は空リストになる")
         void nullFocusAreasDefaultsToEmptyList() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, null, List.of()
             );
             assertThat(config.focusAreas()).isEmpty();
@@ -93,7 +93,7 @@ class AgentConfigTest {
         @DisplayName("skillsがnullの場合は空リストになる")
         void nullSkillsDefaultsToEmptyList() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), null
             );
             assertThat(config.skills()).isEmpty();
@@ -108,7 +108,7 @@ class AgentConfigTest {
         @DisplayName("outputFormatがnullの場合はデフォルトフォーマットが使用される")
         void nullOutputFormatGetsDefault() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 null, List.of("area"), List.of()
             );
             assertThat(config.outputFormat()).contains("Priority");
@@ -119,7 +119,7 @@ class AgentConfigTest {
         @DisplayName("outputFormatが空白の場合はデフォルトフォーマットが使用される")
         void blankOutputFormatGetsDefault() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 "  ", List.of("area"), List.of()
             );
             assertThat(config.outputFormat()).contains("Priority");
@@ -130,7 +130,7 @@ class AgentConfigTest {
         void outputFormatStartingWithHeadingIsPreserved() {
             String format = "## Custom Format\nContent here";
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 format, List.of("area"), List.of()
             );
             assertThat(config.outputFormat()).isEqualTo(format);
@@ -141,10 +141,10 @@ class AgentConfigTest {
         void outputFormatWithoutHeadingGetsHeader() {
             String format = "Custom content without heading";
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 format, List.of("area"), List.of()
             );
-            assertThat(config.outputFormat()).startsWith("## 出力フォーマット");
+            assertThat(config.outputFormat()).startsWith("## Output Format");
             assertThat(config.outputFormat()).contains(format);
         }
     }
@@ -157,7 +157,7 @@ class AgentConfigTest {
         @DisplayName("必須フィールドが全て設定されている場合は例外を投げない")
         void validConfigDoesNotThrow() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             config.validateRequired(); // Should not throw
@@ -167,7 +167,7 @@ class AgentConfigTest {
         @DisplayName("nameが空の場合は例外を投げる")
         void emptyNameThrows() {
             AgentConfig config = new AgentConfig(
-                "", "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                "", "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             
@@ -180,7 +180,7 @@ class AgentConfigTest {
         @DisplayName("systemPromptが空の場合は例外を投げる")
         void emptySystemPromptThrows() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", "", VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", "", VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             
@@ -190,8 +190,8 @@ class AgentConfigTest {
         }
 
         @Test
-        @DisplayName("reviewPromptが空の場合は例外を投げる")
-        void emptyReviewPromptThrows() {
+        @DisplayName("instructionが空の場合は例外を投げる")
+        void emptyInstructionThrows() {
             AgentConfig config = new AgentConfig(
                 VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, "",
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
@@ -199,7 +199,7 @@ class AgentConfigTest {
             
             assertThatThrownBy(config::validateRequired)
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("reviewPrompt");
+                .hasMessageContaining("instruction");
         }
 
         @Test
@@ -214,7 +214,7 @@ class AgentConfigTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("name")
                 .hasMessageContaining("systemPrompt")
-                .hasMessageContaining("reviewPrompt");
+                .hasMessageContaining("instruction");
         }
     }
 
@@ -226,7 +226,7 @@ class AgentConfigTest {
         @DisplayName("新しいモデルでコピーを作成する")
         void createsNewInstanceWithDifferentModel() {
             AgentConfig original = new AgentConfig(
-                VALID_NAME, "Display", "original-model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "original-model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area1", "area2"), List.of()
             );
             
@@ -243,7 +243,7 @@ class AgentConfigTest {
         @DisplayName("元のインスタンスは変更されない")
         void originalInstanceUnchanged() {
             AgentConfig original = new AgentConfig(
-                VALID_NAME, "Display", "original-model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "original-model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             
@@ -261,7 +261,7 @@ class AgentConfigTest {
         @DisplayName("systemPromptを含む")
         void includesSystemPrompt() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
@@ -274,13 +274,13 @@ class AgentConfigTest {
         @DisplayName("focusAreasをリスト形式で含む")
         void includesFocusAreasAsList() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("Security", "Performance"), List.of()
             );
             
             String result = config.buildFullSystemPrompt();
             
-            assertThat(result).contains("## レビュー観点");
+            assertThat(result).contains("## Focus Areas");
             assertThat(result).contains("- Security");
             assertThat(result).contains("- Performance");
         }
@@ -290,7 +290,7 @@ class AgentConfigTest {
         void includesOutputFormat() {
             String customFormat = "## My Format\nCustom content";
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 customFormat, List.of(), List.of()
             );
             
@@ -300,22 +300,22 @@ class AgentConfigTest {
         }
 
         @Test
-        @DisplayName("空のfocusAreasの場合はレビュー観点セクションを含まない")
+        @DisplayName("空のfocusAreasの場合はFocus Areasセクションを含まない")
         void emptyFocusAreasOmitsSection() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
             String result = config.buildFullSystemPrompt();
             
-            assertThat(result).doesNotContain("## レビュー観点");
+            assertThat(result).doesNotContain("## Focus Areas");
         }
     }
 
     @Nested
-    @DisplayName("buildReviewPrompt")
-    class BuildReviewPrompt {
+    @DisplayName("buildInstruction")
+    class BuildInstruction {
 
         @Test
         @DisplayName("${repository}プレースホルダを置換する")
@@ -326,7 +326,7 @@ class AgentConfigTest {
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
-            String result = config.buildReviewPrompt("my-org/my-repo");
+            String result = config.buildInstruction("my-org/my-repo");
             
             assertThat(result).contains("my-org/my-repo");
             assertThat(result).doesNotContain("${repository}");
@@ -341,7 +341,7 @@ class AgentConfigTest {
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
-            String result = config.buildReviewPrompt("repo");
+            String result = config.buildInstruction("repo");
             
             assertThat(result).contains("Security Reviewer");
             assertThat(result).doesNotContain("${displayName}");
@@ -356,7 +356,7 @@ class AgentConfigTest {
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
-            String result = config.buildReviewPrompt("repo");
+            String result = config.buildInstruction("repo");
             
             assertThat(result).contains("agent-id");
             assertThat(result).doesNotContain("${name}");
@@ -371,7 +371,7 @@ class AgentConfigTest {
                 VALID_OUTPUT_FORMAT, List.of("SQL Injection", "XSS"), List.of()
             );
             
-            String result = config.buildReviewPrompt("repo");
+            String result = config.buildInstruction("repo");
             
             assertThat(result).contains("- SQL Injection");
             assertThat(result).contains("- XSS");
@@ -379,33 +379,33 @@ class AgentConfigTest {
         }
 
         @Test
-        @DisplayName("reviewPromptが設定されていない場合は例外を投げる")
-        void throwsWhenReviewPromptNotConfigured() {
+        @DisplayName("instructionが設定されていない場合は例外を投げる")
+        void throwsWhenInstructionNotConfigured() {
             AgentConfig config = new AgentConfig(
                 VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, null,
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
-            assertThatThrownBy(() -> config.buildReviewPrompt("repo"))
+            assertThatThrownBy(() -> config.buildInstruction("repo"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(VALID_NAME);
         }
     }
 
     @Nested
-    @DisplayName("buildLocalReviewPrompt")
-    class BuildLocalReviewPrompt {
+    @DisplayName("buildLocalInstruction")
+    class BuildLocalInstruction {
 
         @Test
         @DisplayName("ソースコードコンテンツを埋め込む")
         void embedsSourceContent() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
             String sourceCode = "public class Test {}";
-            String result = config.buildLocalReviewPrompt("MyProject", sourceCode);
+            String result = config.buildLocalInstruction("MyProject", sourceCode);
             
             assertThat(result).contains(sourceCode);
             assertThat(result).contains("以下は対象ディレクトリのソースコードです");
@@ -420,7 +420,7 @@ class AgentConfigTest {
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
-            String result = config.buildLocalReviewPrompt("LocalDir", "code");
+            String result = config.buildLocalInstruction("LocalDir", "code");
             
             assertThat(result).contains("LocalDir");
             assertThat(result).contains("Code Reviewer");
@@ -444,7 +444,7 @@ class AgentConfigTest {
             assertThat(config.getDisplayName()).isEqualTo("My Display");
             assertThat(config.getModel()).isEqualTo("my-model");
             assertThat(config.getSystemPrompt()).isEqualTo("system");
-            assertThat(config.getReviewPrompt()).isEqualTo("review");
+            assertThat(config.getInstruction()).isEqualTo("review");
             assertThat(config.getOutputFormat()).isEqualTo("## format");
             assertThat(config.getFocusAreas()).containsExactly("area");
             assertThat(config.getSkills()).hasSize(1);
@@ -459,7 +459,7 @@ class AgentConfigTest {
         @DisplayName("nameとdisplayNameを含む")
         void containsNameAndDisplayName() {
             AgentConfig config = new AgentConfig(
-                "agent-id", "Agent Display Name", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                "agent-id", "Agent Display Name", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of(), List.of()
             );
             
@@ -478,7 +478,7 @@ class AgentConfigTest {
         @DisplayName("focusAreasは不変リストである")
         void focusAreasIsImmutable() {
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of("area"), List.of()
             );
             
@@ -491,7 +491,7 @@ class AgentConfigTest {
         void skillsIsImmutable() {
             SkillDefinition skill = SkillDefinition.of("id", "name", "desc", "prompt");
             AgentConfig config = new AgentConfig(
-                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_REVIEW_PROMPT,
+                VALID_NAME, "Display", "model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
                 VALID_OUTPUT_FORMAT, List.of(), List.of(skill)
             );
             

@@ -9,7 +9,7 @@
     
     <!-- Application loggers -->
     <logger name="com.example.reviewer" level="INFO"/>
-    
+
     <!-- Third-party loggers -->
     <logger name="com.github.copilot.sdk" level="WARN"/>
     <logger name="org.yaml.snakeyaml" level="WARN"/>

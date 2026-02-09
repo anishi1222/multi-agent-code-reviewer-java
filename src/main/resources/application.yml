@@ -2,18 +2,14 @@ micronaut:
   application:
     name: multi-agent-reviewer
 
-# Picocli integration configuration
-picocli:
-  ansi: auto
-
 reviewer:
   execution:
     parallelism: 4
     orchestrator-timeout-minutes: 10
-    agent-timeout-minutes: 5
-    skill-timeout-minutes: 5
-    summary-timeout-minutes: 5
-    gh-auth-timeout-seconds: 10
+    agent-timeout-minutes: 10
+    skill-timeout-minutes: 10
+    summary-timeout-minutes: 10
+    gh-auth-timeout-seconds: 30
   templates:
     directory: templates
     summary-system-prompt: summary-system.md
@@ -34,6 +30,7 @@ reviewer:
       auth-header-name: Authorization
       auth-header-template: "Bearer {token}"
   models:
-    review-model: gpt-5.2-codex
-    report-model: claude-opus-4.6-fast
-    summary-model: claude-opus-4.6-fast
+    review-model: GPT-5.2-Codex
+    report-model: claude-opus-4.6
+    summary-model: claude-opus-4.6
+    reasoning-effort: high

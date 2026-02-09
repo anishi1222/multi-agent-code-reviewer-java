@@ -15,6 +15,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - **構造化されたレビュー結果**: Priority（Critical/High/Medium/Low）付きの一貫したフォーマット
 - **エグゼクティブサマリー生成**: 全レビュー結果を集約した経営層向けレポート
 - **GraalVM対応**: Native Image によるネイティブバイナリの生成が可能
+- **推論モデル対応**: Claude Opus、o3、o4-mini等の推論モデルに対するreasoning effortの自動設定
 
 ## 要件
 
@@ -112,6 +113,7 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--no-instructions` | - | カスタムインストラクションの自動読込を無効化 | false |
 | `--help` | `-h` | ヘルプ表示 | - |
 | `--version` | `-V` | バージョン表示 | - |
+| `--verbose` | `-v` | 詳細ログ出力（debugレベル） | - |
 
 ### list サブコマンド
 
@@ -192,9 +194,13 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 
 ```yaml
 reviewer:
-  orchestrator:
-    default-parallelism: 4      # デフォルトの並列実行数
-    timeout-minutes: 10         # レビュータイムアウト（分）
+  execution:
+    parallelism: 4              # デフォルトの並列実行数
+    orchestrator-timeout-minutes: 10  # オーケストレータタイムアウト（分）
+    agent-timeout-minutes: 10   # エージェントタイムアウト（分）
+    skill-timeout-minutes: 10   # スキルタイムアウト（分）
+    summary-timeout-minutes: 10 # サマリータイムアウト（分）
+    gh-auth-timeout-seconds: 30 # GitHub認証タイムアウト（秒）
   mcp:
     github:
       type: http
@@ -202,11 +208,12 @@ reviewer:
       tools:
         - "*"
       auth-header-name: Authorization
-      auth-header-template: "Bearer ${token}"
+      auth-header-template: "Bearer {token}"
   models:
     review-model: claude-sonnet-4    # レビュー用モデル
     report-model: claude-sonnet-4    # レポート生成用モデル
     summary-model: claude-sonnet-4   # サマリー生成用モデル
+    reasoning-effort: high           # 推論モデルのエフォートレベル (low/medium/high)
 ```
 
 ### エージェントディレクトリ
@@ -220,7 +227,17 @@ reviewer:
 
 ### エージェント定義ファイル (`.agent.md`)
 
-`Review Prompt` では `${repository}`, `${displayName}`, `${focusAreas}` のプレースホルダーが利用できます。
+GitHub Copilot Custom Agent の書式に従い、セクション名はすべて英語で記述します。認識されるセクション:
+
+| セクション | 説明 |
+|---------|------|
+| `## Role` | エージェントの役割・システムプロンプト |
+| `## Instruction` | レビュー依頼プロンプト |
+| `## Focus Areas` | レビュー観点のリスト |
+| `## Output Format` | 出力フォーマット |
+| `## Skills` | スキル定義 |
+
+`Instruction` では `${repository}`, `${displayName}`, `${focusAreas}` のプレースホルダーが利用できます。
 
 ```markdown
 ---
@@ -231,12 +248,12 @@ model: claude-sonnet-4
 
 # セキュリティレビューエージェント
 
-## System Prompt
+## Role
 
 あなたはセキュリティ専門のコードレビュアーです。
 豊富な経験を持つセキュリティエンジニアとして、コードの脆弱性を特定します。
 
-## Review Prompt
+## Instruction
 
 以下のGitHubリポジトリのコードレビューを実施してください。
 
@@ -430,14 +447,20 @@ flowchart TB
 
 ```
 templates/
-├── summary-system.md          # サマリー生成システムプロンプト
-├── summary-prompt.md          # サマリー生成ユーザープロンプト
-├── default-output-format.md   # デフォルト出力フォーマット
-├── report.md                  # 個別レポートテンプレート
-├── executive-summary.md       # エグゼクティブサマリーテンプレート
-├── fallback-summary.md        # フォールバックサマリーテンプレート
+├── summary-system.md              # サマリー生成システムプロンプト
+├── summary-prompt.md              # サマリー生成ユーザープロンプト
+├── summary-result-entry.md        # サマリー結果エントリ（成功時）
+├── summary-result-error-entry.md  # サマリー結果エントリ（失敗時）
+├── default-output-format.md       # デフォルト出力フォーマット
+├── report.md                      # 個別レポートテンプレート
+├── report-link-entry.md           # レポートリンクエントリ
+├── executive-summary.md           # エグゼクティブサマリーテンプレート
+├── fallback-summary.md            # フォールバックサマリーテンプレート
+├── fallback-agent-row.md          # フォールバックテーブル行
+├── fallback-agent-success.md      # フォールバック成功詳細
+├── fallback-agent-failure.md      # フォールバック失敗詳細
 ├── custom-instruction-section.md  # カスタムインストラクションセクション
-├── local-review-content.md    # ローカルレビューコンテンツ
+├── local-review-content.md        # ローカルレビューコンテンツ
 └── review-custom-instruction.md   # レビュー用カスタムインストラクション
 ```
 
@@ -455,6 +478,12 @@ reviewer:
     report: report.md
     executive-summary: executive-summary.md
     fallback-summary: fallback-summary.md
+    summary-result-entry: summary-result-entry.md
+    summary-result-error-entry: summary-result-error-entry.md
+    fallback-agent-row: fallback-agent-row.md
+    fallback-agent-success: fallback-agent-success.md
+    fallback-agent-failure: fallback-agent-failure.md
+    report-link-entry: report-link-entry.md
 ```
 
 ### プレースホルダー

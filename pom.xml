@@ -22,11 +22,10 @@
         <jdk.version>25</jdk.version>
         <release.version>25</release.version>
         <micronaut.version>4.10.7</micronaut.version>
-        <micronaut.picocli.version>5.8.0</micronaut.picocli.version>
         <micronaut.runtime>netty</micronaut.runtime>
         <exec.mainClass>dev.logicojp.reviewer.ReviewApp</exec.mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        
+
         <!-- Application dependencies -->
         <copilot.sdk.version>1.0.8</copilot.sdk.version>
         <graalvm.version>25.0.2</graalvm.version>
@@ -44,21 +43,6 @@
         <dependency>
             <groupId>io.micronaut</groupId>
             <artifactId>micronaut-inject</artifactId>
-            <scope>compile</scope>
-        </dependency>
-
-        <!-- Micronaut Picocli Integration -->
-        <dependency>
-            <groupId>io.micronaut.picocli</groupId>
-            <artifactId>micronaut-picocli</artifactId>
-            <version>${micronaut.picocli.version}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <!-- Picocli -->
-        <dependency>
-            <groupId>info.picocli</groupId>
-            <artifactId>picocli</artifactId>
             <scope>compile</scope>
         </dependency>
 
@@ -82,13 +66,11 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.5.27</version>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-core</artifactId>
             <version>1.5.27</version>
-            <scope>runtime</scope>
         </dependency>
 
         <!-- GraalVM Native Image Support -->
@@ -147,16 +129,6 @@
                             <groupId>io.micronaut</groupId>
                             <artifactId>micronaut-inject-java</artifactId>
                             <version>${micronaut.version}</version>
-                        </path>
-                        <path>
-                            <groupId>io.micronaut.picocli</groupId>
-                            <artifactId>micronaut-picocli</artifactId>
-                            <version>${micronaut.picocli.version}</version>
-                        </path>
-                        <path>
-                            <groupId>info.picocli</groupId>
-                            <artifactId>picocli-codegen</artifactId>
-                            <version>${picocli.version}</version>
                         </path>
                     </annotationProcessorPaths>
                     <compilerArgs>

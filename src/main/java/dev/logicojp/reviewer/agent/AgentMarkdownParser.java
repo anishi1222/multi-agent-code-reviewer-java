@@ -40,22 +40,16 @@ public class AgentMarkdownParser {
     
     // Pattern to extract focus areas from markdown list
     private static final Pattern FOCUS_AREA_PATTERN = Pattern.compile(
-        "##\\s*(?:Focus Areas|レビュー観点|観点)\\s*\\n((?:\\s*[-*]\\s*.+\\n?)+)",
+        "##\\s*Focus Areas\\s*\\n((?:\\s*[-*]\\s*.+\\n?)+)",
         Pattern.CASE_INSENSITIVE
     );
 
     private static final Pattern SECTION_HEADER_PATTERN = Pattern.compile("^##\\s+(.+)$");
     private static final Set<String> RECOGNIZED_SECTIONS = Set.of(
-        "system prompt",
-        "システムプロンプト",
-        "review prompt",
-        "レビュー依頼",
-        "レビュー用プロンプト",
+        "role",
+        "instruction",
         "output format",
-        "出力フォーマット",
-        "focus areas",
-        "レビュー観点",
-        "観点"
+        "focus areas"
     );
     
     /**
@@ -93,17 +87,17 @@ public class AgentMarkdownParser {
         String model = metadata.getOrDefault("model", "claude-sonnet-4");
 
         Map<String, String> sections = extractSections(body);
-        String systemPrompt = getSection(sections, "system prompt", "システムプロンプト");
-        String reviewPrompt = getSection(sections, "review prompt", "レビュー依頼", "レビュー用プロンプト");
-        String outputFormat = getSection(sections, "output format", "出力フォーマット");
+        String systemPrompt = getSection(sections, "role");
+        String instruction = getSection(sections, "instruction");
+        String outputFormat = getSection(sections, "output format");
 
         if (systemPrompt == null || systemPrompt.isBlank()) {
             systemPrompt = body.trim();
         }
 
-        String focusAreasSection = getSection(sections, "focus areas", "レビュー観点", "観点");
+        String focusAreasSection = getSection(sections, "focus areas");
         List<String> focusAreas = focusAreasSection != null
-            ? extractFocusAreas(focusAreasSection)
+            ? parseFocusAreaItems(focusAreasSection)
             : extractFocusAreas(body);
 
         AgentConfig config = new AgentConfig(
@@ -111,7 +105,7 @@ public class AgentMarkdownParser {
             displayName,
             model,
             systemPrompt,
-            reviewPrompt,
+            instruction,
             outputFormat,
             focusAreas,
             List.of()  // skills - parsed from Skills section if present
@@ -124,21 +118,26 @@ public class AgentMarkdownParser {
         String name = extractNameFromFilename(filename);
 
         Map<String, String> sections = extractSections(content);
-        String systemPrompt = getSection(sections, "system prompt", "システムプロンプト");
-        String reviewPrompt = getSection(sections, "review prompt", "レビュー依頼", "レビュー用プロンプト");
-        String outputFormat = getSection(sections, "output format", "出力フォーマット");
+        String systemPrompt = getSection(sections, "role");
+        String instruction = getSection(sections, "instruction");
+        String outputFormat = getSection(sections, "output format");
         if (systemPrompt == null || systemPrompt.isBlank()) {
             systemPrompt = content.trim();
         }
+
+        String focusAreasSection = getSection(sections, "focus areas");
+        List<String> focusAreas = focusAreasSection != null
+            ? parseFocusAreaItems(focusAreasSection)
+            : extractFocusAreas(content);
 
         AgentConfig config = new AgentConfig(
             name,
             name,
             "claude-sonnet-4",
             systemPrompt,
-            reviewPrompt,
+            instruction,
             outputFormat,
-            extractFocusAreas(content),
+            focusAreas,
             List.of()  // skills
         );
         config.validateRequired();
@@ -176,15 +175,7 @@ public class AgentMarkdownParser {
         Matcher matcher = FOCUS_AREA_PATTERN.matcher(body);
         if (matcher.find()) {
             String listContent = matcher.group(1);
-            for (String line : listContent.split("\\n")) {
-                line = line.trim();
-                if (line.startsWith("-") || line.startsWith("*")) {
-                    String item = line.substring(1).trim();
-                    if (!item.isEmpty()) {
-                        focusAreas.add(item);
-                    }
-                }
-            }
+            focusAreas = parseBulletItems(listContent);
         }
         
         // If no focus areas found, return a default
@@ -193,6 +184,33 @@ public class AgentMarkdownParser {
         }
         
         return focusAreas;
+    }
+
+    /**
+     * Parses focus area items from an already-extracted section body (header stripped).
+     * Falls back to default if no bullet items are found.
+     */
+    private List<String> parseFocusAreaItems(String sectionContent) {
+        List<String> focusAreas = parseBulletItems(sectionContent);
+        if (focusAreas.isEmpty()) {
+            logger.warn("Focus Areas section found but contains no bullet items; using default.");
+            focusAreas.add("一般的なコード品質");
+        }
+        return focusAreas;
+    }
+
+    private List<String> parseBulletItems(String text) {
+        List<String> items = new ArrayList<>();
+        for (String line : text.split("\\n")) {
+            line = line.trim();
+            if (line.startsWith("-") || line.startsWith("*")) {
+                String item = line.substring(1).trim();
+                if (!item.isEmpty()) {
+                    items.add(item);
+                }
+            }
+        }
+        return items;
     }
 
     private Map<String, String> extractSections(String body) {
@@ -204,8 +222,11 @@ public class AgentMarkdownParser {
             if (matcher.matches()) {
                 String sectionKey = normalizeSectionKey(matcher.group(1));
                 if (RECOGNIZED_SECTIONS.contains(sectionKey)) {
+                    if (sectionBuilders.containsKey(sectionKey)) {
+                        logger.warn("Duplicate section '## {}' found; using the last occurrence.", matcher.group(1));
+                    }
                     currentKey = sectionKey;
-                    sectionBuilders.putIfAbsent(currentKey, new StringBuilder());
+                    sectionBuilders.put(currentKey, new StringBuilder());
                     continue;
                 }
             }

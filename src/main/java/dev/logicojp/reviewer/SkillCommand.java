@@ -1,52 +1,46 @@
 package dev.logicojp.reviewer;
+
 import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.cli.CliParsing;
+import dev.logicojp.reviewer.cli.CliUsage;
+import dev.logicojp.reviewer.cli.CliValidationException;
+import dev.logicojp.reviewer.cli.ExitCodes;
+import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.service.AgentService;
 import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.SkillService;
 import dev.logicojp.reviewer.skill.SkillDefinition;
 import dev.logicojp.reviewer.skill.SkillResult;
-import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.util.GitHubTokenResolver;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.IExitCodeGenerator;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Option;
-import picocli.CommandLine.Parameters;
-import picocli.CommandLine.ParentCommand;
-import picocli.CommandLine.Spec;
+
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-@Command(name = "skill", description = "Execute a specific agent skill.")
-public class SkillCommand implements Runnable, IExitCodeGenerator {
+
+@Singleton
+public class SkillCommand {
     private static final Logger logger = LoggerFactory.getLogger(SkillCommand.class);
-    @ParentCommand
-    private ReviewApp parent;
-    @Spec
-    private CommandSpec spec;
+
     private final AgentService agentService;
     private final CopilotService copilotService;
     private final SkillService skillService;
     private final ExecutionConfig executionConfig;
-    private int exitCode = CommandLine.ExitCode.OK;
-    @Parameters(index = "0", description = "Skill ID to execute", arity = "0..1")
+
+    private int exitCode = ExitCodes.OK;
     private String skillId;
-    @Option(names = {"-p", "--param"}, description = "Skill parameters in key=value format", split = ",")
     private List<String> paramStrings;
-    @Option(names = {"--token"}, description = "GitHub token", defaultValue = "${GITHUB_TOKEN}")
     private String githubToken;
-    @Option(names = {"--model"}, description = "LLM model to use", defaultValue = "claude-sonnet-4")
     private String model;
-    @Option(names = {"--agents-dir"}, description = "Additional agent definitions directory", arity = "1..*")
     private List<Path> additionalAgentDirs;
-    @Option(names = {"--list"}, description = "List available skills")
     private boolean listSkills;
+    private boolean helpRequested;
 
     @Inject
     public SkillCommand(
@@ -60,21 +54,92 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
         this.skillService = skillService;
         this.executionConfig = executionConfig;
     }
-    @Override
-    public void run() {
+
+    public int execute(String[] args) {
+        resetDefaults();
         try {
-            execute();
+            parseArgs(args);
+            if (helpRequested) {
+                return ExitCodes.OK;
+            }
+            executeInternal();
+        } catch (CliValidationException e) {
+            exitCode = ExitCodes.USAGE;
+            if (!e.getMessage().isBlank()) {
+                System.err.println(e.getMessage());
+            }
+            if (e.showUsage()) {
+                CliUsage.printSkill(System.err);
+            }
         } catch (Exception e) {
-            exitCode = CommandLine.ExitCode.SOFTWARE;
+            exitCode = ExitCodes.SOFTWARE;
             logger.error("Skill execution failed: {}", e.getMessage(), e);
-            spec.commandLine().getErr().println("Error: " + e.getMessage());
+            System.err.println("Error: " + e.getMessage());
         }
-    }
-    @Override
-    public int getExitCode() {
         return exitCode;
     }
-    private void execute() throws Exception {
+
+    private void resetDefaults() {
+        exitCode = ExitCodes.OK;
+        skillId = null;
+        paramStrings = new ArrayList<>();
+        githubToken = System.getenv("GITHUB_TOKEN");
+        model = "claude-sonnet-4";
+        additionalAgentDirs = new ArrayList<>();
+        listSkills = false;
+        helpRequested = false;
+    }
+
+    private void parseArgs(String[] args) {
+        if (args == null) {
+            args = new String[0];
+        }
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            switch (arg) {
+                case "-h", "--help" -> {
+                    CliUsage.printSkill(System.out);
+                    helpRequested = true;
+                    return;
+                }
+                case "-p", "--param" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--param");
+                    i = value.newIndex();
+                    paramStrings.addAll(CliParsing.splitComma(value.value()));
+                }
+                case "--token" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--token");
+                    i = value.newIndex();
+                    githubToken = value.value();
+                }
+                case "--model" -> {
+                    CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--model");
+                    i = value.newIndex();
+                    model = value.value();
+                }
+                case "--agents-dir" -> {
+                    CliParsing.MultiValue values = CliParsing.readMultiValues(arg, args, i, "--agents-dir");
+                    i = values.newIndex();
+                    for (String path : values.values()) {
+                        additionalAgentDirs.add(Path.of(path));
+                    }
+                }
+                case "--list" -> listSkills = true;
+                default -> {
+                    if (arg.startsWith("-")) {
+                        throw new CliValidationException("Unknown option: " + arg, true);
+                    }
+                    if (skillId == null) {
+                        skillId = arg;
+                    } else {
+                        throw new CliValidationException("Unexpected argument: " + arg, true);
+                    }
+                }
+            }
+        }
+    }
+
+    private void executeInternal() throws Exception {
         List<Path> agentDirs = agentService.buildAgentDirectories(additionalAgentDirs);
         Map<String, AgentConfig> agents = agentService.loadAllAgents(agentDirs);
         skillService.registerAllAgentSkills(agents);
@@ -83,22 +148,19 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
             return;
         }
         if (skillId == null || skillId.isBlank()) {
-            spec.commandLine().getErr().println("Error: Skill ID required. Use --list to see available skills.");
-            exitCode = CommandLine.ExitCode.USAGE;
-            return;
+            throw new CliValidationException("Skill ID required. Use --list to see available skills.", true);
         }
         GitHubTokenResolver tokenResolver = new GitHubTokenResolver(executionConfig.ghAuthTimeoutSeconds());
         String resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
         if (resolvedToken == null || resolvedToken.isBlank()) {
-            spec.commandLine().getErr().println("Error: GitHub token is required. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.");
-            exitCode = CommandLine.ExitCode.USAGE;
-            return;
+            throw new CliValidationException(
+                "GitHub token is required. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.",
+                true
+            );
         }
         Map<String, String> parameters = parseParameters();
-        if (!skillService.getSkill(skillId).isPresent()) {
-            spec.commandLine().getErr().println("Error: Skill not found: " + skillId);
-            exitCode = CommandLine.ExitCode.USAGE;
-            return;
+        if (skillService.getSkill(skillId).isEmpty()) {
+            throw new CliValidationException("Skill not found: " + skillId, true);
         }
         copilotService.initialize(resolvedToken);
         try {
@@ -111,12 +173,13 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
                 System.out.println(result.content());
             } else {
                 System.err.println("Skill execution failed: " + result.errorMessage());
-                exitCode = CommandLine.ExitCode.SOFTWARE;
+                exitCode = ExitCodes.SOFTWARE;
             }
         } finally {
             copilotService.shutdown();
         }
     }
+
     private void listAvailableSkills() {
         System.out.println("Available Skills:\n");
         for (SkillDefinition skill : skillService.getRegistry().getAll()) {
@@ -136,6 +199,7 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
             System.out.println("  No skills found.");
         }
     }
+
     private Map<String, String> parseParameters() {
         Map<String, String> params = new HashMap<>();
         if (paramStrings != null) {

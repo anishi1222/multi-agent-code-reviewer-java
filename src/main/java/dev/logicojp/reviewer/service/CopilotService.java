@@ -30,7 +30,9 @@ public class CopilotService {
     private static final String[] CLI_CANDIDATES = {"github-copilot", "copilot"};
     private static final long DEFAULT_CLI_HEALTHCHECK_SECONDS = 10;
     private static final String CLI_HEALTHCHECK_ENV = "COPILOT_CLI_HEALTHCHECK_SECONDS";
-    
+    private static final String CLI_AUTH_CHECK_ENV = "COPILOT_CLI_AUTHCHECK_SECONDS";
+    private static final long DEFAULT_CLI_AUTHCHECK_SECONDS = 15;
+
     private CopilotClient client;
     private boolean initialized = false;
     
@@ -45,8 +47,9 @@ public class CopilotService {
             if (cliPath != null && !cliPath.isBlank()) {
                 options.setCliPath(cliPath);
             }
-            verifyCliHealthy(cliPath);
-            if (githubToken != null && !githubToken.isBlank() && !githubToken.equals("${GITHUB_TOKEN}")) {
+            boolean useToken = githubToken != null && !githubToken.isBlank() && !githubToken.equals("${GITHUB_TOKEN}");
+            verifyCliHealthy(cliPath, useToken);
+            if (useToken) {
                 options.setGithubToken(githubToken);
                 options.setUseLoggedInUser(Boolean.FALSE);
             } else {
@@ -129,27 +132,49 @@ public class CopilotService {
             + "`github-copilot` or `copilot` is available, or set " + CLI_PATH_ENV + ".", null);
     }
 
-    private void verifyCliHealthy(String cliPath) throws ExecutionException, InterruptedException {
+    private void verifyCliHealthy(String cliPath, boolean tokenProvided) throws ExecutionException, InterruptedException {
         if (cliPath == null || cliPath.isBlank()) {
             return;
         }
-        ProcessBuilder builder = new ProcessBuilder(cliPath, "--version");
+        runCliCommand(List.of(cliPath, "--version"), resolveCliHealthcheckSeconds(),
+            "Copilot CLI did not respond within ",
+            "Copilot CLI exited with code ",
+            "Failed to execute Copilot CLI: ");
+
+        if (tokenProvided) {
+            logger.info("GITHUB_TOKEN provided — skipping CLI auth status check");
+        } else {
+            runCliCommand(List.of(cliPath, "auth", "status"), resolveCliAuthcheckSeconds(),
+                "Copilot CLI auth status timed out after ",
+                "Copilot CLI auth status failed with code ",
+                "Failed to execute Copilot CLI auth status: ");
+        }
+    }
+
+    private void runCliCommand(List<String> command, long timeoutSeconds,
+                               String timeoutMessage, String exitMessage, String ioMessage)
+        throws ExecutionException, InterruptedException {
+        ProcessBuilder builder = new ProcessBuilder(command);
         builder.redirectErrorStream(true);
         try {
             Process process = builder.start();
-            long timeoutSeconds = resolveCliHealthcheckSeconds();
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
-                throw new ExecutionException("Copilot CLI did not respond within "
-                    + timeoutSeconds + "s. Ensure the CLI is installed and authenticated.", null);
+                throw new ExecutionException(timeoutMessage + timeoutSeconds + "s. "
+                    + "Ensure the CLI is installed and authenticated.", null);
             }
             if (process.exitValue() != 0) {
-                throw new ExecutionException("Copilot CLI exited with code " + process.exitValue()
-                    + ". Ensure the CLI is installed and authenticated.", null);
+                String baseMessage = exitMessage + process.exitValue() + ". ";
+                if (command.size() >= 3 && "auth".equals(command.get(1)) && "status".equals(command.get(2))) {
+                    throw new ExecutionException(baseMessage
+                        + "Run `github-copilot auth login` to authenticate.", null);
+                }
+                throw new ExecutionException(baseMessage
+                    + "Ensure the CLI is installed and authenticated.", null);
             }
         } catch (java.io.IOException e) {
-            throw new ExecutionException("Failed to execute Copilot CLI: " + e.getMessage(), e);
+            throw new ExecutionException(ioMessage + e.getMessage(), e);
         }
     }
 
@@ -164,6 +189,20 @@ public class CopilotService {
         } catch (NumberFormatException e) {
             logger.warn("Invalid {} value: {}. Using default.", CLI_HEALTHCHECK_ENV, value);
             return DEFAULT_CLI_HEALTHCHECK_SECONDS;
+        }
+    }
+
+    private long resolveCliAuthcheckSeconds() {
+        String value = System.getenv(CLI_AUTH_CHECK_ENV);
+        if (value == null || value.isBlank()) {
+            return DEFAULT_CLI_AUTHCHECK_SECONDS;
+        }
+        try {
+            long parsed = Long.parseLong(value.trim());
+            return parsed >= 0 ? parsed : DEFAULT_CLI_AUTHCHECK_SECONDS;
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid {} value: {}. Using default.", CLI_AUTH_CHECK_ENV, value);
+            return DEFAULT_CLI_AUTHCHECK_SECONDS;
         }
     }
 

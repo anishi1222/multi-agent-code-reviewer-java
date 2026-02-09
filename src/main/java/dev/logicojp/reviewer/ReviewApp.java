@@ -1,51 +1,117 @@
 package dev.logicojp.reviewer;
 
-import io.micronaut.configuration.picocli.PicocliRunner;
+import dev.logicojp.reviewer.cli.CliParsing;
+import dev.logicojp.reviewer.cli.CliUsage;
+import dev.logicojp.reviewer.cli.ExitCodes;
+import io.micronaut.context.ApplicationContext;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
-import picocli.CommandLine.Command;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Option;
-import picocli.CommandLine.Spec;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Multi-Agent Code Reviewer CLI Application.
- * 
- * Uses GitHub Copilot SDK to run multiple AI agents in parallel for code review,
- * and generates individual reports and an executive summary.
- * 
- * Built with Micronaut Picocli integration for dependency injection support.
- * 
- * Supports agent definitions in:
- * - YAML format (.yaml, .yml)
- * - GitHub Copilot agent format (.agent.md)
  */
-@Command(
-    name = "review",
-    mixinStandardHelpOptions = true,
-    version = "Multi-Agent Reviewer 1.0.0",
-    description = "Run multiple AI agents to review a GitHub repository and generate reports.",
-    subcommands = {
-        ReviewCommand.class,
-        ListAgentsCommand.class,
-        SkillCommand.class
-    }
-)
-public class ReviewApp implements Runnable {
-    
-    @Option(names = {"-v", "--verbose"}, description = "Enable verbose output")
-    boolean verbose;
+@Singleton
+public class ReviewApp {
+    private final ReviewCommand reviewCommand;
+    private final ListAgentsCommand listAgentsCommand;
+    private final SkillCommand skillCommand;
 
-    @Spec
-    private CommandSpec spec;
-    
-    public static void main(String[] args) {
-        int exitCode = PicocliRunner.execute(ReviewApp.class, args);
-        System.exit(exitCode);
+    @Inject
+    public ReviewApp(ReviewCommand reviewCommand,
+                     ListAgentsCommand listAgentsCommand,
+                     SkillCommand skillCommand) {
+        this.reviewCommand = reviewCommand;
+        this.listAgentsCommand = listAgentsCommand;
+        this.skillCommand = skillCommand;
     }
-    
-    @Override
-    public void run() {
-        // When no subcommand is specified, show help
-        spec.commandLine().usage(System.out);
+
+    public static void main(String[] args) {
+        try (ApplicationContext context = ApplicationContext.run()) {
+            ReviewApp app = context.getBean(ReviewApp.class);
+            int exitCode = app.execute(args);
+            System.exit(exitCode);
+        }
+    }
+
+    public int execute(String[] args) {
+        if (args == null || args.length == 0) {
+            CliUsage.printGeneral(System.out);
+            return ExitCodes.USAGE;
+        }
+
+        boolean verbose = false;
+        boolean versionRequested = false;
+        List<String> remaining = new ArrayList<>();
+        for (String arg : args) {
+            switch (arg) {
+                case "-v", "--verbose" -> verbose = true;
+                case "-V", "--version" -> versionRequested = true;
+                default -> remaining.add(arg);
+            }
+        }
+
+        if (verbose) {
+            enableVerboseLogging();
+        }
+
+        if (versionRequested) {
+            System.out.println("Multi-Agent Reviewer 1.0.0");
+            return ExitCodes.OK;
+        }
+
+        String[] filteredArgs = remaining.toArray(new String[0]);
+        if (filteredArgs.length == 0) {
+            CliUsage.printGeneral(System.out);
+            return ExitCodes.USAGE;
+        }
+
+        // Treat --help / -h as general help only when no subcommand is provided.
+        boolean hasHelpFlag = CliParsing.hasHelpFlag(filteredArgs);
+        boolean hasSubcommand = Arrays.stream(filteredArgs)
+            .anyMatch(arg -> "run".equals(arg) || "list".equals(arg) || "skill".equals(arg));
+        if (hasHelpFlag && !hasSubcommand) {
+            CliUsage.printGeneral(System.out);
+            return ExitCodes.OK;
+        }
+
+        int startIndex = 0;
+        if ("review".equals(filteredArgs[0])) {
+            if (filteredArgs.length == 1) {
+                CliUsage.printGeneral(System.out);
+                return ExitCodes.USAGE;
+            }
+            startIndex = 1;
+        }
+
+        String command = filteredArgs[startIndex];
+        String[] commandArgs = Arrays.copyOfRange(filteredArgs, startIndex + 1, filteredArgs.length);
+
+        return switch (command) {
+            case "run" -> reviewCommand.execute(commandArgs);
+            case "list" -> listAgentsCommand.execute(commandArgs);
+            case "skill" -> skillCommand.execute(commandArgs);
+            default -> {
+                System.err.println("Unknown command: " + command);
+                CliUsage.printGeneral(System.err);
+                yield ExitCodes.USAGE;
+            }
+        };
+    }
+
+    private void enableVerboseLogging() {
+        try {
+            ch.qos.logback.classic.LoggerContext context =
+                (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+            context.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
+                .setLevel(ch.qos.logback.classic.Level.DEBUG);
+            context.getLogger("dev.logicojp")
+                .setLevel(ch.qos.logback.classic.Level.DEBUG);
+        } catch (Exception e) {
+            System.err.println("Failed to enable verbose logging: " + e.getMessage());
+        }
     }
 }

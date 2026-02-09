@@ -17,7 +17,7 @@ public record AgentConfig(
     String displayName,
     String model,
     String systemPrompt,
-    String reviewPrompt,
+    String instruction,
     String outputFormat,
     List<String> focusAreas,
     List<SkillDefinition> skills
@@ -37,7 +37,7 @@ public record AgentConfig(
         "Critical|High|Medium|Low", Pattern.CASE_INSENSITIVE);
 
     private static final String DEFAULT_OUTPUT_FORMAT = """
-        ## 出力フォーマット
+        ## Output Format
 
         レビュー結果は必ず以下の形式で出力してください。複数の指摘がある場合は、それぞれについて以下の形式で記載してください。
 
@@ -104,8 +104,8 @@ public record AgentConfig(
         return systemPrompt;
     }
 
-    public String getReviewPrompt() {
-        return reviewPrompt;
+    public String getInstruction() {
+        return instruction;
     }
 
     public String getOutputFormat() {
@@ -126,7 +126,7 @@ public record AgentConfig(
             displayName,
             overrideModel,
             systemPrompt,
-            reviewPrompt,
+            instruction,
             outputFormat,
             focusAreas,
             skills
@@ -144,11 +144,11 @@ public record AgentConfig(
             }
             missing.append("systemPrompt");
         }
-        if (reviewPrompt == null || reviewPrompt.isBlank()) {
+        if (instruction == null || instruction.isBlank()) {
             if (missing.length() > 0) {
                 missing.append(", ");
             }
-            missing.append("reviewPrompt");
+            missing.append("instruction");
         }
         if (outputFormat == null || outputFormat.isBlank()) {
             if (missing.length() > 0) {
@@ -198,7 +198,7 @@ public record AgentConfig(
         if (trimmed.startsWith("##")) {
             return trimmed;
         }
-        return "## 出力フォーマット\n\n" + trimmed;
+        return "## Output Format\n\n" + trimmed;
     }
 
     /**
@@ -211,7 +211,8 @@ public record AgentConfig(
         }
 
         if (focusAreas != null && !focusAreas.isEmpty()) {
-            sb.append("## レビュー観点\n");
+            sb.append("## Focus Areas\n\n");
+            sb.append("以下の観点 **のみ** に基づいてレビューしてください。これ以外の観点での指摘は行わないでください。\n\n");
             for (String area : focusAreas) {
                 sb.append("- ").append(area).append("\n");
             }
@@ -221,7 +222,7 @@ public record AgentConfig(
         if (outputFormat != null && !outputFormat.isBlank()) {
             String outputText = outputFormat.trim();
             if (!outputText.startsWith("##")) {
-                sb.append("## 出力フォーマット\n\n");
+                sb.append("## Output Format\n\n");
             }
             sb.append(outputText).append("\n");
         }
@@ -229,13 +230,13 @@ public record AgentConfig(
         return sb.toString();
     }
 
-    public String buildReviewPrompt(String repository) {
-        if (reviewPrompt == null || reviewPrompt.isBlank()) {
-            throw new IllegalStateException("Review prompt is not configured for agent: " + name);
+    public String buildInstruction(String repository) {
+        if (instruction == null || instruction.isBlank()) {
+            throw new IllegalStateException("Instruction is not configured for agent: " + name);
         }
 
         String focusAreaText = formatFocusAreas();
-        return reviewPrompt
+        return instruction
             .replace("${repository}", repository)
             .replace("${displayName}", displayName != null ? displayName : name)
             .replace("${name}", name)
@@ -243,15 +244,15 @@ public record AgentConfig(
     }
 
     /**
-     * Builds the review prompt for a local directory review.
+     * Builds the instruction for a local directory review.
      * Embeds the source code content directly in the prompt.
      * @param targetName Display name of the target directory
      * @param sourceContent Collected source code content
-     * @return The formatted review prompt with embedded source code
+     * @return The formatted instruction with embedded source code
      */
-    public String buildLocalReviewPrompt(String targetName, String sourceContent) {
-        if (reviewPrompt == null || reviewPrompt.isBlank()) {
-            throw new IllegalStateException("Review prompt is not configured for agent: " + name);
+    public String buildLocalInstruction(String targetName, String sourceContent) {
+        if (instruction == null || instruction.isBlank()) {
+            throw new IllegalStateException("Instruction is not configured for agent: " + name);
         }
 
         String focusAreaText = formatFocusAreas();
@@ -265,7 +266,7 @@ public record AgentConfig(
             """.formatted(sourceContent);
         
         // Replace placeholders and append source content
-        String basePrompt = reviewPrompt
+        String basePrompt = instruction
             .replace("${repository}", targetName)
             .replace("${displayName}", displayName != null ? displayName : name)
             .replace("${name}", name)

@@ -16,6 +16,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 - **Structured Review Results**: Consistent format with Priority (Critical/High/Medium/Low)
 - **Executive Summary Generation**: Management-facing report aggregating all review results
 - **GraalVM Support**: Native binary generation via Native Image
+- **Reasoning Model Support**: Automatic reasoning effort configuration for Claude Opus, o3, o4-mini, etc.
 
 ## Requirements
 
@@ -113,6 +114,7 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--no-instructions` | - | Disable automatic loading of custom instructions | false |
 | `--help` | `-h` | Show help | - |
 | `--version` | `-V` | Show version | - |
+| `--verbose` | `-v` | Enable verbose logging (debug level) | - |
 
 ### List Subcommand
 
@@ -193,9 +195,13 @@ Customize application behavior via `application.yml`.
 
 ```yaml
 reviewer:
-  orchestrator:
-    default-parallelism: 4      # Default parallel execution count
-    timeout-minutes: 10         # Review timeout (minutes)
+  execution:
+    parallelism: 4              # Default parallel execution count
+    orchestrator-timeout-minutes: 10  # Orchestrator timeout (minutes)
+    agent-timeout-minutes: 10   # Agent timeout (minutes)
+    skill-timeout-minutes: 10   # Skill timeout (minutes)
+    summary-timeout-minutes: 10 # Summary timeout (minutes)
+    gh-auth-timeout-seconds: 30 # GitHub auth timeout (seconds)
   mcp:
     github:
       type: http
@@ -203,11 +209,12 @@ reviewer:
       tools:
         - "*"
       auth-header-name: Authorization
-      auth-header-template: "Bearer ${token}"
+      auth-header-template: "Bearer {token}"
   models:
     review-model: claude-sonnet-4    # Model for review
     report-model: claude-sonnet-4    # Model for report generation
     summary-model: claude-sonnet-4   # Model for summary generation
+    reasoning-effort: high           # Reasoning effort level (low/medium/high)
 ```
 
 ### Agent Directories
@@ -221,7 +228,17 @@ Additional directories can be specified with the `--agents-dir` option.
 
 ### Agent Definition File (`.agent.md`)
 
-In `Review Prompt`, you can use placeholders: `${repository}`, `${displayName}`, `${focusAreas}`.
+Following the GitHub Copilot Custom Agent format, all section names are in English. Recognized sections:
+
+| Section | Description |
+|---------|-------------|
+| `## Role` | Agent role / system prompt |
+| `## Instruction` | Review instruction prompt |
+| `## Focus Areas` | List of review focus areas |
+| `## Output Format` | Output format specification |
+| `## Skills` | Skill definitions |
+
+In `Instruction`, you can use placeholders: `${repository}`, `${displayName}`, `${focusAreas}`.
 
 ```markdown
 ---
@@ -232,12 +249,12 @@ model: claude-sonnet-4
 
 # Security Review Agent
 
-## System Prompt
+## Role
 
 You are a security-focused code reviewer.
 As an experienced security engineer, you identify vulnerabilities in the code.
 
-## Review Prompt
+## Instruction
 
 Please perform a code review of the following GitHub repository.
 
@@ -432,14 +449,20 @@ By default, templates in the `templates/` directory are used.
 
 ```
 templates/
-├── summary-system.md          # Summary generation system prompt
-├── summary-prompt.md          # Summary generation user prompt
-├── default-output-format.md   # Default output format
-├── report.md                  # Individual report template
-├── executive-summary.md       # Executive summary template
-├── fallback-summary.md        # Fallback summary template
+├── summary-system.md              # Summary generation system prompt
+├── summary-prompt.md              # Summary generation user prompt
+├── summary-result-entry.md        # Summary result entry (success)
+├── summary-result-error-entry.md  # Summary result entry (failure)
+├── default-output-format.md       # Default output format
+├── report.md                      # Individual report template
+├── report-link-entry.md           # Report link entry
+├── executive-summary.md           # Executive summary template
+├── fallback-summary.md            # Fallback summary template
+├── fallback-agent-row.md          # Fallback table row
+├── fallback-agent-success.md      # Fallback success detail
+├── fallback-agent-failure.md      # Fallback failure detail
 ├── custom-instruction-section.md  # Custom instruction section
-├── local-review-content.md    # Local review content
+├── local-review-content.md        # Local review content
 └── review-custom-instruction.md   # Review custom instruction
 ```
 
@@ -457,6 +480,12 @@ reviewer:
     report: report.md
     executive-summary: executive-summary.md
     fallback-summary: fallback-summary.md
+    summary-result-entry: summary-result-entry.md
+    summary-result-error-entry: summary-result-error-entry.md
+    fallback-agent-row: fallback-agent-row.md
+    fallback-agent-success: fallback-agent-success.md
+    fallback-agent-failure: fallback-agent-failure.md
+    report-link-entry: report-link-entry.md
 ```
 
 ### Placeholders

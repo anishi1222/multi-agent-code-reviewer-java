@@ -1,7 +1,6 @@
 package dev.logicojp.reviewer.service;
 
 import dev.logicojp.reviewer.config.ExecutionConfig;
-import dev.logicojp.reviewer.config.TemplateConfig;
 import dev.logicojp.reviewer.report.ReportGenerator;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.report.SummaryGenerator;
@@ -24,18 +23,15 @@ public class ReportService {
     
     private final CopilotService copilotService;
     private final ExecutionConfig executionConfig;
-    private final TemplateConfig templateConfig;
     private final TemplateService templateService;
     
     @Inject
     public ReportService(
             CopilotService copilotService, 
             ExecutionConfig executionConfig,
-            TemplateConfig templateConfig,
             TemplateService templateService) {
         this.copilotService = copilotService;
         this.executionConfig = executionConfig;
-        this.templateConfig = templateConfig;
         this.templateService = templateService;
     }
     
@@ -59,27 +55,24 @@ public class ReportService {
      * @param repository Target repository that was reviewed
      * @param outputDirectory Directory to write summary to
      * @param summaryModel LLM model to use for summary generation
+     * @param reasoningEffort Reasoning effort level for reasoning models (e.g. "high")
      * @return Path to the generated summary file
      */
     public Path generateSummary(
             List<ReviewResult> results,
             String repository,
             Path outputDirectory,
-            String summaryModel) throws Exception {
+            String summaryModel,
+            String reasoningEffort) throws Exception {
         
         logger.info("Generating executive summary using model: {}", summaryModel);
-        
-        Path templateDir = Path.of(templateConfig.directory());
-        Path systemPromptPath = templateDir.resolve(templateConfig.summarySystemPrompt());
-        Path userPromptPath = templateDir.resolve(templateConfig.summaryUserPrompt());
         
         SummaryGenerator generator = new SummaryGenerator(
             outputDirectory, 
             copilotService.getClient(), 
-            summaryModel, 
+            summaryModel,
+            reasoningEffort,
             executionConfig.summaryTimeoutMinutes(),
-            systemPromptPath,
-            userPromptPath,
             templateService);
         
         return generator.generateSummary(results, repository);
