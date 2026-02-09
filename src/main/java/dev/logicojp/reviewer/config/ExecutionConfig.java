@@ -11,7 +11,8 @@ public record ExecutionConfig(
     long orchestratorTimeoutMinutes,
     long agentTimeoutMinutes,
     long skillTimeoutMinutes,
-    long summaryTimeoutMinutes
+    long summaryTimeoutMinutes,
+    long ghAuthTimeoutSeconds
 ) {
 
     public ExecutionConfig {
@@ -20,5 +21,6 @@ public record ExecutionConfig(
         agentTimeoutMinutes = (agentTimeoutMinutes <= 0) ? 5 : agentTimeoutMinutes;
         skillTimeoutMinutes = (skillTimeoutMinutes <= 0) ? 5 : skillTimeoutMinutes;
         summaryTimeoutMinutes = (summaryTimeoutMinutes <= 0) ? 5 : summaryTimeoutMinutes;
+        ghAuthTimeoutSeconds = (ghAuthTimeoutSeconds <= 0) ? 10 : ghAuthTimeoutSeconds;
     }
 }

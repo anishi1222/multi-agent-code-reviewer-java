@@ -5,6 +5,7 @@ import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.SkillService;
 import dev.logicojp.reviewer.skill.SkillDefinition;
 import dev.logicojp.reviewer.skill.SkillResult;
+import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.util.GitHubTokenResolver;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
@@ -32,6 +33,7 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
     private final AgentService agentService;
     private final CopilotService copilotService;
     private final SkillService skillService;
+    private final ExecutionConfig executionConfig;
     private int exitCode = CommandLine.ExitCode.OK;
     @Parameters(index = "0", description = "Skill ID to execute", arity = "0..1")
     private String skillId;
@@ -50,11 +52,13 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
     public SkillCommand(
         AgentService agentService,
         CopilotService copilotService,
-        SkillService skillService
+        SkillService skillService,
+        ExecutionConfig executionConfig
     ) {
         this.agentService = agentService;
         this.copilotService = copilotService;
         this.skillService = skillService;
+        this.executionConfig = executionConfig;
     }
     @Override
     public void run() {
@@ -83,7 +87,7 @@ public class SkillCommand implements Runnable, IExitCodeGenerator {
             exitCode = CommandLine.ExitCode.USAGE;
             return;
         }
-        GitHubTokenResolver tokenResolver = new GitHubTokenResolver();
+        GitHubTokenResolver tokenResolver = new GitHubTokenResolver(executionConfig.ghAuthTimeoutSeconds());
         String resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
         if (resolvedToken == null || resolvedToken.isBlank()) {
             spec.commandLine().getErr().println("Error: GitHub token is required. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.");

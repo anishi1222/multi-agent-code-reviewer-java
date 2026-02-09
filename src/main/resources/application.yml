@@ -13,6 +13,7 @@ reviewer:
     agent-timeout-minutes: 5
     skill-timeout-minutes: 5
     summary-timeout-minutes: 5
+    gh-auth-timeout-seconds: 10
   templates:
     directory: templates
     summary-system-prompt: summary-system.md

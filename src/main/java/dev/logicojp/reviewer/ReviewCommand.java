@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.ModelConfig;
 import dev.logicojp.reviewer.instruction.CustomInstructionLoader;
 import dev.logicojp.reviewer.report.ReviewResult;
@@ -54,6 +55,8 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
     private final ReportService reportService;
 
     private final ModelConfig defaultModelConfig;
+
+    private final ExecutionConfig executionConfig;
 
     private int exitCode = CommandLine.ExitCode.OK;
     
@@ -174,13 +177,15 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         CopilotService copilotService,
         ReviewService reviewService,
         ReportService reportService,
-        ModelConfig defaultModelConfig
+        ModelConfig defaultModelConfig,
+        ExecutionConfig executionConfig
     ) {
         this.agentService = agentService;
         this.copilotService = copilotService;
         this.reviewService = reviewService;
         this.reportService = reportService;
         this.defaultModelConfig = defaultModelConfig;
+        this.executionConfig = executionConfig;
     }
     
     @Override
@@ -216,7 +221,7 @@ public class ReviewCommand implements Runnable, IExitCodeGenerator {
         ReviewTarget target;
         String resolvedToken = null;
         if (targetSelection.repository != null) {
-            GitHubTokenResolver tokenResolver = new GitHubTokenResolver();
+            GitHubTokenResolver tokenResolver = new GitHubTokenResolver(executionConfig.ghAuthTimeoutSeconds());
             resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
             target = ReviewTarget.gitHub(targetSelection.repository);
             

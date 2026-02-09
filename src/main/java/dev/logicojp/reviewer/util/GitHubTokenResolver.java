@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Resolves a GitHub token from CLI options, environment, or gh auth.
@@ -15,6 +16,17 @@ public final class GitHubTokenResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubTokenResolver.class);
     private static final String PLACEHOLDER = "${GITHUB_TOKEN}";
+    private static final long DEFAULT_TIMEOUT_SECONDS = 10;
+
+    private final long timeoutSeconds;
+
+    public GitHubTokenResolver() {
+        this(DEFAULT_TIMEOUT_SECONDS);
+    }
+
+    public GitHubTokenResolver(long timeoutSeconds) {
+        this.timeoutSeconds = (timeoutSeconds <= 0) ? DEFAULT_TIMEOUT_SECONDS : timeoutSeconds;
+    }
 
     public Optional<String> resolve(String providedToken) {
         String normalized = normalizeToken(providedToken);
@@ -44,7 +56,13 @@ public final class GitHubTokenResolver {
             try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line = reader.readLine();
-                int exitCode = process.waitFor();
+                boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
+                    logger.warn("gh auth token timed out after {} seconds", timeoutSeconds);
+                    return Optional.empty();
+                }
+                int exitCode = process.exitValue();
                 if (exitCode != 0) {
                     logger.warn("gh auth token failed with exit code {}", exitCode);
                     return Optional.empty();
