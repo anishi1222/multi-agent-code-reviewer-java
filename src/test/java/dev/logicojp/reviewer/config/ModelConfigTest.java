@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("ModelConfig")
 class ModelConfigTest {
 
-
     @Nested
     @DisplayName("コンストラクタ")
     class Constructor {
@@ -252,7 +251,6 @@ class ModelConfigTest {
         }
     }
 
-
     @Nested
     @DisplayName("defaultModel")
     class DefaultModelTests {
@@ -295,7 +293,6 @@ class ModelConfigTest {
             assertThat(config.defaultModel()).isEqualTo(ModelConfig.DEFAULT_MODEL);
         }
     }
-
 
     @Nested
     @DisplayName("toString")

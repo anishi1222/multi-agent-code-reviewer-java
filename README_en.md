@@ -17,6 +17,8 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 - **Executive Summary Generation**: Management-facing report aggregating all review results
 - **GraalVM Support**: Native binary generation via Native Image
 - **Reasoning Model Support**: Automatic reasoning effort configuration for Claude Opus, o3, o4-mini, etc.
+- **Content Sanitization**: Automatic removal of LLM preamble text and chain-of-thought leakage from review output
+- **Default Model Externalization**: Configure the default model in `application.yml` (changeable without rebuild)
 
 ## Requirements
 
@@ -109,7 +111,7 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--model` | - | Default model for all stages | - |
 | `--review-model` | - | Model for review | Agent config |
 | `--report-model` | - | Model for report generation | review-model |
-| `--summary-model` | - | Model for summary generation | claude-sonnet-4 |
+| `--summary-model` | - | Model for summary generation | default-model |
 | `--instructions` | - | Custom instruction file (can be specified multiple times) | - |
 | `--no-instructions` | - | Disable automatic loading of custom instructions | false |
 | `--help` | `-h` | Show help | - |
@@ -224,12 +226,16 @@ Customize application behavior via `application.yml`.
 reviewer:
   execution:
     parallelism: 4              # Default parallel execution count
-    orchestrator-timeout-minutes: 10  # Orchestrator timeout (minutes)
-    agent-timeout-minutes: 10   # Agent timeout (minutes)
-    skill-timeout-minutes: 10   # Skill timeout (minutes)
-    summary-timeout-minutes: 10 # Summary timeout (minutes)
+    orchestrator-timeout-minutes: 45  # Orchestrator timeout (minutes)
+    agent-timeout-minutes: 20   # Agent timeout (minutes)
+    idle-timeout-minutes: 5     # Idle timeout (minutes) — auto-terminate when no events
+    skill-timeout-minutes: 20   # Skill timeout (minutes)
+    summary-timeout-minutes: 20 # Summary timeout (minutes)
     gh-auth-timeout-seconds: 30 # GitHub auth timeout (seconds)
     max-retries: 2              # Max retry count on review failure
+  templates:
+    directory: templates              # Template directory
+    output-constraints: output-constraints.md  # Output constraints (CoT suppression, language)
   mcp:
     github:
       type: http
@@ -239,11 +245,20 @@ reviewer:
       auth-header-name: Authorization
       auth-header-template: "Bearer {token}"
   models:
-    review-model: claude-sonnet-4    # Model for review
-    report-model: claude-sonnet-4    # Model for report generation
-    summary-model: claude-sonnet-4   # Model for summary generation
+    default-model: claude-sonnet-4.5  # Default for all models (changeable without rebuild)
+    review-model: GPT-5.2-Codex      # Model for review
+    report-model: claude-opus-4.6-fast  # Model for report generation
+    summary-model: claude-opus-4.6-fast # Model for summary generation
     reasoning-effort: high           # Reasoning effort level (low/medium/high)
 ```
+
+### Model Configuration Priority
+
+Models are resolved in the following priority order:
+
+1. **Individual model settings** (`review-model`, `report-model`, `summary-model`) take highest priority
+2. **Default model** (`default-model`) — fallback when no individual setting is specified
+3. **Hardcoded constant** (`ModelConfig.DEFAULT_MODEL`) — final fallback when nothing is configured in YAML
 
 ### Retry Behavior
 
@@ -373,7 +388,7 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--list` | - | List available skills | - |
 | `--param` | `-p` | Parameter (key=value format) | - |
 | `--token` | - | GitHub token | `$GITHUB_TOKEN` |
-| `--model` | - | LLM model to use | claude-sonnet-4 |
+| `--model` | - | LLM model to use | default-model |
 | `--agents-dir` | - | Agent definitions directory | - |
 
 ### Skill Definition (`.agent.md` format)
@@ -521,6 +536,7 @@ templates/
 ├── summary-result-entry.md        # Summary result entry (success)
 ├── summary-result-error-entry.md  # Summary result entry (failure)
 ├── default-output-format.md       # Default output format
+├── output-constraints.md          # Output constraints (CoT suppression, language)
 ├── report.md                      # Individual report template
 ├── report-link-entry.md           # Report link entry
 ├── executive-summary.md           # Executive summary template
@@ -528,7 +544,9 @@ templates/
 ├── fallback-agent-row.md          # Fallback table row
 ├── fallback-agent-success.md      # Fallback success detail
 ├── fallback-agent-failure.md      # Fallback failure detail
-└── local-review-content.md        # Local review content
+├── local-review-content.md        # Local review content
+├── custom-instruction-section.md  # Custom instruction section
+└── review-custom-instruction.md   # Review custom instruction
 ```
 
 ### Template Configuration
@@ -542,9 +560,11 @@ reviewer:
     summary-system-prompt: summary-system.md
     summary-user-prompt: summary-prompt.md
     default-output-format: default-output-format.md
+    output-constraints: output-constraints.md  # Output constraints (CoT suppression, language)
     report: report.md
     executive-summary: executive-summary.md
     fallback-summary: fallback-summary.md
+    local-review-content: local-review-content.md
     summary-result-entry: summary-result-entry.md
     summary-result-error-entry: summary-result-error-entry.md
     fallback-agent-row: fallback-agent-row.md
@@ -583,10 +603,16 @@ multi-agent-reviewer/
     │   ├── AgentConfigLoader.java       # Config loader
     │   ├── AgentMarkdownParser.java     # .agent.md parser
     │   └── ReviewAgent.java             # Review agent
+    ├── cli/
+    │   ├── CliParsing.java              # CLI option parsing
+    │   ├── CliUsage.java                # Help / usage display
+    │   ├── CliValidationException.java  # CLI input validation exception
+    │   └── ExitCodes.java               # Exit code constants
     ├── config/
     │   ├── ModelConfig.java             # LLM model config
     │   ├── ExecutionConfig.java         # Execution config
     │   ├── GithubMcpConfig.java         # GitHub MCP config
+    │   ├── OrchestratorConfig.java      # Orchestrator config
     │   └── TemplateConfig.java          # Template config
     ├── instruction/
     │   ├── CustomInstruction.java       # Custom instruction model
@@ -595,6 +621,8 @@ multi-agent-reviewer/
     ├── orchestrator/
     │   └── ReviewOrchestrator.java      # Parallel execution control
     ├── report/
+    │   ├── ContentSanitizer.java        # LLM preamble / CoT removal
+    │   ├── FindingsExtractor.java       # Findings extraction
     │   ├── ReviewResult.java            # Result model
     │   ├── ReportGenerator.java         # Individual report generation
     │   └── SummaryGenerator.java        # Summary generation
@@ -612,10 +640,11 @@ multi-agent-reviewer/
     │   ├── SkillExecutor.java           # Skill executor
     │   └── SkillResult.java             # Skill result model
     ├── target/
-    │   ├── ReviewTarget.java            # Review target interface
+    │   ├── ReviewTarget.java            # Review target (sealed interface)
     │   └── LocalFileProvider.java       # Local file collector
     └── util/
-        └── FileExtensionUtils.java      # File extension utilities
+        ├── FileExtensionUtils.java      # File extension utilities
+        └── GitHubTokenResolver.java     # GitHub token resolution
 ```
 
 ## License
