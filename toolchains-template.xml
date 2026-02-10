@@ -9,7 +9,7 @@
     <toolchain>
         <type>jdk</type>
         <provides>
-            <version>21</version>
+            <version>25</version>
             <vendor>graalvm</vendor>
         </provides>
         <configuration>
