@@ -77,7 +77,8 @@ public class ReviewService {
             executionConfig.agentTimeoutMinutes(),
             executionConfig.skillTimeoutMinutes(),
             executionConfig.summaryTimeoutMinutes(),
-            executionConfig.ghAuthTimeoutSeconds()
+            executionConfig.ghAuthTimeoutSeconds(),
+            executionConfig.maxRetries()
         );
         
         ReviewOrchestrator orchestrator = new ReviewOrchestrator(

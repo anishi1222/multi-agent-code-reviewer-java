@@ -66,10 +66,14 @@ public class ReviewOrchestrator {
         
         List<CompletableFuture<ReviewResult>> futures = new ArrayList<>();
         long timeoutMinutes = executionConfig.orchestratorTimeoutMinutes();
+        // Per-agent timeout accounts for retries: each attempt gets the full agent timeout
+        long perAgentTimeoutMinutes = executionConfig.agentTimeoutMinutes() 
+            * (executionConfig.maxRetries() + 1);
         
         for (AgentConfig config : agents.values()) {
             ReviewAgent agent = new ReviewAgent(config, client, githubToken, githubMcpConfig,
-                executionConfig.agentTimeoutMinutes(), customInstructions, reasoningEffort);
+                executionConfig.agentTimeoutMinutes(), customInstructions, reasoningEffort,
+                executionConfig.maxRetries());
             CompletableFuture<ReviewResult> future = CompletableFuture
                 .supplyAsync(() -> {
                     try {
@@ -89,7 +93,7 @@ public class ReviewOrchestrator {
                             .build();
                     }
                 }, executorService)
-                .orTimeout(timeoutMinutes, TimeUnit.MINUTES)
+                .orTimeout(perAgentTimeoutMinutes, TimeUnit.MINUTES)
                 .exceptionally(ex -> {
                     logger.error("Agent {} failed with timeout or error: {}", 
                         config.getName(), ex.getMessage());

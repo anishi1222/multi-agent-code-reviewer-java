@@ -167,6 +167,12 @@
           ]
         },
         {
+          "name": "setParentToolCallId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
           "name": "setReasoningOpaque",
           "parameterTypes": [
             "java.lang.String"
@@ -386,6 +392,12 @@
           ]
         },
         {
+          "name": "setParentToolCallId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
           "name": "setProviderCallId",
           "parameterTypes": [
             "java.lang.String"
@@ -518,6 +530,12 @@
           ]
         },
         {
+          "name": "setParentToolCallId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
           "name": "setResult",
           "parameterTypes": [
             "com.github.copilot.sdk.events.ToolExecutionCompleteEvent$ToolExecutionCompleteData$Result"
@@ -586,6 +604,42 @@
       ]
     },
     {
+      "type": "com.github.copilot.sdk.events.ToolExecutionPartialResultEvent",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setData",
+          "parameterTypes": [
+            "com.github.copilot.sdk.events.ToolExecutionPartialResultEvent$ToolExecutionPartialResultData"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.github.copilot.sdk.events.ToolExecutionPartialResultEvent$ToolExecutionPartialResultData",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setPartialOutput",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setToolCallId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.github.copilot.sdk.events.ToolExecutionStartEvent",
       "methods": [
         {
@@ -611,6 +665,24 @@
           "name": "setArguments",
           "parameterTypes": [
             "java.lang.Object"
+          ]
+        },
+        {
+          "name": "setMcpServerName",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setMcpToolName",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setParentToolCallId",
+          "parameterTypes": [
+            "java.lang.String"
           ]
         },
         {

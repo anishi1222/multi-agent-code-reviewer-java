@@ -228,6 +228,7 @@ reviewer:
     skill-timeout-minutes: 10   # スキルタイムアウト（分）
     summary-timeout-minutes: 10 # サマリータイムアウト（分）
     gh-auth-timeout-seconds: 30 # GitHub認証タイムアウト（秒）
+    max-retries: 2              # レビュー失敗時の最大リトライ回数
   mcp:
     github:
       type: http
@@ -242,6 +243,15 @@ reviewer:
     summary-model: claude-sonnet-4   # サマリー生成用モデル
     reasoning-effort: high           # 推論モデルのエフォートレベル (low/medium/high)
 ```
+
+### リトライ機能
+
+エージェントのレビューがタイムアウトや空レスポンスで失敗した場合、自動的にリトライします。
+
+- **タイムアウトは各試行ごとに独立**: `agent-timeout-minutes` は累積ではなく、各試行に対して個別に適用されます。例えば `agent-timeout-minutes: 20` かつ `max-retries: 2` の場合、最大 3 回（初回 + 2 回リトライ）× 各 20 分 = 最大 60 分まで試行します
+- **成功時は即座に返却**: いずれかの試行で成功すれば、残りのリトライはスキップされます
+- **`max-retries: 0`** でリトライを無効化できます
+- リトライ対象: タイムアウト（`TimeoutException`）、空レスポンス、SDK例外
 
 ### エージェントディレクトリ
 

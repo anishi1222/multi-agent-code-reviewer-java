@@ -32,6 +32,7 @@ public class ReviewAgent {
     private final long timeoutMinutes;
     private final List<CustomInstruction> customInstructions;
     private final String reasoningEffort;
+    private final int maxRetries;
 
     public ReviewAgent(AgentConfig config,
                        CopilotClient client,
@@ -39,7 +40,8 @@ public class ReviewAgent {
                        GithubMcpConfig githubMcpConfig,
                        long timeoutMinutes,
                        List<CustomInstruction> customInstructions,
-                       String reasoningEffort) {
+                       String reasoningEffort,
+                       int maxRetries) {
         this.config = config;
         this.client = client;
         this.githubToken = githubToken;
@@ -47,26 +49,60 @@ public class ReviewAgent {
         this.timeoutMinutes = timeoutMinutes;
         this.customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
         this.reasoningEffort = reasoningEffort;
+        this.maxRetries = maxRetries;
     }
     
     /**
-     * Executes the review synchronously on the calling thread.
+     * Executes the review synchronously on the calling thread with retry support.
+     * Each attempt gets the full configured timeout — the timeout is per-attempt, not cumulative.
      * @param target The target to review (GitHub repository or local directory)
      * @return ReviewResult containing the review content
      */
     public ReviewResult review(ReviewTarget target) {
-        try {
-            return executeReview(target);
-        } catch (Exception e) {
-            logger.error("Review failed for agent {}: {}", config.getName(), e.getMessage(), e);
-            return ReviewResult.builder()
-                .agentConfig(config)
-                .repository(target.getDisplayName())
-                .success(false)
-                .errorMessage(e.getMessage())
-                .timestamp(LocalDateTime.now())
-                .build();
+        int totalAttempts = maxRetries + 1;
+        ReviewResult lastResult = null;
+        
+        for (int attempt = 1; attempt <= totalAttempts; attempt++) {
+            try {
+                lastResult = executeReview(target);
+                
+                if (lastResult.isSuccess()) {
+                    if (attempt > 1) {
+                        logger.info("Agent {} succeeded on attempt {}/{}", 
+                            config.getName(), attempt, totalAttempts);
+                    }
+                    return lastResult;
+                }
+                
+                // Review returned failure (e.g. empty content) — retry if attempts remain
+                if (attempt < totalAttempts) {
+                    logger.warn("Agent {} failed on attempt {}/{}: {}. Retrying...", 
+                        config.getName(), attempt, totalAttempts, lastResult.getErrorMessage());
+                } else {
+                    logger.error("Agent {} failed on final attempt {}/{}: {}", 
+                        config.getName(), attempt, totalAttempts, lastResult.getErrorMessage());
+                }
+                
+            } catch (Exception e) {
+                lastResult = ReviewResult.builder()
+                    .agentConfig(config)
+                    .repository(target.getDisplayName())
+                    .success(false)
+                    .errorMessage(e.getMessage())
+                    .timestamp(LocalDateTime.now())
+                    .build();
+                
+                if (attempt < totalAttempts) {
+                    logger.warn("Agent {} threw exception on attempt {}/{}: {}. Retrying...", 
+                        config.getName(), attempt, totalAttempts, e.getMessage());
+                } else {
+                    logger.error("Agent {} threw exception on final attempt {}/{}: {}", 
+                        config.getName(), attempt, totalAttempts, e.getMessage(), e);
+                }
+            }
         }
+        
+        return lastResult;
     }
     
     private ReviewResult executeReview(ReviewTarget target) throws Exception {
@@ -108,14 +144,32 @@ public class ReviewAgent {
             // Build the instruction
             String instruction = config.buildInstruction(repository);
             
-            // Execute the review
-            logger.debug("Sending instruction to agent: {}", config.getName());
+            // Pass the configured timeout to sendAndWait explicitly.
+            // The SDK default (60s) is far too short for reviews involving MCP tool calls.
+            logger.debug("Sending instruction to agent: {} (timeout: {} min)", config.getName(), timeoutMinutes);
             var response = session
                 .sendAndWait(new MessageOptions().setPrompt(instruction), timeoutMs)
                 .get(timeoutMinutes, TimeUnit.MINUTES);
             
             String content = response.getData().getContent();
-            logger.info("Review completed for agent: {}", config.getName());
+            
+            // Validate response content
+            if (content == null || content.isBlank()) {
+                logger.warn("Agent {} returned empty content. encryptedContent={}, toolRequests={}",
+                    config.getName(),
+                    response.getData().getEncryptedContent() != null ? "present" : "null",
+                    response.getData().getToolRequests() != null ? response.getData().getToolRequests().size() : 0);
+                return ReviewResult.builder()
+                    .agentConfig(config)
+                    .repository(repository)
+                    .success(false)
+                    .errorMessage("Agent returned empty review content — model may have timed out during MCP tool calls")
+                    .timestamp(LocalDateTime.now())
+                    .build();
+            }
+            
+            logger.info("Review completed for agent: {} (content length: {} chars)", 
+                config.getName(), content.length());
             
             return ReviewResult.builder()
                 .agentConfig(config)
@@ -163,14 +217,32 @@ public class ReviewAgent {
             // Build the instruction with embedded source code
             String instruction = config.buildLocalInstruction(target.getDisplayName(), sourceContent);
             
-            // Execute the review
-            logger.debug("Sending local instruction to agent: {}", config.getName());
+            // Pass the configured timeout to sendAndWait explicitly.
+            // The SDK default (60s) is far too short for complex reviews.
+            logger.debug("Sending local instruction to agent: {} (timeout: {} min)", config.getName(), timeoutMinutes);
             var response = session
                 .sendAndWait(new MessageOptions().setPrompt(instruction), timeoutMs)
                 .get(timeoutMinutes, TimeUnit.MINUTES);
             
             String content = response.getData().getContent();
-            logger.info("Local review completed for agent: {}", config.getName());
+            
+            // Validate response content
+            if (content == null || content.isBlank()) {
+                logger.warn("Agent {} returned empty content for local review. encryptedContent={}, toolRequests={}",
+                    config.getName(),
+                    response.getData().getEncryptedContent() != null ? "present" : "null",
+                    response.getData().getToolRequests() != null ? response.getData().getToolRequests().size() : 0);
+                return ReviewResult.builder()
+                    .agentConfig(config)
+                    .repository(target.getDisplayName())
+                    .success(false)
+                    .errorMessage("Agent returned empty review content")
+                    .timestamp(LocalDateTime.now())
+                    .build();
+            }
+            
+            logger.info("Local review completed for agent: {} (content length: {} chars)", 
+                config.getName(), content.length());
             
             return ReviewResult.builder()
                 .agentConfig(config)

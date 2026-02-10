@@ -12,8 +12,11 @@ public record ExecutionConfig(
     long agentTimeoutMinutes,
     long skillTimeoutMinutes,
     long summaryTimeoutMinutes,
-    long ghAuthTimeoutSeconds
+    long ghAuthTimeoutSeconds,
+    int maxRetries
 ) {
+
+    public static final int DEFAULT_MAX_RETRIES = 2;
 
     public ExecutionConfig {
         parallelism = (parallelism <= 0) ? 4 : parallelism;
@@ -22,5 +25,6 @@ public record ExecutionConfig(
         skillTimeoutMinutes = (skillTimeoutMinutes <= 0) ? 5 : skillTimeoutMinutes;
         summaryTimeoutMinutes = (summaryTimeoutMinutes <= 0) ? 5 : summaryTimeoutMinutes;
         ghAuthTimeoutSeconds = (ghAuthTimeoutSeconds <= 0) ? 10 : ghAuthTimeoutSeconds;
+        maxRetries = (maxRetries < 0) ? DEFAULT_MAX_RETRIES : maxRetries;
     }
 }

@@ -229,6 +229,7 @@ reviewer:
     skill-timeout-minutes: 10   # Skill timeout (minutes)
     summary-timeout-minutes: 10 # Summary timeout (minutes)
     gh-auth-timeout-seconds: 30 # GitHub auth timeout (seconds)
+    max-retries: 2              # Max retry count on review failure
   mcp:
     github:
       type: http
@@ -243,6 +244,15 @@ reviewer:
     summary-model: claude-sonnet-4   # Model for summary generation
     reasoning-effort: high           # Reasoning effort level (low/medium/high)
 ```
+
+### Retry Behavior
+
+When an agent review fails due to timeout or empty response, it is automatically retried.
+
+- **Timeout is per-attempt, not cumulative**: `agent-timeout-minutes` applies independently to each attempt. For example, with `agent-timeout-minutes: 20` and `max-retries: 2`, the agent will try up to 3 times (initial + 2 retries) × 20 minutes each = up to 60 minutes total
+- **Returns immediately on success**: If any attempt succeeds, remaining retries are skipped
+- **Set `max-retries: 0`** to disable retries
+- Retried on: timeout (`TimeoutException`), empty response, SDK exceptions
 
 ### Agent Directories
 

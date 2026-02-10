@@ -97,16 +97,25 @@ public class SkillExecutor {
         }
 
         var session = client.createSession(sessionConfigBuilder).get(timeoutMinutes, TimeUnit.MINUTES);
-        long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
 
+        long timeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
+        
         try {
-            logger.debug("Sending skill prompt: {}", skill.id());
+            logger.debug("Sending skill prompt: {} (timeout: {} min)", skill.id(), timeoutMinutes);
+            // Pass the configured timeout to sendAndWait explicitly.
+            // The SDK default (60s) is too short for skills involving MCP tool calls.
             var response = session
                 .sendAndWait(new MessageOptions().setPrompt(prompt), timeoutMs)
                 .get(timeoutMinutes, TimeUnit.MINUTES);
 
             String content = response.getData().getContent();
-            logger.info("Skill execution completed: {}", skill.id());
+            
+            if (content == null || content.isBlank()) {
+                logger.warn("Skill {} returned empty content", skill.id());
+                return SkillResult.failure(skill.id(), "Skill returned empty content");
+            }
+            
+            logger.info("Skill execution completed: {} (content length: {} chars)", skill.id(), content.length());
 
             return SkillResult.success(skill.id(), content);
 

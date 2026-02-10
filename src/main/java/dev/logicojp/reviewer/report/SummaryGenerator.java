@@ -116,6 +116,8 @@ public class SummaryGenerator {
         
         try {
             String prompt = buildSummaryPrompt(results, repository);
+            // Pass the configured timeout to sendAndWait explicitly.
+            // The SDK default (60s) is too short for summarizing large review results.
             var response = session
                 .sendAndWait(new MessageOptions().setPrompt(prompt), timeoutMs)
                 .get(timeoutMinutes, TimeUnit.MINUTES);

@@ -10,6 +10,7 @@ reviewer:
     skill-timeout-minutes: 20
     summary-timeout-minutes: 20
     gh-auth-timeout-seconds: 30
+    max-retries: 2
   templates:
     directory: templates
     summary-system-prompt: summary-system.md
