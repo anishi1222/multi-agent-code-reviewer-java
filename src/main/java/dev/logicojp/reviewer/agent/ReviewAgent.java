@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.agent;
 
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
+import dev.logicojp.reviewer.report.ContentSanitizer;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.target.LocalFileProvider;
 import dev.logicojp.reviewer.target.ReviewTarget;
@@ -266,7 +267,7 @@ public class ReviewAgent {
         // Primary attempt
         String content = sendWithActivityTimeout(session, instruction, idleTimeoutMs, maxTimeoutMs);
         if (content != null && !content.isBlank()) {
-            return content;
+            return ContentSanitizer.sanitize(content);
         }
 
         // Fallback: In-session follow-up prompt — MCP context is already loaded
@@ -276,7 +277,7 @@ public class ReviewAgent {
             idleTimeoutMs, maxTimeoutMs);
         if (content != null && !content.isBlank()) {
             logger.info("Agent {}: follow-up prompt produced content ({} chars)", config.getName(), content.length());
-            return content;
+            return ContentSanitizer.sanitize(content);
         }
 
         logger.warn("Agent {}: no content after follow-up", config.getName());

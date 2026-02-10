@@ -33,6 +33,6 @@ reviewer:
   models:
     default-model: claude-sonnet-4.5
     review-model: GPT-5.2-Codex
-    report-model: claude-opus-4.6
-    summary-model: claude-sonnet-4.5
+    report-model: claude-opus-4.6-fast
+    summary-model: claude-opus-4.6-fast
     reasoning-effort: high

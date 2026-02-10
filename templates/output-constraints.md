@@ -1,5 +1,13 @@
 ## 出力に関する制約事項
 
 - レビュー結果の出力時には、途中の分析過程や思考過程（ファイル読み込みの状況報告、中間的な分析結果、作業計画等）は一切含めないでください。
+- 以下のような **英語の前置き文や遷移文** を出力に含めないでください。これらはレビュー結果の一部ではありません：
+  - "I have now gathered enough data to compile the review."
+  - "Here is my report:"
+  - "Let me compile the review results."
+  - "I've completed a thorough analysis."
+  - "Based on my analysis..."
+  - "After reviewing the codebase..."
+- 出力は **指摘事項の構造化されたフォーマット（見出し、テーブル、コード例）から直接開始** してください。前置きや導入文は不要です。
 - 指定された出力フォーマットに従った **最終的なレビュー結果のみ** を出力してください。
 - すべての出力は **日本語** で記述してください（技術用語やコード部分を除く）。
