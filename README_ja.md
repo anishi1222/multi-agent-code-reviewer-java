@@ -23,7 +23,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 ## 要件
 
 - **GraalVM 25.0.2** (Java 25)
-- GitHub Copilot CLI 0.0.401 以上
+- GitHub Copilot CLI 0.0.407 以上
 - GitHub トークン（リポジトリアクセス用）
 
 ### GraalVM の インストール

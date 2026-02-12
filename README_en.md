@@ -23,7 +23,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 ## Requirements
 
 - **GraalVM 25.0.2** (Java 25)
-- GitHub Copilot CLI 0.0.401 or later
+- GitHub Copilot CLI 0.0.407 or later
 - GitHub token (for repository access)
 
 ### Installing GraalVM
