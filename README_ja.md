@@ -505,86 +505,71 @@ mvn clean package -Pnative -DskipTests
 
 ```mermaid
 flowchart TB
-    subgraph CLI["CLIレイヤー"]
-        ReviewApp[ReviewApp<br/>エントリポイント]
-        ReviewCommand[ReviewCommand]
-        ListAgentsCommand[ListAgentsCommand]
-        SkillCommand[SkillCommand]
+    %% ── CLI ──
+    ReviewApp["ReviewApp\n(エントリポイント)"]
+    ReviewApp --> ReviewCommand
+    ReviewApp --> ListAgentsCommand
+    ReviewApp --> SkillCommand
+
+    %% ── レビューフロー（左） ──
+    subgraph ReviewFlow[" "]
+        direction TB
+        ReviewCommand --> ReviewService
+        ReviewService --> CustomInstructionLoader[CustomInstructionLoader]
+        ReviewService --> ReviewOrchestrator["ReviewOrchestrator\n仮想スレッド / Structured Concurrency"]
+
+        ReviewOrchestrator --> Security[Security]
+        ReviewOrchestrator --> CodeQuality[Code Quality]
+        ReviewOrchestrator --> Performance[Performance]
+        ReviewOrchestrator --> BestPractices[Best Practices]
+
+        Security & CodeQuality & Performance & BestPractices --> ContentSanitizer
+
+        ReviewCommand --> ReportService
+        ReportService --> ReportGenerator
+        ReportService --> SummaryGenerator
+        SummaryGenerator --> FindingsExtractor
     end
 
-    subgraph Services["サービスレイヤー"]
-        AgentService[AgentService]
-        CopilotService[CopilotService]
-        ReviewService[ReviewService]
-        ReportService[ReportService]
-        SkillService[SkillService]
-        TemplateService[TemplateService]
-    end
-
-    subgraph Orchestrator["オーケストレータ"]
-        ReviewOrchestrator[ReviewOrchestrator<br/>仮想スレッド /<br/>Structured Concurrency]
-    end
-
-    subgraph Agents["レビューエージェント"]
-        Security[Security Agent]
-        CodeQuality[Code Quality Agent]
-        Performance[Performance Agent]
-        BestPractices[Best Practices Agent]
-    end
-
-    subgraph Skills["スキル実行"]
-        SkillExecutor[SkillExecutor<br/>Structured Concurrency]
-        SkillRegistry[SkillRegistry]
-    end
-
-    subgraph Target["レビュー対象"]
-        ReviewTarget["ReviewTarget<br/>(sealed interface)"]
-        GitHubTarget[GitHubTarget]
-        LocalTarget[LocalTarget]
-        LocalFileProvider[LocalFileProvider]
-    end
-
-    subgraph Reports["レポート生成"]
-        ReportGenerator[ReportGenerator]
-        SummaryGenerator[SummaryGenerator]
-        FindingsExtractor[FindingsExtractor]
-        ContentSanitizer[ContentSanitizer]
-    end
-
-    subgraph Instructions["カスタムインストラクション"]
-        CustomInstructionLoader[CustomInstructionLoader]
-    end
-
-    subgraph External["外部サービス"]
-        Copilot[GitHub Copilot API<br/>LLM]
-        GitHubMCP[GitHub MCP Server]
-    end
-
-    ReviewApp --> ReviewCommand & ListAgentsCommand & SkillCommand
-    ReviewCommand --> ReviewService
-    ReviewCommand --> ReportService
+    %% ── 一覧フロー（中央） ──
     ListAgentsCommand --> AgentService
-    SkillCommand --> SkillService
 
-    ReviewService --> ReviewOrchestrator
-    ReviewService --> CustomInstructionLoader
-    ReviewOrchestrator --> Agents
-    ReportService --> ReportGenerator & SummaryGenerator
-    SkillService --> SkillExecutor
-    SkillService --> SkillRegistry
+    %% ── スキルフロー（右） ──
+    subgraph SkillFlow[" "]
+        direction TB
+        SkillCommand --> SkillService
+        SkillService --> SkillRegistry
+        SkillService --> SkillExecutor["SkillExecutor\nStructured Concurrency"]
+    end
 
-    Agents --> ContentSanitizer
-    SummaryGenerator --> FindingsExtractor
+    %% ── レビュー対象 ──
+    subgraph Target["レビュー対象 (sealed)"]
+        direction LR
+        GitHubTarget
+        LocalTarget --> LocalFileProvider
+    end
+    ReviewService --> Target
 
-    ReviewTarget --> GitHubTarget & LocalTarget
-    LocalTarget --> LocalFileProvider
+    %% ── 共有サービス ──
+    subgraph Shared["共有サービス"]
+        direction LR
+        CopilotService
+        TemplateService
+    end
 
-    CopilotService --> Copilot
-    Agents -.-> Copilot
-    Agents -.-> GitHubMCP
-    SkillExecutor -.-> Copilot
+    %% ── 外部サービス ──
+    subgraph External["外部サービス"]
+        direction LR
+        CopilotAPI["GitHub Copilot API\n(LLM)"]
+        GitHubMCP["GitHub MCP Server"]
+    end
+
+    CopilotService --> CopilotAPI
+    Security & CodeQuality & Performance & BestPractices -.-> CopilotAPI
+    Security & CodeQuality & Performance & BestPractices -.-> GitHubMCP
+    SkillExecutor -.-> CopilotAPI
     SkillExecutor -.-> GitHubMCP
-    SummaryGenerator -.-> Copilot
+    SummaryGenerator -.-> CopilotAPI
 ```
 
 ## テンプレートのカスタマイズ

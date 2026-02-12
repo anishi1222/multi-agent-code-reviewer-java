@@ -505,86 +505,71 @@ mvn clean package -Pnative -DskipTests
 
 ```mermaid
 flowchart TB
-    subgraph CLI["CLI Layer"]
-        ReviewApp[ReviewApp<br/>Entry Point]
-        ReviewCommand[ReviewCommand]
-        ListAgentsCommand[ListAgentsCommand]
-        SkillCommand[SkillCommand]
+    %% ── CLI ──
+    ReviewApp["ReviewApp\n(Entry Point)"]
+    ReviewApp --> ReviewCommand
+    ReviewApp --> ListAgentsCommand
+    ReviewApp --> SkillCommand
+
+    %% ── Review flow (left) ──
+    subgraph ReviewFlow[" "]
+        direction TB
+        ReviewCommand --> ReviewService
+        ReviewService --> CustomInstructionLoader[CustomInstructionLoader]
+        ReviewService --> ReviewOrchestrator["ReviewOrchestrator\nVirtual Threads / Structured Concurrency"]
+
+        ReviewOrchestrator --> Security[Security]
+        ReviewOrchestrator --> CodeQuality[Code Quality]
+        ReviewOrchestrator --> Performance[Performance]
+        ReviewOrchestrator --> BestPractices[Best Practices]
+
+        Security & CodeQuality & Performance & BestPractices --> ContentSanitizer
+
+        ReviewCommand --> ReportService
+        ReportService --> ReportGenerator
+        ReportService --> SummaryGenerator
+        SummaryGenerator --> FindingsExtractor
     end
 
-    subgraph Services["Service Layer"]
-        AgentService[AgentService]
-        CopilotService[CopilotService]
-        ReviewService[ReviewService]
-        ReportService[ReportService]
-        SkillService[SkillService]
-        TemplateService[TemplateService]
-    end
-
-    subgraph Orchestrator["Orchestrator"]
-        ReviewOrchestrator[ReviewOrchestrator<br/>Virtual Threads /<br/>Structured Concurrency]
-    end
-
-    subgraph Agents["Review Agents"]
-        Security[Security Agent]
-        CodeQuality[Code Quality Agent]
-        Performance[Performance Agent]
-        BestPractices[Best Practices Agent]
-    end
-
-    subgraph Skills["Skill Execution"]
-        SkillExecutor[SkillExecutor<br/>Structured Concurrency]
-        SkillRegistry[SkillRegistry]
-    end
-
-    subgraph Target["Review Target"]
-        ReviewTarget["ReviewTarget<br/>(sealed interface)"]
-        GitHubTarget[GitHubTarget]
-        LocalTarget[LocalTarget]
-        LocalFileProvider[LocalFileProvider]
-    end
-
-    subgraph Reports["Report Generation"]
-        ReportGenerator[ReportGenerator]
-        SummaryGenerator[SummaryGenerator]
-        FindingsExtractor[FindingsExtractor]
-        ContentSanitizer[ContentSanitizer]
-    end
-
-    subgraph Instructions["Custom Instructions"]
-        CustomInstructionLoader[CustomInstructionLoader]
-    end
-
-    subgraph External["External Services"]
-        Copilot[GitHub Copilot API<br/>LLM]
-        GitHubMCP[GitHub MCP Server]
-    end
-
-    ReviewApp --> ReviewCommand & ListAgentsCommand & SkillCommand
-    ReviewCommand --> ReviewService
-    ReviewCommand --> ReportService
+    %% ── List flow (center) ──
     ListAgentsCommand --> AgentService
-    SkillCommand --> SkillService
 
-    ReviewService --> ReviewOrchestrator
-    ReviewService --> CustomInstructionLoader
-    ReviewOrchestrator --> Agents
-    ReportService --> ReportGenerator & SummaryGenerator
-    SkillService --> SkillExecutor
-    SkillService --> SkillRegistry
+    %% ── Skill flow (right) ──
+    subgraph SkillFlow[" "]
+        direction TB
+        SkillCommand --> SkillService
+        SkillService --> SkillRegistry
+        SkillService --> SkillExecutor["SkillExecutor\nStructured Concurrency"]
+    end
 
-    Agents --> ContentSanitizer
-    SummaryGenerator --> FindingsExtractor
+    %% ── Review Target ──
+    subgraph Target["Review Target (sealed)"]
+        direction LR
+        GitHubTarget
+        LocalTarget --> LocalFileProvider
+    end
+    ReviewService --> Target
 
-    ReviewTarget --> GitHubTarget & LocalTarget
-    LocalTarget --> LocalFileProvider
+    %% ── Shared services ──
+    subgraph Shared["Shared Services"]
+        direction LR
+        CopilotService
+        TemplateService
+    end
 
-    CopilotService --> Copilot
-    Agents -.-> Copilot
-    Agents -.-> GitHubMCP
-    SkillExecutor -.-> Copilot
+    %% ── External ──
+    subgraph External["External"]
+        direction LR
+        CopilotAPI["GitHub Copilot API\n(LLM)"]
+        GitHubMCP["GitHub MCP Server"]
+    end
+
+    CopilotService --> CopilotAPI
+    Security & CodeQuality & Performance & BestPractices -.-> CopilotAPI
+    Security & CodeQuality & Performance & BestPractices -.-> GitHubMCP
+    SkillExecutor -.-> CopilotAPI
     SkillExecutor -.-> GitHubMCP
-    SummaryGenerator -.-> Copilot
+    SummaryGenerator -.-> CopilotAPI
 ```
 
 ## Template Customization
