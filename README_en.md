@@ -236,6 +236,9 @@ reviewer:
   templates:
     directory: templates              # Template directory
     output-constraints: output-constraints.md  # Output constraints (CoT suppression, language)
+  skills:
+    filename: SKILL.md                    # Skill definition filename
+    directory: .github/skills             # Skill definitions directory
   mcp:
     github:
       type: http
@@ -247,8 +250,8 @@ reviewer:
   models:
     default-model: claude-sonnet-4.5  # Default for all models (changeable without rebuild)
     review-model: GPT-5.2-Codex      # Model for review
-    report-model: claude-opus-4.6-fast  # Model for report generation
-    summary-model: claude-opus-4.6-fast # Model for summary generation
+    report-model: claude-opus-4.6    # Model for report generation
+    summary-model: claude-sonnet-4.5 # Model for summary generation
     reasoning-effort: high           # Reasoning effort level (low/medium/high)
 ```
 
@@ -583,6 +586,11 @@ Templates support `{{placeholder}}` format placeholders. See each template file 
 multi-agent-reviewer/
 ├── pom.xml                              # Maven configuration
 ├── .sdkmanrc                            # SDKMAN GraalVM configuration
+├── .github/
+│   └── skills/                          # Skill definitions (SKILL.md format)
+│       ├── sql-injection-check/
+│       ├── secret-scan/
+│       └── ...
 ├── agents/                              # Agent definitions (.agent.md format)
 │   ├── security.agent.md
 │   ├── code-quality.agent.md
@@ -613,6 +621,7 @@ multi-agent-reviewer/
     │   ├── ExecutionConfig.java         # Execution config
     │   ├── GithubMcpConfig.java         # GitHub MCP config
     │   ├── OrchestratorConfig.java      # Orchestrator config
+    │   ├── SkillConfig.java             # Skill config
     │   └── TemplateConfig.java          # Template config
     ├── instruction/
     │   ├── CustomInstruction.java       # Custom instruction model
@@ -635,6 +644,7 @@ multi-agent-reviewer/
     │   └── TemplateService.java         # Template loading
     ├── skill/
     │   ├── SkillDefinition.java         # Skill definition model
+    │   ├── SkillMarkdownParser.java     # Skill markdown parser
     │   ├── SkillParameter.java          # Skill parameter model
     │   ├── SkillRegistry.java           # Skill registry
     │   ├── SkillExecutor.java           # Skill executor
