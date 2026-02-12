@@ -14,13 +14,11 @@ import java.util.stream.Stream;
 /// Loads agent configurations from external files.
 /// Supports GitHub Copilot agent definition format (.agent.md).
 ///
-/// Files can be placed in:
+/// Agent files can be placed in:
 /// - agents/ directory
 /// - .github/agents/ directory
 ///
-/// Skills are loaded from (in priority order):
-/// 1. .github/skills/ — Agent Skills spec (SKILL.md per directory)
-/// 2. {agentsDir}/{agentName}/ — Legacy per-agent skill files (.skill.md)
+/// Skills are loaded from .github/skills/ following the Agent Skills spec (SKILL.md per directory).
 public class AgentConfigLoader {
     
     private static final Logger logger = LoggerFactory.getLogger(AgentConfigLoader.class);
@@ -46,8 +44,7 @@ public class AgentConfigLoader {
     }
     
     /// Loads all agent configurations from all configured directories.
-    /// Skills are loaded from .github/skills/ (Agent Skills spec) or
-    /// from per-agent subdirectories (legacy format).
+    /// Skills are loaded from .github/skills/ (Agent Skills spec).
     /// @return Map of agent name to AgentConfig
     public Map<String, AgentConfig> loadAllAgents() throws IOException {
         Map<String, AgentConfig> agents = new HashMap<>();
@@ -83,11 +80,9 @@ public class AgentConfigLoader {
                 try {
                     AgentConfig config = markdownParser.parse(file);
                     if (config != null) {
-                        // Collect skills for this agent:
-                        // 1. Global skills from .github/skills/ matched by metadata.agent
-                        // 2. Legacy per-agent subdirectory skills
-                        List<SkillDefinition> agentSkills = collectSkillsForAgent(
-                            directory, config.getName(), globalSkills);
+                        // Collect skills for this agent from .github/skills/
+                    List<SkillDefinition> agentSkills = collectSkillsForAgent(
+                        config.getName(), globalSkills);
                         if (!agentSkills.isEmpty()) {
                             config = config.withSkills(agentSkills);
                             logger.info("Loaded {} skills for agent: {}", agentSkills.size(), config.getName());
@@ -103,26 +98,20 @@ public class AgentConfigLoader {
         }
     }
 
-    /// Collects skills for a specific agent from global and legacy sources.
+    /// Collects skills for a specific agent from .github/skills/.
     ///
-    /// Global skills (.github/skills/) are matched to agents via the `metadata.agent` field.
-    /// Legacy skills ({agentsDir}/{agentName}/*.skill.md) are included unconditionally.
+    /// Skills are matched to agents via the `metadata.agent` field.
     /// Skills without an agent metadata field are available to all agents.
-    private List<SkillDefinition> collectSkillsForAgent(Path agentsDir, String agentName,
+    private List<SkillDefinition> collectSkillsForAgent(String agentName,
                                                          List<SkillDefinition> globalSkills) {
         List<SkillDefinition> skills = new ArrayList<>();
 
-        // Add global skills matching this agent (or with no agent restriction)
         for (SkillDefinition skill : globalSkills) {
             String skillAgent = skill.metadata().get("agent");
             if (skillAgent == null || skillAgent.equals(agentName)) {
                 skills.add(skill);
             }
         }
-
-        // Add legacy per-agent subdirectory skills
-        List<SkillDefinition> legacySkills = loadLegacySkillsForAgent(agentsDir, agentName);
-        skills.addAll(legacySkills);
 
         return skills;
     }
@@ -158,37 +147,6 @@ public class AgentConfigLoader {
         return List.copyOf(skills);
     }
 
-    /// Loads skill definitions from legacy .skill.md files in the agent's subdirectory.
-    /// Skills are expected in: {agentsDir}/{agentName}/*.skill.md
-    private List<SkillDefinition> loadLegacySkillsForAgent(Path agentsDir, String agentName) {
-        Path skillsDir = agentsDir.resolve(agentName);
-        if (!Files.exists(skillsDir) || !Files.isDirectory(skillsDir)) {
-            return List.of();
-        }
-
-        List<SkillDefinition> skills = new ArrayList<>();
-        try (Stream<Path> paths = Files.list(skillsDir)) {
-            List<Path> skillFiles = paths
-                .filter(skillParser::isSkillFile)
-                .sorted()
-                .collect(Collectors.toList());
-
-            for (Path skillFile : skillFiles) {
-                try {
-                    SkillDefinition skill = skillParser.parse(skillFile);
-                    skills.add(skill);
-                    logger.debug("Loaded skill: {} from {}", skill.id(), skillFile.getFileName());
-                } catch (Exception e) {
-                    logger.error("Failed to load skill from {}: {}", skillFile, e.getMessage());
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Failed to list skills directory {}: {}", skillsDir, e.getMessage());
-        }
-
-        return skills;
-    }
-    
     private boolean isAgentFile(Path path) {
         String filename = path.getFileName().toString().toLowerCase();
         return filename.endsWith(".agent.md");

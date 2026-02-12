@@ -19,20 +19,18 @@ class SkillMarkdownParserTest {
     private final SkillMarkdownParser parser = new SkillMarkdownParser();
 
     @Nested
-    @DisplayName("parseContent - 正常系（レガシー形式）")
-    class ParseContentLegacySuccess {
+    @DisplayName("parseContent - 正常系")
+    class ParseContentSuccess {
 
         @Test
         @DisplayName("フロントマターとプロンプトを正しくパースする")
         void parsesFullSkillFile() {
             String content = """
                 ---
-                name: 技術スタック分析
+                name: tech-stack-analysis
                 description: プロジェクトの技術スタックを分析します
-                parameters:
-                  - name: repository
-                    required: true
-                    description: 対象リポジトリ
+                metadata:
+                  agent: best-practices
                 ---
                 
                 以下のリポジトリの技術スタックを分析してください。
@@ -40,72 +38,35 @@ class SkillMarkdownParserTest {
                 **対象リポジトリ**: ${repository}
                 """;
 
-            SkillDefinition skill = parser.parseContent(content, "tech-stack-analysis.skill.md");
+            SkillDefinition skill = parser.parseContent(content, "tech-stack-analysis");
 
             assertThat(skill.id()).isEqualTo("tech-stack-analysis");
-            assertThat(skill.name()).isEqualTo("技術スタック分析");
+            assertThat(skill.name()).isEqualTo("tech-stack-analysis");
             assertThat(skill.description()).isEqualTo("プロジェクトの技術スタックを分析します");
             assertThat(skill.prompt()).contains("技術スタックを分析してください");
             assertThat(skill.prompt()).contains("${repository}");
-            assertThat(skill.parameters()).hasSize(1);
-
-            SkillParameter param = skill.parameters().getFirst();
-            assertThat(param.name()).isEqualTo("repository");
-            assertThat(param.required()).isTrue();
-            assertThat(param.description()).isEqualTo("対象リポジトリ");
+            assertThat(skill.parameters()).isEmpty();
+            assertThat(skill.metadata()).containsEntry("agent", "best-practices");
         }
 
         @Test
-        @DisplayName("複数パラメータを正しくパースする")
-        void parsesMultipleParameters() {
+        @DisplayName("metadataがない場合も正しくパースする")
+        void parsesWithoutMetadata() {
             String content = """
                 ---
-                name: Test Skill
-                description: A test
-                parameters:
-                  - name: target
-                    required: true
-                    description: Target file
-                  - name: format
-                    required: false
-                    description: Output format
-                    default: json
-                ---
-                
-                Prompt content here.
-                """;
-
-            SkillDefinition skill = parser.parseContent(content, "test.skill.md");
-
-            assertThat(skill.parameters()).hasSize(2);
-
-            SkillParameter first = skill.parameters().get(0);
-            assertThat(first.name()).isEqualTo("target");
-            assertThat(first.required()).isTrue();
-
-            SkillParameter second = skill.parameters().get(1);
-            assertThat(second.name()).isEqualTo("format");
-            assertThat(second.required()).isFalse();
-            assertThat(second.defaultValue()).isEqualTo("json");
-        }
-
-        @Test
-        @DisplayName("パラメータがない場合も正しくパースする")
-        void parsesWithoutParameters() {
-            String content = """
-                ---
-                name: Simple Skill
-                description: No parameters
+                name: simple-skill
+                description: No metadata
                 ---
                 
                 Simple prompt content.
                 """;
 
-            SkillDefinition skill = parser.parseContent(content, "simple.skill.md");
+            SkillDefinition skill = parser.parseContent(content, "simple-skill");
 
-            assertThat(skill.id()).isEqualTo("simple");
-            assertThat(skill.name()).isEqualTo("Simple Skill");
+            assertThat(skill.id()).isEqualTo("simple-skill");
+            assertThat(skill.name()).isEqualTo("simple-skill");
             assertThat(skill.parameters()).isEmpty();
+            assertThat(skill.metadata()).isEmpty();
             assertThat(skill.prompt()).contains("Simple prompt content");
         }
 
@@ -114,10 +75,10 @@ class SkillMarkdownParserTest {
         void parsesWithoutFrontmatter() {
             String content = "This is just a prompt without frontmatter.";
 
-            SkillDefinition skill = parser.parseContent(content, "raw.skill.md");
+            SkillDefinition skill = parser.parseContent(content, "raw-skill");
 
-            assertThat(skill.id()).isEqualTo("raw");
-            assertThat(skill.name()).isEqualTo("raw");
+            assertThat(skill.id()).isEqualTo("raw-skill");
+            assertThat(skill.name()).isEqualTo("raw-skill");
             assertThat(skill.prompt()).isEqualTo("This is just a prompt without frontmatter.");
         }
 
@@ -126,16 +87,16 @@ class SkillMarkdownParserTest {
         void handlesQuotedValues() {
             String content = """
                 ---
-                name: "Quoted Name"
+                name: "quoted-skill"
                 description: 'Quoted Description'
                 ---
                 
                 Prompt.
                 """;
 
-            SkillDefinition skill = parser.parseContent(content, "quoted.skill.md");
+            SkillDefinition skill = parser.parseContent(content, "quoted-skill");
 
-            assertThat(skill.name()).isEqualTo("Quoted Name");
+            assertThat(skill.name()).isEqualTo("quoted-skill");
             assertThat(skill.description()).isEqualTo("Quoted Description");
         }
     }
@@ -190,7 +151,7 @@ class SkillMarkdownParserTest {
                 Skill instructions.
                 """;
 
-            SkillDefinition skill = parser.parseContent(content, "my-skill", true);
+            SkillDefinition skill = parser.parseContent(content, "my-skill");
 
             assertThat(skill.id()).isEqualTo("my-skill");
             assertThat(skill.metadata()).containsEntry("agent", "best-practices");
@@ -209,7 +170,7 @@ class SkillMarkdownParserTest {
                 Instructions.
                 """;
 
-            SkillDefinition skill = parser.parseContent(content, "simple", true);
+            SkillDefinition skill = parser.parseContent(content, "simple");
 
             assertThat(skill.metadata()).isEmpty();
         }
@@ -226,7 +187,7 @@ class SkillMarkdownParserTest {
                 Analyze the tech stack.
                 """;
 
-            SkillDefinition skill = parser.parseContent(content, "tech-stack-analysis", true);
+            SkillDefinition skill = parser.parseContent(content, "tech-stack-analysis");
 
             assertThat(skill.id()).isEqualTo("tech-stack-analysis");
         }
@@ -241,13 +202,13 @@ class SkillMarkdownParserTest {
         void throwsWhenPromptEmpty() {
             String content = """
                 ---
-                name: Empty Prompt
+                name: empty-prompt
                 description: Has no body
                 ---
                 
                 """;
 
-            assertThatThrownBy(() -> parser.parseContent(content, "empty.skill.md"))
+            assertThatThrownBy(() -> parser.parseContent(content, "empty-prompt"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("no prompt content");
         }
@@ -256,33 +217,6 @@ class SkillMarkdownParserTest {
     @Nested
     @DisplayName("parse - ファイルからの読み込み")
     class ParseFile {
-
-        @Test
-        @DisplayName("レガシー .skill.md ファイルからスキルを正しく読み込む")
-        void parsesFromLegacyFile(@TempDir Path tempDir) throws IOException {
-            String content = """
-                ---
-                name: File Skill
-                description: Loaded from file
-                parameters:
-                  - name: repo
-                    required: true
-                    description: Repository
-                ---
-                
-                Analyze ${repo} for issues.
-                """;
-
-            Path skillFile = tempDir.resolve("file-test.skill.md");
-            Files.writeString(skillFile, content);
-
-            SkillDefinition skill = parser.parse(skillFile);
-
-            assertThat(skill.id()).isEqualTo("file-test");
-            assertThat(skill.name()).isEqualTo("File Skill");
-            assertThat(skill.parameters()).hasSize(1);
-            assertThat(skill.prompt()).contains("${repo}");
-        }
 
         @Test
         @DisplayName("SKILL.md ファイルからスキルを正しく読み込む")
@@ -310,6 +244,26 @@ class SkillMarkdownParserTest {
             assertThat(skill.name()).isEqualTo("my-skill");
             assertThat(skill.description()).contains("Agent Skills spec");
             assertThat(skill.prompt()).contains("# My Skill");
+        }
+
+        @Test
+        @DisplayName("SKILL.md以外のファイルは例外を投げる")
+        void throwsForNonSkillMdFile(@TempDir Path tempDir) throws IOException {
+            String content = """
+                ---
+                name: Legacy Skill
+                description: Old format
+                ---
+                
+                Prompt content.
+                """;
+
+            Path skillFile = tempDir.resolve("legacy.skill.md");
+            Files.writeString(skillFile, content);
+
+            assertThatThrownBy(() -> parser.parse(skillFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only SKILL.md is supported");
         }
     }
 
@@ -375,17 +329,17 @@ class SkillMarkdownParserTest {
     class IsSkillFile {
 
         @Test
-        @DisplayName(".skill.mdファイルはスキルファイルとして認識される")
-        void recognizesLegacySkillFile(@TempDir Path tempDir) {
-            Path skillFile = tempDir.resolve("my-skill.skill.md");
-            assertThat(parser.isSkillFile(skillFile)).isTrue();
-        }
-
-        @Test
         @DisplayName("SKILL.mdファイルはスキルファイルとして認識される")
         void recognizesAgentSkillsSpecFile(@TempDir Path tempDir) {
             Path skillFile = tempDir.resolve("SKILL.md");
             assertThat(parser.isSkillFile(skillFile)).isTrue();
+        }
+
+        @Test
+        @DisplayName(".skill.mdファイルはスキルファイルとして認識されない")
+        void doesNotRecognizeLegacySkillFile(@TempDir Path tempDir) {
+            Path skillFile = tempDir.resolve("my-skill.skill.md");
+            assertThat(parser.isSkillFile(skillFile)).isFalse();
         }
 
         @Test
@@ -406,32 +360,6 @@ class SkillMarkdownParserTest {
         @DisplayName("nullパスはfalseを返す")
         void nullPathReturnsFalse() {
             assertThat(parser.isSkillFile(null)).isFalse();
-        }
-    }
-
-    @Nested
-    @DisplayName("extractIdFromFilename")
-    class ExtractId {
-
-        @Test
-        @DisplayName(".skill.mdサフィックスを除去する")
-        void removesSkillMdSuffix() {
-            assertThat(parser.extractIdFromFilename("tech-stack-analysis.skill.md"))
-                .isEqualTo("tech-stack-analysis");
-        }
-
-        @Test
-        @DisplayName(".mdサフィックスを除去する")
-        void removesMdSuffix() {
-            assertThat(parser.extractIdFromFilename("simple.md"))
-                .isEqualTo("simple");
-        }
-
-        @Test
-        @DisplayName("サフィックスがない場合はそのまま返す")
-        void returnsAsIsWithoutSuffix() {
-            assertThat(parser.extractIdFromFilename("no-suffix"))
-                .isEqualTo("no-suffix");
         }
     }
 }
