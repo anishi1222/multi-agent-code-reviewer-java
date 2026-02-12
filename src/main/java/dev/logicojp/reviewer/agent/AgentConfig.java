@@ -132,6 +132,19 @@ public record AgentConfig(
         );
     }
 
+    public AgentConfig withSkills(List<SkillDefinition> newSkills) {
+        return new AgentConfig(
+            name,
+            displayName,
+            model,
+            systemPrompt,
+            instruction,
+            outputFormat,
+            focusAreas,
+            newSkills
+        );
+    }
+
     public void validateRequired() {
         StringBuilder missing = new StringBuilder();
         if (name == null || name.isBlank()) {
