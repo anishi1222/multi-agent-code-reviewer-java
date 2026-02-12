@@ -505,55 +505,86 @@ mvn clean package -Pnative -DskipTests
 
 ```mermaid
 flowchart TB
-    subgraph CLI[CLI Application]
-        ReviewApp[ReviewApp<br/>CLI Entry Point]
+    subgraph CLI["CLI Layer"]
+        ReviewApp[ReviewApp<br/>Entry Point]
         ReviewCommand[ReviewCommand]
+        ListAgentsCommand[ListAgentsCommand]
+        SkillCommand[SkillCommand]
     end
 
-    subgraph Orchestrator[Orchestrator]
-        ReviewOrchestrator[ReviewOrchestrator<br/>Parallel Execution]
+    subgraph Services["Service Layer"]
+        AgentService[AgentService]
+        CopilotService[CopilotService]
+        ReviewService[ReviewService]
+        ReportService[ReportService]
+        SkillService[SkillService]
+        TemplateService[TemplateService]
     end
 
-    subgraph Agents[Review Agents]
+    subgraph Orchestrator["Orchestrator"]
+        ReviewOrchestrator[ReviewOrchestrator<br/>Virtual Threads /<br/>Structured Concurrency]
+    end
+
+    subgraph Agents["Review Agents"]
         Security[Security Agent]
         CodeQuality[Code Quality Agent]
         Performance[Performance Agent]
         BestPractices[Best Practices Agent]
     end
 
-    subgraph Reports[Report Generation]
+    subgraph Skills["Skill Execution"]
+        SkillExecutor[SkillExecutor<br/>Structured Concurrency]
+        SkillRegistry[SkillRegistry]
+    end
+
+    subgraph Target["Review Target"]
+        ReviewTarget["ReviewTarget<br/>(sealed interface)"]
+        GitHubTarget[GitHubTarget]
+        LocalTarget[LocalTarget]
+        LocalFileProvider[LocalFileProvider]
+    end
+
+    subgraph Reports["Report Generation"]
         ReportGenerator[ReportGenerator]
         SummaryGenerator[SummaryGenerator]
+        FindingsExtractor[FindingsExtractor]
+        ContentSanitizer[ContentSanitizer]
     end
 
-    subgraph External[External Services]
+    subgraph Instructions["Custom Instructions"]
+        CustomInstructionLoader[CustomInstructionLoader]
+    end
+
+    subgraph External["External Services"]
         Copilot[GitHub Copilot API<br/>LLM]
-        GitHub[GitHub API<br/>Repository]
+        GitHubMCP[GitHub MCP Server]
     end
 
-    ReviewApp --> ReviewCommand
-    ReviewCommand --> ReviewOrchestrator
-    ReviewOrchestrator --> Security
-    ReviewOrchestrator --> CodeQuality
-    ReviewOrchestrator --> Performance
-    ReviewOrchestrator --> BestPractices
+    ReviewApp --> ReviewCommand & ListAgentsCommand & SkillCommand
+    ReviewCommand --> ReviewService
+    ReviewCommand --> ReportService
+    ListAgentsCommand --> AgentService
+    SkillCommand --> SkillService
 
-    Security --> ReportGenerator
-    CodeQuality --> ReportGenerator
-    Performance --> ReportGenerator
-    BestPractices --> ReportGenerator
-    ReportGenerator --> SummaryGenerator
+    ReviewService --> ReviewOrchestrator
+    ReviewService --> CustomInstructionLoader
+    ReviewOrchestrator --> Agents
+    ReportService --> ReportGenerator & SummaryGenerator
+    SkillService --> SkillExecutor
+    SkillService --> SkillRegistry
 
-    Security -.-> Copilot
-    CodeQuality -.-> Copilot
-    Performance -.-> Copilot
-    BestPractices -.-> Copilot
+    Agents --> ContentSanitizer
+    SummaryGenerator --> FindingsExtractor
+
+    ReviewTarget --> GitHubTarget & LocalTarget
+    LocalTarget --> LocalFileProvider
+
+    CopilotService --> Copilot
+    Agents -.-> Copilot
+    Agents -.-> GitHubMCP
+    SkillExecutor -.-> Copilot
+    SkillExecutor -.-> GitHubMCP
     SummaryGenerator -.-> Copilot
-
-    Security -.-> GitHub
-    CodeQuality -.-> GitHub
-    Performance -.-> GitHub
-    BestPractices -.-> GitHub
 ```
 
 ## Template Customization

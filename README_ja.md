@@ -505,55 +505,86 @@ mvn clean package -Pnative -DskipTests
 
 ```mermaid
 flowchart TB
-    subgraph CLI[CLI Application]
-        ReviewApp[ReviewApp<br/>CLI Entry Point]
+    subgraph CLI["CLIレイヤー"]
+        ReviewApp[ReviewApp<br/>エントリポイント]
         ReviewCommand[ReviewCommand]
+        ListAgentsCommand[ListAgentsCommand]
+        SkillCommand[SkillCommand]
     end
 
-    subgraph Orchestrator[Orchestrator]
-        ReviewOrchestrator[ReviewOrchestrator<br/>Parallel Execution]
+    subgraph Services["サービスレイヤー"]
+        AgentService[AgentService]
+        CopilotService[CopilotService]
+        ReviewService[ReviewService]
+        ReportService[ReportService]
+        SkillService[SkillService]
+        TemplateService[TemplateService]
     end
 
-    subgraph Agents[Review Agents]
+    subgraph Orchestrator["オーケストレータ"]
+        ReviewOrchestrator[ReviewOrchestrator<br/>仮想スレッド /<br/>Structured Concurrency]
+    end
+
+    subgraph Agents["レビューエージェント"]
         Security[Security Agent]
         CodeQuality[Code Quality Agent]
         Performance[Performance Agent]
         BestPractices[Best Practices Agent]
     end
 
-    subgraph Reports[Report Generation]
+    subgraph Skills["スキル実行"]
+        SkillExecutor[SkillExecutor<br/>Structured Concurrency]
+        SkillRegistry[SkillRegistry]
+    end
+
+    subgraph Target["レビュー対象"]
+        ReviewTarget["ReviewTarget<br/>(sealed interface)"]
+        GitHubTarget[GitHubTarget]
+        LocalTarget[LocalTarget]
+        LocalFileProvider[LocalFileProvider]
+    end
+
+    subgraph Reports["レポート生成"]
         ReportGenerator[ReportGenerator]
         SummaryGenerator[SummaryGenerator]
+        FindingsExtractor[FindingsExtractor]
+        ContentSanitizer[ContentSanitizer]
     end
 
-    subgraph External[External Services]
+    subgraph Instructions["カスタムインストラクション"]
+        CustomInstructionLoader[CustomInstructionLoader]
+    end
+
+    subgraph External["外部サービス"]
         Copilot[GitHub Copilot API<br/>LLM]
-        GitHub[GitHub API<br/>Repository]
+        GitHubMCP[GitHub MCP Server]
     end
 
-    ReviewApp --> ReviewCommand
-    ReviewCommand --> ReviewOrchestrator
-    ReviewOrchestrator --> Security
-    ReviewOrchestrator --> CodeQuality
-    ReviewOrchestrator --> Performance
-    ReviewOrchestrator --> BestPractices
+    ReviewApp --> ReviewCommand & ListAgentsCommand & SkillCommand
+    ReviewCommand --> ReviewService
+    ReviewCommand --> ReportService
+    ListAgentsCommand --> AgentService
+    SkillCommand --> SkillService
 
-    Security --> ReportGenerator
-    CodeQuality --> ReportGenerator
-    Performance --> ReportGenerator
-    BestPractices --> ReportGenerator
-    ReportGenerator --> SummaryGenerator
+    ReviewService --> ReviewOrchestrator
+    ReviewService --> CustomInstructionLoader
+    ReviewOrchestrator --> Agents
+    ReportService --> ReportGenerator & SummaryGenerator
+    SkillService --> SkillExecutor
+    SkillService --> SkillRegistry
 
-    Security -.-> Copilot
-    CodeQuality -.-> Copilot
-    Performance -.-> Copilot
-    BestPractices -.-> Copilot
+    Agents --> ContentSanitizer
+    SummaryGenerator --> FindingsExtractor
+
+    ReviewTarget --> GitHubTarget & LocalTarget
+    LocalTarget --> LocalFileProvider
+
+    CopilotService --> Copilot
+    Agents -.-> Copilot
+    Agents -.-> GitHubMCP
+    SkillExecutor -.-> Copilot
+    SkillExecutor -.-> GitHubMCP
     SummaryGenerator -.-> Copilot
-
-    Security -.-> GitHub
-    CodeQuality -.-> GitHub
-    Performance -.-> GitHub
-    BestPractices -.-> GitHub
 ```
 
 ## テンプレートのカスタマイズ
