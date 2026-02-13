@@ -12,6 +12,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 - **Flexible Agent Definitions**: Define agents in GitHub Copilot format (.agent.md)
 - **Agent Skill Support**: Define individual skills for agents to execute specific tasks
 - **External Configuration Files**: Agent definitions can be swapped without rebuilding
+- **Reusable Prompt Files**: Load GitHub Copilot format (.prompt.md) reusable prompts as supplementary instructions
 - **LLM Model Selection**: Use different models for review, report generation, and summary generation
 - **Structured Review Results**: Consistent format with Priority (Critical/High/Medium/Low)
 - **Executive Summary Generation**: Management-facing report aggregating all review results
@@ -116,6 +117,7 @@ java --enable-preview -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--summary-model` | - | Model for summary generation | default-model |
 | `--instructions` | - | Custom instruction file (can be specified multiple times) | - |
 | `--no-instructions` | - | Disable automatic loading of custom instructions | false |
+| `--no-prompts` | - | Disable loading `.github/prompts/*.prompt.md` | false |
 | `--help` | `-h` | Show help | - |
 | `--version` | `-V` | Show version | - |
 | `--verbose` | `-v` | Enable verbose logging (debug level) | - |
@@ -193,11 +195,12 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 During local directory review, custom instructions are automatically loaded from the following paths (in order of priority):
 
 1. `.github/copilot-instructions.md`
-2. `.github/instructions/*.instructions.md` (GitHub Copilot per-scope instructions)
-3. `.copilot/instructions.md`
+2. `.copilot/instructions.md`
+3. `copilot-instructions.md`
 4. `INSTRUCTIONS.md`
 5. `.instructions.md`
-6. `copilot-instructions.md`
+6. `.github/instructions/*.instructions.md` (GitHub Copilot per-scope instructions)
+7. `.github/prompts/*.prompt.md` (GitHub Copilot reusable prompt files)
 
 #### GitHub Copilot Per-scope Instructions
 
@@ -219,11 +222,32 @@ Multiple instruction files can be placed in the `.github/instructions/` director
 ```
 .github/
 ├── copilot-instructions.md          # Repository-wide instructions
-└── instructions/
-    ├── java.instructions.md         # Java-specific rules
-    ├── typescript.instructions.md   # TypeScript-specific rules
-    └── security.instructions.md     # Security guidelines
+├── instructions/
+│   ├── java.instructions.md         # Java-specific rules
+│   ├── typescript.instructions.md   # TypeScript-specific rules
+│   └── security.instructions.md     # Security guidelines
+└── prompts/
+    ├── java-junit.prompt.md         # JUnit test generation prompt
+    └── java-docs.prompt.md          # Javadoc generation prompt
 ```
+
+#### GitHub Copilot Reusable Prompt Files
+
+The `.github/prompts/*.prompt.md` format used by GitHub Copilot is supported.
+Prompt files are injected into the agent system prompt as supplementary instructions.
+
+YAML frontmatter can specify `description` and `agent` (target agent).
+
+```markdown
+---
+description: 'JUnit 5 best practices'
+agent: 'agent'
+---
+# JUnit 5 Best Practices
+Your goal is to help write effective unit tests...
+```
+
+Use `--no-prompts` to disable loading prompt files.
 
 ### Output Example
 
@@ -267,8 +291,8 @@ reviewer:
       auth-header-template: "Bearer {token}"
   models:
     default-model: claude-sonnet-4.5  # Default for all models (changeable without rebuild)
-    review-model: GPT-5.2-Codex      # Model for review
-    report-model: claude-opus-4.6    # Model for report generation
+    review-model: GPT-5.3-Codex      # Model for review
+    report-model: claude-opus-4.6-fast  # Model for report generation
     summary-model: claude-sonnet-4.5 # Model for summary generation
     reasoning-effort: high           # Reasoning effort level (low/medium/high)
 ```
@@ -678,7 +702,8 @@ multi-agent-reviewer/
     ├── instruction/
     │   ├── CustomInstruction.java       # Custom instruction model
     │   ├── CustomInstructionLoader.java # Instruction loader
-    │   └── InstructionSource.java       # Source type
+    │   ├── InstructionSource.java       # Source type
+    │   └── PromptLoader.java            # Prompt file loader
     ├── orchestrator/
     │   └── ReviewOrchestrator.java      # Parallel execution control
     ├── report/
