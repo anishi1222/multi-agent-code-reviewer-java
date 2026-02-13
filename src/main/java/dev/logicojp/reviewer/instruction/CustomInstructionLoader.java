@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 /// Supports the following instruction file locations (in priority order):
 /// - .github/copilot-instructions.md
 /// - .github/instructions/*.instructions.md (GitHub Copilot per-scope format with YAML frontmatter)
+/// - .github/prompts/*.prompt.md (GitHub Copilot reusable prompt files — loaded as supplementary instructions)
 /// - .copilot/instructions.md
 /// - copilot-instructions.md (root)
 /// - INSTRUCTIONS.md (root)
@@ -29,6 +30,16 @@ import java.util.stream.Stream;
 /// description: 'Java coding standards'
 /// ---
 /// Follow these coding standards...
+/// ```
+///
+/// Prompt files (.github/prompts/*.prompt.md) follow GitHub Copilot's prompt file format:
+/// ```
+/// ---
+/// description: 'JUnit 5 best practices'
+/// agent: 'agent'
+/// ---
+/// # JUnit 5 Best Practices
+/// ...
 /// ```
 public class CustomInstructionLoader {
 
@@ -50,15 +61,23 @@ public class CustomInstructionLoader {
     private static final String INSTRUCTIONS_EXTENSION = ".instructions.md";
 
     private final List<Path> additionalInstructionPaths;
+    private final PromptLoader promptLoader;
+    private final boolean loadPrompts;
 
     public CustomInstructionLoader() {
-        this.additionalInstructionPaths = new ArrayList<>();
+        this(null, true);
     }
 
     public CustomInstructionLoader(List<Path> additionalInstructionPaths) {
+        this(additionalInstructionPaths, true);
+    }
+
+    public CustomInstructionLoader(List<Path> additionalInstructionPaths, boolean loadPrompts) {
         this.additionalInstructionPaths = additionalInstructionPaths != null 
             ? new ArrayList<>(additionalInstructionPaths) 
             : new ArrayList<>();
+        this.promptLoader = new PromptLoader();
+        this.loadPrompts = loadPrompts;
     }
 
     /// Loads custom instructions from a local directory.
@@ -80,6 +99,12 @@ public class CustomInstructionLoader {
 
         // Check .github/instructions/ directory for per-scope instruction files
         instructions.addAll(loadFromInstructionsDirectory(resolvedDirectory));
+
+        // Check .github/prompts/ directory for reusable prompt files
+        if (loadPrompts) {
+            List<CustomInstruction> prompts = promptLoader.loadFromPromptsDirectory(resolvedDirectory);
+            instructions.addAll(prompts);
+        }
 
         // Check additional paths
         for (Path additionalPath : additionalInstructionPaths) {

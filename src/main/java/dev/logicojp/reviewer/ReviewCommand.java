@@ -88,6 +88,8 @@ public class ReviewCommand {
 
     private boolean noInstructions;
 
+    private boolean noPrompts;
+
     private boolean helpRequested;
 
     @Inject
@@ -145,6 +147,7 @@ public class ReviewCommand {
         defaultModel = null;
         instructionPaths = new ArrayList<>();
         noInstructions = false;
+        noPrompts = false;
         helpRequested = false;
     }
 
@@ -233,6 +236,7 @@ public class ReviewCommand {
                     }
                 }
                 case "--no-instructions" -> noInstructions = true;
+                case "--no-prompts" -> noPrompts = true;
                 default -> {
                     if (arg.startsWith("-")) {
                         throw new CliValidationException("Unknown option: " + arg, true);
@@ -446,7 +450,8 @@ public class ReviewCommand {
 
         // Also try to load from target directory (for local targets)
         if (target.isLocal()) {
-            CustomInstructionLoader loader = new CustomInstructionLoader();
+            boolean shouldLoadPrompts = !noPrompts;
+            CustomInstructionLoader loader = new CustomInstructionLoader(null, shouldLoadPrompts);
             List<CustomInstruction> targetInstructions = loader.loadForTarget(target);
             for (CustomInstruction instruction : targetInstructions) {
                 instructions.add(instruction);
