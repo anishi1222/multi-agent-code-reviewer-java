@@ -1289,6 +1289,24 @@
       ]
     },
     {
+      "type": "dev.logicojp.reviewer.skill.$SkillRegistry$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "dev.logicojp.reviewer.util.$FeatureFlags$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "dev.logicojp.reviewer.util.$GitHubTokenResolver$Definition",
       "methods": [
         {
@@ -1311,6 +1329,15 @@
     },
     {
       "type": "io.micronaut.context.env.PropertiesPropertySourceLoader",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.micronaut.context.env.exp.RandomPropertyExpressionResolver",
       "methods": [
         {
           "name": "<init>",

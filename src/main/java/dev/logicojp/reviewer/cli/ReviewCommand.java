@@ -179,19 +179,19 @@ public class ReviewCommand {
         }
 
         int parsedIndex = applyTargetOption(state, arg, args, i);
-        if (parsedIndex != i) return parsedIndex;
+        if (parsedIndex >= 0) return parsedIndex;
 
         parsedIndex = applyAgentOption(state, arg, args, i);
-        if (parsedIndex != i) return parsedIndex;
+        if (parsedIndex >= 0) return parsedIndex;
 
         parsedIndex = applyExecutionOption(state, arg, args, i);
-        if (parsedIndex != i) return parsedIndex;
+        if (parsedIndex >= 0) return parsedIndex;
 
         parsedIndex = applyModelOption(state, arg, args, i);
-        if (parsedIndex != i) return parsedIndex;
+        if (parsedIndex >= 0) return parsedIndex;
 
         parsedIndex = applyInstructionOption(state, arg, args, i);
-        if (parsedIndex != i) return parsedIndex;
+        if (parsedIndex >= 0) return parsedIndex;
 
         if (arg.startsWith("-")) {
             throw new CliValidationException("Unknown option: " + arg, true);
@@ -203,7 +203,7 @@ public class ReviewCommand {
         return switch (arg) {
             case "-r", "--repo" -> CliParsing.readInto(args, i, "--repo", v -> state.repository = v);
             case "-l", "--local" -> CliParsing.readInto(args, i, "--local", v -> state.localDirectory = Path.of(v));
-            default -> i;
+            default -> -1;
         };
     }
 
@@ -219,7 +219,7 @@ public class ReviewCommand {
                 state.agentNames.addAll(parsed);
                 yield value.newIndex();
             }
-            default -> i;
+            default -> -1;
         };
     }
 
@@ -232,7 +232,7 @@ public class ReviewCommand {
             case "--parallelism" -> CliParsing.readInto(args, i, "--parallelism",
                 v -> state.parallelism = parseInt(v, "--parallelism"));
             case "--no-summary" -> { state.noSummary = true; yield i; }
-            default -> i;
+            default -> -1;
         };
     }
 
@@ -242,7 +242,7 @@ public class ReviewCommand {
             case "--report-model" -> CliParsing.readInto(args, i, "--report-model", v -> state.reportModel = v);
             case "--summary-model" -> CliParsing.readInto(args, i, "--summary-model", v -> state.summaryModel = v);
             case "--model" -> CliParsing.readInto(args, i, "--model", v -> state.defaultModel = v);
-            default -> i;
+            default -> -1;
         };
     }
 
@@ -253,7 +253,7 @@ public class ReviewCommand {
             case "--no-instructions" -> { state.noInstructions = true; yield i; }
             case "--no-prompts" -> { state.noPrompts = true; yield i; }
             case "--trust" -> { state.trustTarget = true; yield i; }
-            default -> i;
+            default -> -1;
         };
     }
 
