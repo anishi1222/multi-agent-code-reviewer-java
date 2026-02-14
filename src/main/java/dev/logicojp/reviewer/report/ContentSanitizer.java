@@ -16,8 +16,11 @@ public final class ContentSanitizer {
 
     /// Pattern to match common CoT / thinking XML-style blocks.
     /// Handles `<thinking>`, `<antThinking>`, `<reflection>`, `<inner_monologue>`, etc.
+    /// Uses possessive quantifier (`*+`) to prevent catastrophic backtracking on large inputs.
     private static final Pattern THINKING_BLOCK_PATTERN = Pattern.compile(
-        "<(thinking|antThinking|reflection|inner_monologue|scratchpad)>.*?</\\1>",
+        "<(thinking|antThinking|reflection|inner_monologue|scratchpad)>" +
+        "(?:(?!</\\1>).)*+" +
+        "</\\1>",
         Pattern.DOTALL | Pattern.CASE_INSENSITIVE
     );
 

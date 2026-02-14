@@ -111,7 +111,6 @@ public class ReviewCommand {
         } catch (Exception e) {
             logger.error("Execution failed: {}", e.getMessage(), e);
             System.err.println("Error: " + e.getMessage());
-            e.printStackTrace(System.err);
             return ExitCodes.SOFTWARE;
         }
     }
@@ -179,7 +178,12 @@ public class ReviewCommand {
                 case "--token" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--token");
                     i = value.newIndex();
-                    githubToken = readToken(value.value());
+                    String tokenValue = value.value();
+                    if (!"-".equals(tokenValue)) {
+                        System.err.println("WARNING: Token passed via command line is visible in process listings. "
+                            + "Use '--token -' or GITHUB_TOKEN env var for safer input.");
+                    }
+                    githubToken = CliParsing.readToken(tokenValue);
                 }
                 case "--parallelism" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--parallelism");
@@ -272,23 +276,6 @@ public class ReviewCommand {
         } catch (NumberFormatException e) {
             throw new CliValidationException("Invalid value for " + optionName + ": " + value, true);
         }
-    }
-
-    /// Reads a token value, supporting stdin input via "-" to avoid
-    /// exposing the token in process listings or shell history.
-    private static String readToken(String value) {
-        if ("-".equals(value)) {
-            try {
-                if (System.console() != null) {
-                    char[] chars = System.console().readPassword("GitHub Token: ");
-                    return chars != null ? new String(chars).trim() : "";
-                }
-                return new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
-            } catch (java.io.IOException e) {
-                throw new CliValidationException("Failed to read token from stdin: " + e.getMessage(), false);
-            }
-        }
-        return value;
     }
 
     private int executeInternal(ParsedOptions options) throws Exception {

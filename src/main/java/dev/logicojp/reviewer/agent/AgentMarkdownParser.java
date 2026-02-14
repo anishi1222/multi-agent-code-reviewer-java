@@ -34,12 +34,6 @@ public class AgentMarkdownParser {
     
     private static final Logger logger = LoggerFactory.getLogger(AgentMarkdownParser.class);
     
-    // Pattern to match YAML frontmatter
-    private static final Pattern FRONTMATTER_PATTERN = Pattern.compile(
-        "^---\\s*\\n(.*?)\\n---\\s*\\n(.*)$", 
-        Pattern.DOTALL
-    );
-    
     // Pattern to extract focus areas from markdown list
     private static final Pattern FOCUS_AREA_PATTERN = Pattern.compile(
         "##\\s*Focus Areas\\s*\\n((?:\\s*[-*]\\s*.+\\n?)+)",

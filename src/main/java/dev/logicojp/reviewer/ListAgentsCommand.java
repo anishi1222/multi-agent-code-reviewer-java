@@ -8,6 +8,7 @@ import dev.logicojp.reviewer.service.AgentService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -79,29 +80,25 @@ public class ListAgentsCommand {
         return new ParsedOptions(List.copyOf(additionalAgentDirs));
     }
 
-    private int executeInternal(ParsedOptions options) {
-        try {
-            List<Path> agentDirs = agentService.buildAgentDirectories(options.additionalAgentDirs());
-            List<String> availableAgents = agentService.listAvailableAgents(agentDirs);
+    private int executeInternal(ParsedOptions options) throws IOException {
+        List<Path> agentDirs = agentService.buildAgentDirectories(options.additionalAgentDirs());
+        List<String> availableAgents = agentService.listAvailableAgents(agentDirs);
 
-            System.out.println("Agent directories:");
-            for (Path dir : agentDirs) {
-                System.out.println("  - " + dir + (Files.exists(dir) ? "" : " (not found)"));
-            }
-            System.out.println();
-
-            if (availableAgents.isEmpty()) {
-                System.out.println("No agents found.");
-                return ExitCodes.OK;
-            }
-
-            System.out.println("Available agents:");
-            for (String agent : availableAgents) {
-                System.out.println("  - " + agent);
-            }
-            return ExitCodes.OK;
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+        System.out.println("Agent directories:");
+        for (Path dir : agentDirs) {
+            System.out.println("  - " + dir + (Files.exists(dir) ? "" : " (not found)"));
         }
+        System.out.println();
+
+        if (availableAgents.isEmpty()) {
+            System.out.println("No agents found.");
+            return ExitCodes.OK;
+        }
+
+        System.out.println("Available agents:");
+        for (String agent : availableAgents) {
+            System.out.println("  - " + agent);
+        }
+        return ExitCodes.OK;
     }
 }

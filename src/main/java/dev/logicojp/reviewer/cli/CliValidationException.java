@@ -1,6 +1,6 @@
 package dev.logicojp.reviewer.cli;
 
-public class CliValidationException extends RuntimeException {
+public final class CliValidationException extends RuntimeException {
     private final boolean showUsage;
 
     public CliValidationException(String message, boolean showUsage) {

@@ -6,10 +6,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.stream.Stream;
 
 /// Collects source files from a local directory for code review.
 ///
@@ -93,7 +95,9 @@ public class LocalFileProvider {
     }
 
     /// Collects all source files from the directory tree.
-    /// Skips ignored directories, binary files, and files exceeding size limits.
+    /// Uses {@link Files#walkFileTree} with {@link FileVisitResult#SKIP_SUBTREE}
+    /// to avoid traversing ignored directories (e.g. node_modules, .git, target),
+    /// which can contain hundreds of thousands of files.
     /// @return List of collected source files
     public List<LocalFile> collectFiles() {
         if (!Files.isDirectory(baseDirectory)) {
@@ -102,18 +106,32 @@ public class LocalFileProvider {
         }
 
         List<LocalFile> files = new ArrayList<>();
-        long totalSize = 0;
+        long[] totalSize = {0};
 
-        try (Stream<Path> stream = Files.walk(baseDirectory)) {
-            List<Path> candidates = stream
-                .filter(Files::isRegularFile)
-                .filter(p -> !Files.isSymbolicLink(p))
-                .filter(this::isWithinBaseDirectory)
-                .filter(this::isSourceFile)
-                .filter(this::isNotInIgnoredDirectory)
-                .filter(this::isNotSensitiveFile)
-                .sorted()
-                .toList();
+        try {
+            List<Path> candidates = new ArrayList<>();
+            Files.walkFileTree(baseDirectory, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                    if (!dir.equals(baseDirectory)
+                            && IGNORED_DIRECTORIES.contains(dir.getFileName().toString())) {
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    if (attrs.isRegularFile() && !attrs.isSymbolicLink()
+                            && isWithinBaseDirectory(file)
+                            && isSourceFile(file)
+                            && isNotSensitiveFile(file)) {
+                        candidates.add(file);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            candidates.sort(Comparator.naturalOrder());
 
             for (Path path : candidates) {
                 try {
@@ -122,15 +140,15 @@ public class LocalFileProvider {
                         logger.debug("Skipping large file ({} bytes): {}", size, path);
                         continue;
                     }
-                    if (totalSize + size > MAX_TOTAL_SIZE) {
-                        logger.warn("Total content size limit reached ({} bytes). Stopping collection.", totalSize);
+                    if (totalSize[0] + size > MAX_TOTAL_SIZE) {
+                        logger.warn("Total content size limit reached ({} bytes). Stopping collection.", totalSize[0]);
                         break;
                     }
 
                     String content = Files.readString(path, StandardCharsets.UTF_8);
                     String relativePath = baseDirectory.relativize(path).toString().replace('\\', '/');
                     files.add(new LocalFile(relativePath, content, size));
-                    totalSize += size;
+                    totalSize[0] += size;
 
                 } catch (IOException e) {
                     logger.debug("Failed to read file {}: {}", path, e.getMessage());
@@ -140,7 +158,7 @@ public class LocalFileProvider {
             throw new UncheckedIOException("Failed to walk directory: " + baseDirectory, e);
         }
 
-        logger.info("Collected {} source files ({} bytes) from: {}", files.size(), totalSize, baseDirectory);
+        logger.info("Collected {} source files ({} bytes) from: {}", files.size(), totalSize[0], baseDirectory);
         return List.copyOf(files);
     }
 
@@ -206,16 +224,6 @@ public class LocalFileProvider {
         }
         String ext = fileName.substring(dotIndex + 1);
         return SOURCE_EXTENSIONS.contains(ext);
-    }
-
-    private boolean isNotInIgnoredDirectory(Path path) {
-        Path relative = baseDirectory.relativize(path);
-        for (Path component : relative) {
-            if (IGNORED_DIRECTORIES.contains(component.toString())) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /// Checks if the file's real path is within the base directory.

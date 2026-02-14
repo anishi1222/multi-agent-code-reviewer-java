@@ -13,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /// Service for loading and processing templates.
 /// Supports loading from external files with fallback to classpath resources.
@@ -78,7 +80,10 @@ public class TemplateService {
         return "";
     }
 
-    /// Applies placeholder substitutions to a template.
+    /// Pattern matching `{{word}}` placeholders for one-pass replacement.
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");
+
+    /// Applies placeholder substitutions to a template in a single pass.
     /// Placeholders are in the format {{name}}.
     ///
     /// @param template The template content
@@ -92,13 +97,15 @@ public class TemplateService {
             return template;
         }
 
-        String result = template;
-        for (Map.Entry<String, String> entry : placeholders.entrySet()) {
-            String placeholder = "{{" + entry.getKey() + "}}";
-            String value = entry.getValue() != null ? entry.getValue() : "";
-            result = result.replace(placeholder, value);
+        Matcher matcher = PLACEHOLDER_PATTERN.matcher(template);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String key = matcher.group(1);
+            String value = placeholders.getOrDefault(key, matcher.group());
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(value != null ? value : ""));
         }
-        return result;
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     // Convenience methods for specific templates

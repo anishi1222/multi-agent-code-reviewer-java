@@ -1154,6 +1154,15 @@
       ]
     },
     {
+      "type": "dev.logicojp.reviewer.orchestrator.$ReviewOrchestratorFactory$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "dev.logicojp.reviewer.service.$AgentService$Definition",
       "methods": [
         {

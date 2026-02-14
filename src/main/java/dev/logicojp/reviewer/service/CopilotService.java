@@ -206,7 +206,7 @@ public class CopilotService {
     }
 
     private String buildProtocolTimeoutMessage() {
-        return "Copilot CLI ping timed out after 30s. Ensure GitHub Copilot CLI is installed "
+        return "Copilot CLI ping timed out. Ensure GitHub Copilot CLI is installed "
             + "and authenticated (for example, run `github-copilot auth login`), "
             + "or set " + CLI_PATH_ENV + " to the correct executable.";
     }

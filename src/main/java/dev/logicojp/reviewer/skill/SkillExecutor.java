@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.skill;
 
 import dev.logicojp.reviewer.config.GithubMcpConfig;
+import dev.logicojp.reviewer.util.FeatureFlags;
 import com.github.copilot.sdk.*;
 import com.github.copilot.sdk.json.*;
 import org.slf4j.Logger;
@@ -78,6 +79,9 @@ public class SkillExecutor {
                                                          String systemPrompt) throws Exception {
         try (var scope = StructuredTaskScope.<SkillResult>open()) {
             var task = scope.fork(() -> executeSync(skill, parameters, systemPrompt));
+            // Workaround: StructuredTaskScope.join() does not support timeout natively.
+            // Wrapping in CompletableFuture.runAsync() to enforce a wall-clock deadline.
+            // TODO: Replace with scope.joinUntil(Instant) when available in a future JDK release.
             var joinFuture = CompletableFuture.runAsync(() -> {
                 try {
                     scope.join();
@@ -161,17 +165,6 @@ public class SkillExecutor {
     }
 
     private boolean isStructuredConcurrencyEnabledForSkills() {
-        String env = System.getenv("REVIEWER_STRUCTURED_CONCURRENCY_SKILLS");
-        if (env != null && !env.isBlank()) {
-            return Boolean.parseBoolean(env);
-        }
-        if (System.getProperties().containsKey("reviewer.structuredConcurrency.skills")) {
-            return Boolean.getBoolean("reviewer.structuredConcurrency.skills");
-        }
-        env = System.getenv("REVIEWER_STRUCTURED_CONCURRENCY");
-        if (env != null && !env.isBlank()) {
-            return Boolean.parseBoolean(env);
-        }
-        return Boolean.getBoolean("reviewer.structuredConcurrency");
+        return FeatureFlags.isStructuredConcurrencyEnabledForSkills();
     }
 }

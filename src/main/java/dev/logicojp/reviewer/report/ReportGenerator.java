@@ -36,10 +36,15 @@ public class ReportGenerator {
         ensureOutputDirectory();
         
         AgentConfig config = result.agentConfig();
+        // Sanitize agent name to prevent path traversal via malicious .agent.md definitions
+        String safeName = config.name().replaceAll("[/\\\\]", "_");
         String filename = "%s_%s.md".formatted(
-            config.name(),
+            safeName,
             LocalDate.now().format(DATE_FORMATTER));
-        Path reportPath = outputDirectory.resolve(filename);
+        Path reportPath = outputDirectory.resolve(filename).normalize();
+        if (!reportPath.startsWith(outputDirectory.normalize())) {
+            throw new IOException("Invalid agent name: path traversal detected in '" + config.name() + "'");
+        }
         
         String reportContent = buildReportContent(result);
         Files.writeString(reportPath, reportContent);

@@ -8,6 +8,7 @@ import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.target.ReviewTarget;
+import dev.logicojp.reviewer.util.FeatureFlags;
 import com.github.copilot.sdk.CopilotClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,12 +35,13 @@ public class ReviewOrchestrator {
     private final String githubToken;
     private final GithubMcpConfig githubMcpConfig;
     private final ExecutionConfig executionConfig;
-    private final ExecutorService executorService;
     private final Semaphore concurrencyLimit;
     private final List<CustomInstruction> customInstructions;
     private final String reasoningEffort;
     private final String outputConstraints;
     private final boolean structuredConcurrencyEnabled;
+    /// Lazily initialized — not created when Structured Concurrency mode is active.
+    private volatile ExecutorService executorService;
 
     public ReviewOrchestrator(CopilotClient client,
                               String githubToken,
@@ -52,14 +54,12 @@ public class ReviewOrchestrator {
         this.githubToken = githubToken;
         this.githubMcpConfig = githubMcpConfig;
         this.executionConfig = executionConfig;
-        // Java 21+: Use virtual threads for better scalability with I/O-bound tasks
-        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
         // Limit concurrent agent executions via --parallelism
         this.concurrencyLimit = new Semaphore(executionConfig.parallelism());
         this.customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
         this.reasoningEffort = reasoningEffort;
         this.outputConstraints = outputConstraints;
-        this.structuredConcurrencyEnabled = isStructuredConcurrencyEnabled();
+        this.structuredConcurrencyEnabled = FeatureFlags.isStructuredConcurrencyEnabled();
         
         logger.info("Parallelism set to {}", executionConfig.parallelism());
         if (!this.customInstructions.isEmpty()) {
@@ -84,6 +84,8 @@ public class ReviewOrchestrator {
         // Per-agent timeout accounts for retries: each attempt gets the full agent timeout
         long perAgentTimeoutMinutes = executionConfig.agentTimeoutMinutes()
             * (executionConfig.maxRetries() + 1L);
+
+        ExecutorService executor = getOrCreateExecutorService();
         
         for (var config : agents.values()) {
             var context = new ReviewContext(client, githubToken, githubMcpConfig,
@@ -109,7 +111,7 @@ public class ReviewOrchestrator {
                             .errorMessage("Review interrupted while waiting for concurrency permit")
                             .build();
                     }
-                }, executorService)
+                }, executor)
                 .orTimeout(perAgentTimeoutMinutes, TimeUnit.MINUTES)
                 .exceptionally(ex -> {
                     logger.error("Agent {} failed with timeout or error: {}", 
@@ -196,6 +198,9 @@ public class ReviewOrchestrator {
                 }));
             }
 
+            // Workaround: StructuredTaskScope.join() does not support timeout natively.
+            // Wrapping in CompletableFuture.runAsync() to enforce a wall-clock deadline.
+            // TODO: Replace with scope.joinUntil(Instant) when available in a future JDK release.
             var joinFuture = CompletableFuture.runAsync(() -> {
                 try {
                     scope.join();
@@ -257,6 +262,7 @@ public class ReviewOrchestrator {
     
     /// Shuts down the executor service.
     public void shutdown() {
+        if (executorService == null) return;
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
@@ -269,11 +275,10 @@ public class ReviewOrchestrator {
         }
     }
 
-    private boolean isStructuredConcurrencyEnabled() {
-        String env = System.getenv("REVIEWER_STRUCTURED_CONCURRENCY");
-        if (env != null && !env.isBlank()) {
-            return Boolean.parseBoolean(env);
+    private ExecutorService getOrCreateExecutorService() {
+        if (executorService == null) {
+            executorService = Executors.newVirtualThreadPerTaskExecutor();
         }
-        return Boolean.getBoolean("reviewer.structuredConcurrency");
+        return executorService;
     }
 }

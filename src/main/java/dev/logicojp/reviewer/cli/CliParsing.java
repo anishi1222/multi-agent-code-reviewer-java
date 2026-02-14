@@ -1,6 +1,9 @@
 package dev.logicojp.reviewer.cli;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -71,6 +74,28 @@ public final class CliParsing {
             return arg.substring(idx + 1);
         }
         return null;
+    }
+
+    /// Reads a token value, supporting stdin input via "-" to avoid
+    /// exposing the token in process listings or shell history.
+    /// The returned `char[]` from `readPassword` is zero-filled after conversion
+    /// to minimize the window where the token exists in plain text.
+    public static String readToken(String value) {
+        if ("-".equals(value)) {
+            try {
+                if (System.console() != null) {
+                    char[] chars = System.console().readPassword("GitHub Token: ");
+                    if (chars == null) return "";
+                    String token = new String(chars).trim();
+                    Arrays.fill(chars, '\0');
+                    return token;
+                }
+                return new String(System.in.readAllBytes(), StandardCharsets.UTF_8).trim();
+            } catch (IOException e) {
+                throw new CliValidationException("Failed to read token from stdin: " + e.getMessage(), false);
+            }
+        }
+        return value;
     }
 }
 

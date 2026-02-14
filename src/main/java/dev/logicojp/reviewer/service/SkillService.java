@@ -3,7 +3,10 @@ package dev.logicojp.reviewer.service;
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
-import dev.logicojp.reviewer.skill.*;
+import dev.logicojp.reviewer.skill.SkillDefinition;
+import dev.logicojp.reviewer.skill.SkillExecutor;
+import dev.logicojp.reviewer.skill.SkillRegistry;
+import dev.logicojp.reviewer.skill.SkillResult;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -16,6 +19,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /// Service for managing and executing skills.
 @Singleton
@@ -86,17 +90,7 @@ public class SkillService {
                 SkillResult.failure(skillId, "Skill not found: " + skillId));
         }
 
-        SkillDefinition skill = skillOpt.get();
-        SkillExecutor executor = new SkillExecutor(
-            copilotService.getClient(),
-            githubToken,
-            githubMcpConfig,
-            model,
-            executionConfig.skillTimeoutMinutes(),
-            executorService
-        );
-
-        return executor.execute(skill, parameters);
+        return createExecutor(githubToken, model).execute(skillOpt.get(), parameters);
     }
 
     /// Executes a skill with a custom system prompt.
@@ -111,8 +105,11 @@ public class SkillService {
                 SkillResult.failure(skillId, "Skill not found: " + skillId));
         }
 
-        SkillDefinition skill = skillOpt.get();
-        SkillExecutor executor = new SkillExecutor(
+        return createExecutor(githubToken, model).execute(skillOpt.get(), parameters, systemPrompt);
+    }
+
+    private SkillExecutor createExecutor(String githubToken, String model) {
+        return new SkillExecutor(
             copilotService.getClient(),
             githubToken,
             githubMcpConfig,
@@ -120,12 +117,18 @@ public class SkillService {
             executionConfig.skillTimeoutMinutes(),
             executorService
         );
-
-        return executor.execute(skill, parameters, systemPrompt);
     }
 
     @PreDestroy
     public void shutdown() {
         executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException _) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 }
