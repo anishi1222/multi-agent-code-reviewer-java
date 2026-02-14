@@ -35,3 +35,35 @@
 - `.github/workflows/dependency-review.yml`
 - `README_en.md`
 - `README_ja.md`
+
+## 2026-02-15
+
+### 概要
+- 4レビュー（best-practices / code-quality / performance / security）の指摘 26 件（High 4 / Medium 10 / Low 12）に対応しました。
+- セキュリティ、保守性、性能、設定/DI 一貫性に関する改善を実施しました。
+- PR #13 を squash merge し、`main` へ反映しました。
+
+### 主な変更
+- セキュリティ強化:
+  - `CustomInstructionSafetyValidator` を regex + Unicode 正規化（NFKC）ベースに強化。
+  - 自動ロードされたカスタムインストラクションにも安全性検証を適用。
+  - `TemplateService` のテンプレート名検証を allowlist + 正規化パス検証に変更。
+  - `GithubMcpConfig` のヘッダ文字列表現で認証値をマスク化。
+- コード品質/設計改善:
+  - 旧重複コマンド 3 クラスを削除（デッドコード解消）。
+  - `FeatureFlags` / `SkillRegistry` を Micronaut DI 管理へ統一。
+  - `ReviewCommand.applyOption` を分割し複雑度を低減。
+  - wildcard import を明示 import に統一。
+- パフォーマンス改善:
+  - `LocalFileProvider` に one-pass 収集 API（`collectAndGenerate`）を追加。
+  - `ReviewContext` の共有再利用、`FindingsExtractor` の single-pass 化、`SummaryGenerator` 置換処理の軽量化。
+
+### 検証
+- `mvn -B -ntp clean package`: BUILD SUCCESS
+- テスト結果: 431 run, 0 failures, 0 errors
+
+### マージ済み PR
+- [#13](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/13): fix: resolve all findings from 2026-02-15 reports
+
+### 参照
+- 詳細対応表: `reports/anishi1222/multi-agent-code-reviewer/remediation_checklist_2026-02-15.md`
