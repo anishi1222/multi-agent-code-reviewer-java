@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.service;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ExecutionConfig;
+import dev.logicojp.reviewer.util.FeatureFlags;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.skill.SkillDefinition;
 import dev.logicojp.reviewer.skill.SkillExecutor;
@@ -14,7 +15,6 @@ import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -31,16 +31,20 @@ public class SkillService {
     private final CopilotService copilotService;
     private final GithubMcpConfig githubMcpConfig;
     private final ExecutionConfig executionConfig;
+    private final FeatureFlags featureFlags;
     private final ExecutorService executorService;
 
     @Inject
-    public SkillService(CopilotService copilotService,
+    public SkillService(SkillRegistry skillRegistry,
+                        CopilotService copilotService,
                         GithubMcpConfig githubMcpConfig,
-                        ExecutionConfig executionConfig) {
-        this.skillRegistry = new SkillRegistry();
+                        ExecutionConfig executionConfig,
+                        FeatureFlags featureFlags) {
+        this.skillRegistry = skillRegistry;
         this.copilotService = copilotService;
         this.githubMcpConfig = githubMcpConfig;
         this.executionConfig = executionConfig;
+        this.featureFlags = featureFlags;
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
     }
 
@@ -108,7 +112,8 @@ public class SkillService {
             githubMcpConfig,
             model,
             executionConfig.skillTimeoutMinutes(),
-            executorService
+            executorService,
+            featureFlags.isStructuredConcurrencyEnabledForSkills()
         );
     }
 

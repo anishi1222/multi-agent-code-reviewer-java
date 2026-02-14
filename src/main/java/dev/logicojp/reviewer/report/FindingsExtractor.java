@@ -82,18 +82,21 @@ public final class FindingsExtractor {
     static List<Finding> extractFindings(String content, String agentName) {
         List<Finding> findings = new ArrayList<>();
 
-        // Extract all finding headings
         List<String> titles = new ArrayList<>();
-        Matcher headingMatcher = FINDING_HEADING_PATTERN.matcher(content);
-        while (headingMatcher.find()) {
-            titles.add(headingMatcher.group(1).trim());
-        }
-
-        // Extract all priority levels
         List<String> priorities = new ArrayList<>();
-        Matcher priorityMatcher = PRIORITY_PATTERN.matcher(content);
-        while (priorityMatcher.find()) {
-            priorities.add(capitalize(priorityMatcher.group(1).trim()));
+
+        // Single pass over lines to reduce full-content regex scans.
+        for (String line : content.lines().toList()) {
+            Matcher headingMatcher = FINDING_HEADING_PATTERN.matcher(line);
+            if (headingMatcher.find()) {
+                titles.add(headingMatcher.group(1).trim());
+                continue;
+            }
+
+            Matcher priorityMatcher = PRIORITY_PATTERN.matcher(line);
+            if (priorityMatcher.find()) {
+                priorities.add(capitalize(priorityMatcher.group(1).trim()));
+            }
         }
 
         // Check for "指摘事項なし" (no findings)

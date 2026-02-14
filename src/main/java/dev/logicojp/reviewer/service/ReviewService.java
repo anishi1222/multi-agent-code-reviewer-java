@@ -4,6 +4,7 @@ import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.instruction.CustomInstructionLoader;
+import dev.logicojp.reviewer.instruction.CustomInstructionSafetyValidator;
 import dev.logicojp.reviewer.orchestrator.ReviewOrchestrator;
 import dev.logicojp.reviewer.orchestrator.ReviewOrchestratorFactory;
 import dev.logicojp.reviewer.report.ReviewResult;
@@ -57,13 +58,26 @@ public class ReviewService {
         logger.info("Executing reviews for {} agents on target: {}", 
             agentConfigs.size(), target.displayName());
         
-        // Load custom instructions from target if none provided
+        // Load custom instructions from target only when caller passes null.
+        // Explicit empty list means "do not load any instruction".
         List<CustomInstruction> effectiveInstructions = customInstructions;
-        if (effectiveInstructions == null || effectiveInstructions.isEmpty()) {
-            effectiveInstructions = instructionLoader.loadForTarget(target);
-            
+        if (effectiveInstructions == null) {
+            List<CustomInstruction> loadedInstructions = instructionLoader.loadForTarget(target);
+            List<CustomInstruction> safeInstructions = loadedInstructions.stream()
+                .filter(instruction -> {
+                    var validation = CustomInstructionSafetyValidator.validate(instruction);
+                    if (!validation.safe()) {
+                        logger.warn("Skipped unsafe auto-loaded instruction {}: {}",
+                            instruction.sourcePath(), validation.reason());
+                    }
+                    return validation.safe();
+                })
+                .toList();
+
+            effectiveInstructions = safeInstructions;
+
             if (!effectiveInstructions.isEmpty()) {
-                logger.info("Loaded {} custom instruction(s) from target directory", 
+                logger.info("Loaded {} custom instruction(s) from target directory",
                     effectiveInstructions.size());
             }
         }

@@ -12,6 +12,9 @@ reviewer:
     summary-timeout-minutes: 20
     gh-auth-timeout-seconds: 30
     max-retries: 2
+  feature-flags:
+    structured-concurrency: ${REVIEWER_STRUCTURED_CONCURRENCY:false}
+    structured-concurrency-skills: ${REVIEWER_STRUCTURED_CONCURRENCY_SKILLS:${REVIEWER_STRUCTURED_CONCURRENCY:false}}
   templates:
     directory: templates
     default-output-format: default-output-format.md
@@ -37,6 +40,7 @@ reviewer:
         - "list_commits"
         - "get_commit"
       auth-header-name: Authorization
+      # Token value is injected at runtime from environment/CLI; no secret is stored in this file.
       auth-header-template: "Bearer {token}"
   models:
     default-model: claude-sonnet-4.5

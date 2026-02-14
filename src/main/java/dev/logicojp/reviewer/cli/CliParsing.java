@@ -9,6 +9,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 public final class CliParsing {
+    private static final int MAX_STDIN_TOKEN_BYTES = 256;
+
     public record OptionValue(String value, int newIndex) {
     }
 
@@ -115,11 +117,12 @@ public final class CliParsing {
                 if (System.console() != null) {
                     char[] chars = System.console().readPassword("GitHub Token: ");
                     if (chars == null) return "";
-                    String token = new String(chars).trim();
+                    // NOTE: SDK APIs require String; char[] is cleared immediately after conversion.
+                    String token = String.valueOf(chars).trim();
                     Arrays.fill(chars, '\0');
                     return token;
                 }
-                return new String(System.in.readNBytes(4096), StandardCharsets.UTF_8).trim();
+                return new String(System.in.readNBytes(MAX_STDIN_TOKEN_BYTES), StandardCharsets.UTF_8).trim();
             } catch (IOException e) {
                 throw new CliValidationException("Failed to read token from stdin: " + e.getMessage(), false);
             }

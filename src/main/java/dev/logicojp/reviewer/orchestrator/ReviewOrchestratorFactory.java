@@ -2,8 +2,10 @@ package dev.logicojp.reviewer.orchestrator;
 
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
+import dev.logicojp.reviewer.config.LocalFileConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.service.CopilotService;
+import dev.logicojp.reviewer.util.FeatureFlags;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -20,12 +22,18 @@ public class ReviewOrchestratorFactory {
 
     private final CopilotService copilotService;
     private final GithubMcpConfig githubMcpConfig;
+    private final LocalFileConfig localFileConfig;
+    private final FeatureFlags featureFlags;
 
     @Inject
     public ReviewOrchestratorFactory(CopilotService copilotService,
-                                     GithubMcpConfig githubMcpConfig) {
+                                     GithubMcpConfig githubMcpConfig,
+                                     LocalFileConfig localFileConfig,
+                                     FeatureFlags featureFlags) {
         this.copilotService = copilotService;
         this.githubMcpConfig = githubMcpConfig;
+        this.localFileConfig = localFileConfig;
+        this.featureFlags = featureFlags;
     }
 
     /// Creates a new {@link ReviewOrchestrator} for a single review run.
@@ -45,6 +53,8 @@ public class ReviewOrchestratorFactory {
             copilotService.getClient(),
             githubToken,
             githubMcpConfig,
+            localFileConfig,
+            featureFlags,
             executionConfig,
             customInstructions,
             reasoningEffort,

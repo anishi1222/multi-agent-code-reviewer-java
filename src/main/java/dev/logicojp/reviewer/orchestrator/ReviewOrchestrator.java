@@ -5,6 +5,7 @@ import dev.logicojp.reviewer.agent.ReviewAgent;
 import dev.logicojp.reviewer.agent.ReviewContext;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
+import dev.logicojp.reviewer.config.LocalFileConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.target.LocalFileProvider;
@@ -49,10 +50,14 @@ public class ReviewOrchestrator implements AutoCloseable {
     private final ScheduledExecutorService sharedScheduler;
     /// Cached MCP server map — built once and shared across all agent contexts.
     private final Map<String, Object> cachedMcpServers;
+    private final long localMaxFileSize;
+    private final long localMaxTotalSize;
 
     public ReviewOrchestrator(CopilotClient client,
                               String githubToken,
                               GithubMcpConfig githubMcpConfig,
+                              LocalFileConfig localFileConfig,
+                              FeatureFlags featureFlags,
                               ExecutionConfig executionConfig,
                               List<CustomInstruction> customInstructions,
                               String reasoningEffort,
@@ -64,13 +69,15 @@ public class ReviewOrchestrator implements AutoCloseable {
         this.customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
         this.reasoningEffort = reasoningEffort;
         this.outputConstraints = outputConstraints;
-        this.structuredConcurrencyEnabled = FeatureFlags.isStructuredConcurrencyEnabled();
+        this.structuredConcurrencyEnabled = featureFlags.isStructuredConcurrencyEnabled();
         this.executorService = this.structuredConcurrencyEnabled
             ? null
             : Executors.newVirtualThreadPerTaskExecutor();
         this.sharedScheduler = Executors.newSingleThreadScheduledExecutor(
             Thread.ofVirtual().name("idle-timeout-shared", 0).factory());
         this.cachedMcpServers = GithubMcpConfig.buildMcpServers(githubToken, githubMcpConfig);
+        this.localMaxFileSize = localFileConfig.maxFileSize();
+        this.localMaxTotalSize = localFileConfig.maxTotalSize();
         
         logger.info("Parallelism set to {}", executionConfig.parallelism());
         if (!this.customInstructions.isEmpty()) {
@@ -81,11 +88,10 @@ public class ReviewOrchestrator implements AutoCloseable {
     /// Executes a single agent with semaphore control and error handling.
     /// Shared by both virtual thread and structured concurrency execution modes.
     private ReviewResult executeAgentSafely(AgentConfig config, ReviewTarget target,
-                                            String cachedSourceContent) {
+                                            ReviewContext context) {
         try {
             concurrencyLimit.acquire();
             try {
-                var context = createContext(cachedSourceContent);
                 var agent = new ReviewAgent(config, context);
                 return agent.review(target);
             } finally {
@@ -125,16 +131,18 @@ public class ReviewOrchestrator implements AutoCloseable {
         String cachedSourceContent = null;
         if (target instanceof ReviewTarget.LocalTarget(Path directory)) {
             logger.info("Pre-computing source content for local directory: {}", directory);
-            var fileProvider = new LocalFileProvider(directory);
-            var localFiles = fileProvider.collectFiles();
-            cachedSourceContent = fileProvider.generateReviewContent(localFiles);
-            String directorySummary = fileProvider.generateDirectorySummary(localFiles);
-            logger.info("Collected {} source files from local directory", localFiles.size());
+            var fileProvider = new LocalFileProvider(directory, localMaxFileSize, localMaxTotalSize);
+            var collection = fileProvider.collectAndGenerate();
+            cachedSourceContent = collection.reviewContent();
+            String directorySummary = collection.directorySummary();
+            logger.info("Collected {} source files from local directory", collection.fileCount());
             logger.debug("Directory summary:\n{}", directorySummary);
         }
 
+        ReviewContext sharedContext = createContext(cachedSourceContent);
+
         if (structuredConcurrencyEnabled) {
-            return executeReviewsStructured(agents, target, cachedSourceContent);
+            return executeReviewsStructured(agents, target, sharedContext);
         }
         
         List<CompletableFuture<ReviewResult>> futures = new ArrayList<>(agents.size());
@@ -144,11 +152,11 @@ public class ReviewOrchestrator implements AutoCloseable {
             * (executionConfig.maxRetries() + 1L);
 
         ExecutorService executor = executorService;
-        final String sourceContent = cachedSourceContent;
+        final ReviewContext context = sharedContext;
         
         for (var config : agents.values()) {
             CompletableFuture<ReviewResult> future = CompletableFuture
-                .supplyAsync(() -> executeAgentSafely(config, target, sourceContent), executor)
+            .supplyAsync(() -> executeAgentSafely(config, target, context), executor)
                 .orTimeout(perAgentTimeoutMinutes, TimeUnit.MINUTES)
                 .exceptionally(ex -> {
                     logger.error("Agent {} failed with timeout or error: {}",
@@ -170,7 +178,10 @@ public class ReviewOrchestrator implements AutoCloseable {
         
         try {
             allFutures.get(timeoutMinutes + 1, TimeUnit.MINUTES);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Review orchestration interrupted: {}", e.getMessage(), e);
+        } catch (ExecutionException | TimeoutException e) {
             logger.error("Error waiting for reviews to complete: {}", e.getMessage(), e);
         }
         
@@ -189,7 +200,7 @@ public class ReviewOrchestrator implements AutoCloseable {
 
     private List<ReviewResult> executeReviewsStructured(Map<String, AgentConfig> agents,
                                                         ReviewTarget target,
-                                                        String cachedSourceContent) {
+                                                        ReviewContext sharedContext) {
         long timeoutMinutes = executionConfig.orchestratorTimeoutMinutes();
         long perAgentTimeoutMinutes = executionConfig.agentTimeoutMinutes()
             * (executionConfig.maxRetries() + 1L);
@@ -197,7 +208,7 @@ public class ReviewOrchestrator implements AutoCloseable {
         List<StructuredTaskScope.Subtask<ReviewResult>> tasks = new ArrayList<>(agents.size());
         try (var scope = StructuredTaskScope.<ReviewResult>open()) {
             for (var config : agents.values()) {
-                tasks.add(scope.fork(() -> executeAgentSafely(config, target, cachedSourceContent)));
+                tasks.add(scope.fork(() -> executeAgentSafely(config, target, sharedContext)));
             }
 
             try {
@@ -254,6 +265,8 @@ public class ReviewOrchestrator implements AutoCloseable {
             .outputConstraints(outputConstraints)
             .cachedMcpServers(cachedMcpServers)
             .cachedSourceContent(cachedSourceContent)
+                .maxFileSize(localMaxFileSize)
+                .maxTotalSize(localMaxTotalSize)
             .sharedScheduler(sharedScheduler)
             .build();
     }

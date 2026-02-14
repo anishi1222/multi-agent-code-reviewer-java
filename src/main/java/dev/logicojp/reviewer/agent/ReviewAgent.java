@@ -6,11 +6,14 @@ import dev.logicojp.reviewer.report.ContentSanitizer;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.target.LocalFileProvider;
 import dev.logicojp.reviewer.target.ReviewTarget;
-import com.github.copilot.sdk.*;
+import com.github.copilot.sdk.CopilotSession;
+import com.github.copilot.sdk.SystemMessageMode;
 import com.github.copilot.sdk.events.AssistantMessageEvent;
 import com.github.copilot.sdk.events.SessionErrorEvent;
 import com.github.copilot.sdk.events.SessionIdleEvent;
-import com.github.copilot.sdk.json.*;
+import com.github.copilot.sdk.json.MessageOptions;
+import com.github.copilot.sdk.json.SessionConfig;
+import com.github.copilot.sdk.json.SystemMessageConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,9 +110,10 @@ public class ReviewAgent {
                 String sourceContent = ctx.cachedSourceContent();
                 if (sourceContent == null) {
                     // Fallback: compute locally if not cached (shouldn't happen in normal flow)
-                    LocalFileProvider fileProvider = new LocalFileProvider(directory);
-                    var localFiles = fileProvider.collectFiles();
-                    sourceContent = fileProvider.generateReviewContent(localFiles);
+                    LocalFileProvider fileProvider = new LocalFileProvider(
+                        directory, ctx.maxFileSize(), ctx.maxTotalSize());
+                    var collectionResult = fileProvider.collectAndGenerate();
+                    sourceContent = collectionResult.reviewContent();
                     logger.debug("Computed source content locally for agent: {}", config.name());
                 }
                 instruction = config.buildLocalInstructionBase(target.displayName());
@@ -341,7 +345,7 @@ public class ReviewAgent {
                 agentName, elapsed, messageCount.get(), toolCallCount.get());
             String content;
             synchronized (contentLock) {
-                content = accumulatedContent.toString();
+                content = accumulatedContent.isEmpty() ? "" : accumulatedContent.toString();
             }
             if (!content.isBlank()) {
                 future.complete(content);
@@ -357,7 +361,7 @@ public class ReviewAgent {
 
         String getAccumulatedContent() {
             synchronized (contentLock) {
-                return accumulatedContent.toString();
+                return accumulatedContent.isEmpty() ? "" : accumulatedContent.toString();
             }
         }
 

@@ -172,14 +172,43 @@ public class ReviewCommand {
     /// Applies a single CLI option to the parse state.
     /// Returns the (possibly advanced) argument index.
     private int applyOption(ParseState state, String arg, String[] args, int i) {
+        if ("-h".equals(arg) || "--help".equals(arg)) {
+            CliUsage.printRun(System.out);
+            state.helpRequested = true;
+            return i;
+        }
+
+        int parsedIndex = applyTargetOption(state, arg, args, i);
+        if (parsedIndex != i) return parsedIndex;
+
+        parsedIndex = applyAgentOption(state, arg, args, i);
+        if (parsedIndex != i) return parsedIndex;
+
+        parsedIndex = applyExecutionOption(state, arg, args, i);
+        if (parsedIndex != i) return parsedIndex;
+
+        parsedIndex = applyModelOption(state, arg, args, i);
+        if (parsedIndex != i) return parsedIndex;
+
+        parsedIndex = applyInstructionOption(state, arg, args, i);
+        if (parsedIndex != i) return parsedIndex;
+
+        if (arg.startsWith("-")) {
+            throw new CliValidationException("Unknown option: " + arg, true);
+        }
+        throw new CliValidationException("Unexpected argument: " + arg, true);
+    }
+
+    private int applyTargetOption(ParseState state, String arg, String[] args, int i) {
         return switch (arg) {
-            case "-h", "--help" -> {
-                CliUsage.printRun(System.out);
-                state.helpRequested = true;
-                yield i;
-            }
             case "-r", "--repo" -> CliParsing.readInto(args, i, "--repo", v -> state.repository = v);
             case "-l", "--local" -> CliParsing.readInto(args, i, "--local", v -> state.localDirectory = Path.of(v));
+            default -> i;
+        };
+    }
+
+    private int applyAgentOption(ParseState state, String arg, String[] args, int i) {
+        return switch (arg) {
             case "--all" -> { state.allAgents = true; yield i; }
             case "-a", "--agents" -> {
                 CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--agents");
@@ -190,6 +219,12 @@ public class ReviewCommand {
                 state.agentNames.addAll(parsed);
                 yield value.newIndex();
             }
+            default -> i;
+        };
+    }
+
+    private int applyExecutionOption(ParseState state, String arg, String[] args, int i) {
+        return switch (arg) {
             case "-o", "--output" -> CliParsing.readInto(args, i, "--output", v -> state.outputDirectory = Path.of(v));
             case "--agents-dir" -> CliParsing.readMultiInto(args, i, "--agents-dir",
                 v -> state.additionalAgentDirs.add(Path.of(v)));
@@ -197,21 +232,28 @@ public class ReviewCommand {
             case "--parallelism" -> CliParsing.readInto(args, i, "--parallelism",
                 v -> state.parallelism = parseInt(v, "--parallelism"));
             case "--no-summary" -> { state.noSummary = true; yield i; }
+            default -> i;
+        };
+    }
+
+    private int applyModelOption(ParseState state, String arg, String[] args, int i) {
+        return switch (arg) {
             case "--review-model" -> CliParsing.readInto(args, i, "--review-model", v -> state.reviewModel = v);
             case "--report-model" -> CliParsing.readInto(args, i, "--report-model", v -> state.reportModel = v);
             case "--summary-model" -> CliParsing.readInto(args, i, "--summary-model", v -> state.summaryModel = v);
             case "--model" -> CliParsing.readInto(args, i, "--model", v -> state.defaultModel = v);
+            default -> i;
+        };
+    }
+
+    private int applyInstructionOption(ParseState state, String arg, String[] args, int i) {
+        return switch (arg) {
             case "--instructions" -> CliParsing.readMultiInto(args, i, "--instructions",
                 v -> state.instructionPaths.add(Path.of(v)));
             case "--no-instructions" -> { state.noInstructions = true; yield i; }
             case "--no-prompts" -> { state.noPrompts = true; yield i; }
             case "--trust" -> { state.trustTarget = true; yield i; }
-            default -> {
-                if (arg.startsWith("-")) {
-                    throw new CliValidationException("Unknown option: " + arg, true);
-                }
-                throw new CliValidationException("Unexpected argument: " + arg, true);
-            }
+            default -> i;
         };
     }
 

@@ -25,6 +25,7 @@ public class TemplateService {
 
     private final TemplateConfig config;
     private final Map<String, String> templateCache = new ConcurrentHashMap<>();
+    private static final Pattern TEMPLATE_NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+\\.md");
 
     @Inject
     public TemplateService(TemplateConfig config) {
@@ -52,13 +53,23 @@ public class TemplateService {
 
     /// Loads template content from the filesystem or classpath.
     private String loadTemplateFromSource(String templateName) {
-        // Validate template name to prevent path traversal
-        if (templateName.contains("..") || templateName.contains("/") || templateName.contains("\\")) {
+        if (templateName == null || templateName.isBlank()) {
+            logger.warn("Invalid template name rejected: blank");
+            return "";
+        }
+
+        // Validate template name with allowlist to prevent path traversal
+        if (!TEMPLATE_NAME_PATTERN.matcher(templateName).matches()) {
             logger.warn("Invalid template name rejected: {}", templateName);
             return "";
         }
 
-        Path templatePath = Path.of(config.directory(), templateName);
+        Path baseDirectory = Path.of(config.directory()).toAbsolutePath().normalize();
+        Path templatePath = baseDirectory.resolve(templateName).normalize();
+        if (!templatePath.startsWith(baseDirectory)) {
+            logger.warn("Template path traversal rejected: {}", templateName);
+            return "";
+        }
 
         // Try external file first
         if (Files.exists(templatePath)) {

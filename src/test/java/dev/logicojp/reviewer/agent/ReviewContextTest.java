@@ -28,6 +28,8 @@ class ReviewContextTest {
                 null,
                 null,
                 null,
+                0,
+                0,
                 null);
 
             String result = context.toString();
@@ -54,6 +56,8 @@ class ReviewContextTest {
                 null,
                 null,
                 null,
+                0,
+                0,
                 null);
 
             assertThat(context.customInstructions()).isEmpty();

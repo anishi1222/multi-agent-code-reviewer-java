@@ -6,6 +6,7 @@ import io.micronaut.core.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /// Configuration for the GitHub MCP server connection.
 @ConfigurationProperties("reviewer.mcp.github")
@@ -64,7 +65,7 @@ public record GithubMcpConfig(
 
     /// Builds a type-safe MCP server configuration, then converts to Map for SDK compatibility.
     public Map<String, Object> toMcpServer(String token) {
-        Map<String, String> combinedHeaders = new HashMap<>(headers);
+        Map<String, String> combinedHeaders = new MaskedHeadersMap(authHeaderName, headers);
         if (token != null && !token.isBlank()
             && authHeaderName != null && !authHeaderName.isBlank()
             && authHeaderTemplate != null && !authHeaderTemplate.isBlank()) {
@@ -75,5 +76,28 @@ public record GithubMcpConfig(
         }
 
         return new McpServerConfig(type, url, tools, combinedHeaders).toMap();
+    }
+
+    /// Header map that masks configured auth header values in toString output.
+    private static final class MaskedHeadersMap extends HashMap<String, String> {
+        private final String authHeaderName;
+
+        private MaskedHeadersMap(String authHeaderName, Map<String, String> source) {
+            super(source != null ? source : Map.of());
+            this.authHeaderName = authHeaderName;
+        }
+
+        @Override
+        public String toString() {
+            Map<String, String> masked = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+            masked.putAll(this);
+            if (authHeaderName != null && !authHeaderName.isBlank() && masked.containsKey(authHeaderName)) {
+                masked.put(authHeaderName, "***");
+            }
+            if (masked.containsKey("Authorization")) {
+                masked.put("Authorization", "***");
+            }
+            return masked.toString();
+        }
     }
 }

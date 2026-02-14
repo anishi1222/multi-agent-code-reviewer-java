@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.skill;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.inject.Singleton;
 
 import java.util.Collection;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /// Registry for managing skill definitions.
 /// Skills can be registered and retrieved by ID.
+@Singleton
 public class SkillRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(SkillRegistry.class);

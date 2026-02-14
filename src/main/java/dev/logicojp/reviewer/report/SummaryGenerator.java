@@ -1,7 +1,11 @@
 package dev.logicojp.reviewer.report;
 
-import com.github.copilot.sdk.*;
-import com.github.copilot.sdk.json.*;
+import com.github.copilot.sdk.CopilotClient;
+import com.github.copilot.sdk.CopilotSession;
+import com.github.copilot.sdk.SystemMessageMode;
+import com.github.copilot.sdk.json.MessageOptions;
+import com.github.copilot.sdk.json.SessionConfig;
+import com.github.copilot.sdk.json.SystemMessageConfig;
 import dev.logicojp.reviewer.config.ModelConfig;
 import dev.logicojp.reviewer.service.TemplateService;
 import org.slf4j.Logger;
@@ -9,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import dev.logicojp.reviewer.service.CopilotCliException;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -133,26 +136,38 @@ public class SummaryGenerator {
     }
 
     private String buildFallbackSummary(List<ReviewResult> results) {
+        String rowTemplate = templateService.loadTemplateContent(
+            templateService.getConfig().fallback().agentRow());
+        String successTemplate = templateService.loadTemplateContent(
+            templateService.getConfig().fallback().agentSuccess());
+        String failureTemplate = templateService.loadTemplateContent(
+            templateService.getConfig().fallback().agentFailure());
+
         // Build table rows using template
         var tableRowsBuilder = new StringBuilder();
         for (ReviewResult result : results) {
-            var rowPlaceholders = Map.of(
-                "displayName", result.agentConfig().displayName());
-            tableRowsBuilder.append(templateService.getFallbackAgentRow(rowPlaceholders));
+            tableRowsBuilder.append(replace2(
+                rowTemplate,
+                "displayName", result.agentConfig().displayName(),
+                "content", ""
+            ));
         }
         
         // Build agent summaries using templates
         var agentSummariesBuilder = new StringBuilder();
         for (ReviewResult result : results) {
             if (result.isSuccess()) {
-                var successPlaceholders = Map.of(
-                    "displayName", result.agentConfig().displayName());
-                agentSummariesBuilder.append(templateService.getFallbackAgentSuccess(successPlaceholders));
-            } else {
-                var failurePlaceholders = Map.of(
+                agentSummariesBuilder.append(replace2(
+                    successTemplate,
                     "displayName", result.agentConfig().displayName(),
-                    "errorMessage", result.errorMessage() != null ? result.errorMessage() : "");
-                agentSummariesBuilder.append(templateService.getFallbackAgentFailure(failurePlaceholders));
+                    "content", ""
+                ));
+            } else {
+                agentSummariesBuilder.append(replace2(
+                    failureTemplate,
+                    "displayName", result.agentConfig().displayName(),
+                    "errorMessage", result.errorMessage() != null ? result.errorMessage() : ""
+                ));
             }
             agentSummariesBuilder.append("\n");
         }
@@ -166,6 +181,11 @@ public class SummaryGenerator {
     }
     
     private String buildSummaryPrompt(List<ReviewResult> results, String repository) {
+        String resultEntryTemplate = templateService.loadTemplateContent(
+            templateService.getConfig().summary().resultEntry());
+        String resultErrorEntryTemplate = templateService.loadTemplateContent(
+            templateService.getConfig().summary().resultErrorEntry());
+
         // Build results section using templates — estimate capacity to avoid re-allocation
         long estimatedSize = results.stream()
             .filter(ReviewResult::isSuccess)
@@ -174,15 +194,17 @@ public class SummaryGenerator {
         var resultsSection = new StringBuilder((int) Math.min(estimatedSize, 4_000_000));
         for (ReviewResult result : results) {
             if (result.isSuccess()) {
-                var entryPlaceholders = Map.of(
+                resultsSection.append(replace2(
+                    resultEntryTemplate,
                     "displayName", result.agentConfig().displayName(),
-                    "content", result.content() != null ? result.content() : "");
-                resultsSection.append(templateService.getSummaryResultEntry(entryPlaceholders));
+                    "content", result.content() != null ? result.content() : ""
+                ));
             } else {
-                var errorPlaceholders = Map.of(
+                resultsSection.append(replace2(
+                    resultErrorEntryTemplate,
                     "displayName", result.agentConfig().displayName(),
-                    "errorMessage", result.errorMessage() != null ? result.errorMessage() : "");
-                resultsSection.append(templateService.getSummaryResultErrorEntry(errorPlaceholders));
+                    "errorMessage", result.errorMessage() != null ? result.errorMessage() : ""
+                ));
             }
         }
         
@@ -232,5 +254,13 @@ public class SummaryGenerator {
         if (!Files.exists(outputDirectory)) {
             Files.createDirectories(outputDirectory);
         }
+    }
+
+    private String replace2(String template,
+                            String key1, String value1,
+                            String key2, String value2) {
+        return template
+            .replace("{{" + key1 + "}}", value1 != null ? value1 : "")
+            .replace("{{" + key2 + "}}", value2 != null ? value2 : "");
     }
 }

@@ -23,6 +23,8 @@ import java.util.concurrent.ScheduledExecutorService;
 /// @param outputConstraints   Output constraints template content (nullable)
 /// @param cachedMcpServers    Pre-built MCP server configuration map (nullable, cached for reuse)
 /// @param cachedSourceContent Pre-computed source content for local reviews (nullable, shared across agents)
+/// @param maxFileSize         Maximum local file size to collect (bytes)
+/// @param maxTotalSize        Maximum total local source content size (bytes)
 /// @param sharedScheduler     Shared ScheduledExecutorService for idle-timeout scheduling
 public record ReviewContext(
     CopilotClient client,
@@ -34,6 +36,8 @@ public record ReviewContext(
     @Nullable String outputConstraints,
     @Nullable Map<String, Object> cachedMcpServers,
     @Nullable String cachedSourceContent,
+    long maxFileSize,
+    long maxTotalSize,
     ScheduledExecutorService sharedScheduler
 ) {
 
@@ -55,6 +59,8 @@ public record ReviewContext(
         private String outputConstraints;
         private Map<String, Object> cachedMcpServers;
         private String cachedSourceContent;
+        private long maxFileSize;
+        private long maxTotalSize;
         private ScheduledExecutorService sharedScheduler;
 
         public Builder client(CopilotClient client) {
@@ -102,6 +108,16 @@ public record ReviewContext(
             return this;
         }
 
+        public Builder maxFileSize(long maxFileSize) {
+            this.maxFileSize = maxFileSize;
+            return this;
+        }
+
+        public Builder maxTotalSize(long maxTotalSize) {
+            this.maxTotalSize = maxTotalSize;
+            return this;
+        }
+
         public Builder sharedScheduler(ScheduledExecutorService sharedScheduler) {
             this.sharedScheduler = sharedScheduler;
             return this;
@@ -118,6 +134,8 @@ public record ReviewContext(
                 outputConstraints,
                 cachedMcpServers,
                 cachedSourceContent,
+                maxFileSize,
+                maxTotalSize,
                 sharedScheduler
             );
         }
@@ -125,7 +143,8 @@ public record ReviewContext(
 
     @Override
     public String toString() {
-        return "ReviewContext{cachedMcpServers=%s, timeoutMinutes=%d, idleTimeoutMinutes=%d, maxRetries=%d}"
-            .formatted(cachedMcpServers != null ? "(configured)" : "(null)", timeoutMinutes, idleTimeoutMinutes, maxRetries);
+        return "ReviewContext{cachedMcpServers=%s, timeoutMinutes=%d, idleTimeoutMinutes=%d, maxRetries=%d, maxFileSize=%d, maxTotalSize=%d}"
+            .formatted(cachedMcpServers != null ? "(configured)" : "(null)", timeoutMinutes, idleTimeoutMinutes, maxRetries,
+                maxFileSize, maxTotalSize);
     }
 }

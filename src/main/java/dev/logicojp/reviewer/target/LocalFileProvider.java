@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.target;
 
+import dev.logicojp.reviewer.config.LocalFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,13 +100,25 @@ public class LocalFileProvider {
     /// @param sizeBytes Original file size in bytes
     public record LocalFile(String relativePath, String content, long sizeBytes) {}
 
+    /// Combined local-source collection result without retaining per-file content list.
+    /// @param reviewContent Formatted review content block
+    /// @param directorySummary Directory summary text
+    /// @param fileCount Number of collected files
+    /// @param totalSizeBytes Total collected size in bytes
+    public record CollectionResult(String reviewContent,
+                                   String directorySummary,
+                                   int fileCount,
+                                   long totalSizeBytes) {}
+
     private final Path baseDirectory;
     private final Path realBaseDirectory;
 
     /// Creates a new LocalFileProvider for the given directory with default limits.
     /// @param baseDirectory The root directory to collect files from
     public LocalFileProvider(Path baseDirectory) {
-        this(baseDirectory, 256 * 1024, 2 * 1024 * 1024);
+        this(baseDirectory,
+            LocalFileConfig.DEFAULT_MAX_FILE_SIZE,
+            LocalFileConfig.DEFAULT_MAX_TOTAL_SIZE);
     }
 
     /// Creates a new LocalFileProvider for the given directory with configurable limits.
@@ -141,29 +154,7 @@ public class LocalFileProvider {
         long totalSize = 0;
 
         try {
-            List<Path> candidates = new ArrayList<>();
-            Files.walkFileTree(baseDirectory, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                    if (!dir.equals(baseDirectory)
-                            && IGNORED_DIRECTORIES.contains(dir.getFileName().toString())) {
-                        return FileVisitResult.SKIP_SUBTREE;
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    if (attrs.isRegularFile() && !attrs.isSymbolicLink()
-                            && isWithinBaseDirectory(file, attrs)
-                            && isSourceFile(file)
-                            && isNotSensitiveFile(file)) {
-                        candidates.add(file);
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-            candidates.sort(Comparator.naturalOrder());
+            List<Path> candidates = collectCandidatePaths();
 
             for (Path path : candidates) {
                 try {
@@ -192,6 +183,83 @@ public class LocalFileProvider {
 
         logger.info("Collected {} source files ({} bytes) from: {}", files.size(), totalSize, baseDirectory);
         return List.copyOf(files);
+    }
+
+    /// Collects local files and generates prompt-ready content in one pass.
+    /// Avoids retaining both per-file content list and concatenated content simultaneously.
+    public CollectionResult collectAndGenerate() {
+        if (!Files.isDirectory(baseDirectory)) {
+            logger.warn("Base directory does not exist or is not a directory: {}", baseDirectory);
+            return new CollectionResult("(no source files found)",
+                "No source files found in: " + baseDirectory, 0, 0);
+        }
+
+        try {
+            List<Path> candidates = collectCandidatePaths();
+            StringBuilder reviewContentBuilder = new StringBuilder((int) Math.min(maxTotalSize + 4096, Integer.MAX_VALUE));
+            StringBuilder fileListBuilder = new StringBuilder();
+            long totalSize = 0;
+            int fileCount = 0;
+
+            for (Path path : candidates) {
+                try {
+                    long size = Files.size(path);
+                    if (size > maxFileSize) {
+                        logger.debug("Skipping large file ({} bytes): {}", size, path);
+                        continue;
+                    }
+                    if (totalSize + size > maxTotalSize) {
+                        logger.warn("Total content size limit reached ({} bytes). Stopping collection.", totalSize);
+                        break;
+                    }
+
+                    String content = Files.readString(path, StandardCharsets.UTF_8);
+                    String relativePath = baseDirectory.relativize(path).toString().replace('\\', '/');
+
+                    String lang = detectLanguage(relativePath);
+                    reviewContentBuilder.append("### ").append(relativePath).append("\n\n");
+                    reviewContentBuilder.append("```").append(lang).append("\n");
+                    reviewContentBuilder.append(content);
+                    if (!content.endsWith("\n")) {
+                        reviewContentBuilder.append("\n");
+                    }
+                    reviewContentBuilder.append("```\n\n");
+
+                    fileListBuilder.append("  - ")
+                        .append(relativePath)
+                        .append(" (")
+                        .append(size)
+                        .append(" bytes)\n");
+
+                    totalSize += size;
+                    fileCount++;
+                } catch (IOException e) {
+                    logger.debug("Failed to read file {}: {}", path, e.getMessage());
+                }
+            }
+
+            String reviewContent = fileCount == 0
+                ? "(no source files found)"
+                : reviewContentBuilder.toString();
+
+            String directorySummary;
+            if (fileCount == 0) {
+                directorySummary = "No source files found in: " + baseDirectory;
+            } else {
+                directorySummary = new StringBuilder()
+                    .append("Directory: ").append(baseDirectory).append("\n")
+                    .append("Files: ").append(fileCount).append("\n")
+                    .append("Total size: ").append(totalSize).append(" bytes\n\n")
+                    .append("File list:\n")
+                    .append(fileListBuilder)
+                    .toString();
+            }
+
+            logger.info("Collected {} source files ({} bytes) from: {}", fileCount, totalSize, baseDirectory);
+            return new CollectionResult(reviewContent, directorySummary, fileCount, totalSize);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to walk directory: " + baseDirectory, e);
+        }
     }
 
     /// Generates the review content string with all file contents embedded.
@@ -240,6 +308,33 @@ public class LocalFileProvider {
         }
 
         return sb.toString();
+    }
+
+    private List<Path> collectCandidatePaths() throws IOException {
+        List<Path> candidates = new ArrayList<>();
+        Files.walkFileTree(baseDirectory, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                if (!dir.equals(baseDirectory)
+                    && IGNORED_DIRECTORIES.contains(dir.getFileName().toString())) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (attrs.isRegularFile() && !attrs.isSymbolicLink()
+                    && isWithinBaseDirectory(file, attrs)
+                    && isSourceFile(file)
+                    && isNotSensitiveFile(file)) {
+                    candidates.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        candidates.sort(Comparator.naturalOrder());
+        return candidates;
     }
 
     private boolean isSourceFile(Path path) {

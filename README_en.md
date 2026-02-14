@@ -168,8 +168,8 @@ export REVIEWER_STRUCTURED_CONCURRENCY=true
 export REVIEWER_STRUCTURED_CONCURRENCY_SKILLS=true
 
 # JVM properties (alternative)
-java -Dreviewer.structuredConcurrency=true -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar run --repo owner/repo --all
-java -Dreviewer.structuredConcurrency.skills=true -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar skill --list
+java -Dreviewer.feature-flags.structured-concurrency=true -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar run --repo owner/repo --all
+java -Dreviewer.feature-flags.structured-concurrency-skills=true -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar skill --list
 ```
 
 ### Local Directory Review

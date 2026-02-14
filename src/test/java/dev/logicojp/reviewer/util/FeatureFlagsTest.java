@@ -14,13 +14,10 @@ class FeatureFlagsTest {
     class StructuredConcurrency {
 
         @Test
-        @DisplayName("デフォルトではfalseを返す")
-        void defaultIsFalse() {
-            // Unless env var or system property is set, should be false
-            // Note: This test may pass or fail depending on CI environment
-            // We test the method can be called without error
-            boolean result = FeatureFlags.isStructuredConcurrencyEnabled();
-            assertThat(result).isIn(true, false);
+        @DisplayName("設定値をそのまま返す")
+        void returnsConfiguredValue() {
+            FeatureFlags flags = new FeatureFlags(true, false);
+            assertThat(flags.isStructuredConcurrencyEnabled()).isTrue();
         }
     }
 
@@ -29,10 +26,10 @@ class FeatureFlagsTest {
     class StructuredConcurrencyForSkills {
 
         @Test
-        @DisplayName("メソッドを呼び出してもエラーにならない")
-        void callableWithoutError() {
-            boolean result = FeatureFlags.isStructuredConcurrencyEnabledForSkills();
-            assertThat(result).isIn(true, false);
+        @DisplayName("スキル用フラグ設定値を返す")
+        void returnsSkillsFlag() {
+            FeatureFlags flags = new FeatureFlags(false, true);
+            assertThat(flags.isStructuredConcurrencyEnabledForSkills()).isTrue();
         }
     }
 }

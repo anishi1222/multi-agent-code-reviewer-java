@@ -1,10 +1,12 @@
 package dev.logicojp.reviewer.skill;
 
 import dev.logicojp.reviewer.config.GithubMcpConfig;
-import dev.logicojp.reviewer.util.FeatureFlags;
 import dev.logicojp.reviewer.util.StructuredConcurrencyUtils;
-import com.github.copilot.sdk.*;
-import com.github.copilot.sdk.json.*;
+import com.github.copilot.sdk.CopilotClient;
+import com.github.copilot.sdk.SystemMessageMode;
+import com.github.copilot.sdk.json.MessageOptions;
+import com.github.copilot.sdk.json.SessionConfig;
+import com.github.copilot.sdk.json.SystemMessageConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,24 +36,33 @@ public class SkillExecutor {
                          GithubMcpConfig githubMcpConfig, String defaultModel,
                          long timeoutMinutes) {
         this(client, githubToken, githubMcpConfig, defaultModel, timeoutMinutes,
-            Executors.newVirtualThreadPerTaskExecutor(), true);
+            Executors.newVirtualThreadPerTaskExecutor(), true, false);
     }
 
     public SkillExecutor(CopilotClient client, String githubToken,
                          GithubMcpConfig githubMcpConfig, String defaultModel,
                          long timeoutMinutes, Executor executor) {
-        this(client, githubToken, githubMcpConfig, defaultModel, timeoutMinutes, executor, false);
+        this(client, githubToken, githubMcpConfig, defaultModel, timeoutMinutes, executor, false, false);
+    }
+
+    public SkillExecutor(CopilotClient client, String githubToken,
+                         GithubMcpConfig githubMcpConfig, String defaultModel,
+                         long timeoutMinutes, Executor executor,
+                         boolean structuredConcurrencyEnabled) {
+        this(client, githubToken, githubMcpConfig, defaultModel, timeoutMinutes,
+            executor, false, structuredConcurrencyEnabled);
     }
 
     private SkillExecutor(CopilotClient client, String githubToken,
                           GithubMcpConfig githubMcpConfig, String defaultModel,
-                          long timeoutMinutes, Executor executor, boolean ownsExecutor) {
+                          long timeoutMinutes, Executor executor, boolean ownsExecutor,
+                          boolean structuredConcurrencyEnabled) {
         this.client = client;
         this.defaultModel = defaultModel;
         this.timeoutMinutes = timeoutMinutes;
         this.executor = executor;
         this.ownsExecutor = ownsExecutor;
-        this.structuredConcurrencyEnabled = isStructuredConcurrencyEnabledForSkills();
+        this.structuredConcurrencyEnabled = structuredConcurrencyEnabled;
         this.cachedMcpServers = GithubMcpConfig.buildMcpServers(githubToken, githubMcpConfig);
     }
 
@@ -155,10 +166,6 @@ public class SkillExecutor {
         } finally {
             session.close();
         }
-    }
-
-    private boolean isStructuredConcurrencyEnabledForSkills() {
-        return FeatureFlags.isStructuredConcurrencyEnabledForSkills();
     }
 
     /// Shuts down the internally-owned executor, if any.
