@@ -179,6 +179,7 @@ public class ReviewCommand {
         }
 
         int parsedIndex = applyTargetOption(state, arg, args, i);
+        // apply*Option methods return -1 when the option does not match; any non-negative index means it was handled.
         if (parsedIndex >= 0) return parsedIndex;
 
         parsedIndex = applyAgentOption(state, arg, args, i);
@@ -518,7 +519,7 @@ public class ReviewCommand {
                              ReviewTarget target, Path outputDirectory,
                              String reviewModel) {
         System.out.println("╔════════════════════════════════════════════════════════════╗");
-        System.out.println("║           Multi-Agent Code Reviewer                       ║");
+        System.out.println("║           Multi-Agent Code Reviewer                        ║");
         System.out.println("╚════════════════════════════════════════════════════════════╝");
         System.out.println();
         System.out.println("Target: " + target.displayName() +
