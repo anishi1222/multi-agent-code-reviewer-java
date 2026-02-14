@@ -82,9 +82,17 @@ public class CopilotService {
     private String resolveCliPath() throws ExecutionException {
         String explicit = System.getenv(CLI_PATH_ENV);
         if (explicit != null && !explicit.isBlank()) {
-            Path explicitPath = Path.of(explicit.trim());
+            Path explicitPath = Path.of(explicit.trim()).toAbsolutePath().normalize();
             if (Files.isExecutable(explicitPath)) {
-                return explicitPath.toAbsolutePath().toString();
+                // Validate that the binary name matches expected Copilot CLI candidates
+                String fileName = explicitPath.getFileName().toString();
+                boolean validName = java.util.Arrays.stream(CLI_CANDIDATES)
+                    .anyMatch(candidate -> fileName.equals(candidate) || fileName.startsWith(candidate));
+                if (!validName) {
+                    logger.warn("CLI path {} does not match expected Copilot CLI binary names ({})",
+                        explicitPath, String.join(", ", CLI_CANDIDATES));
+                }
+                return explicitPath.toString();
             }
             throw new ExecutionException("Copilot CLI not found at " + explicitPath
                 + ". Verify " + CLI_PATH_ENV + " or install GitHub Copilot CLI.", null);
@@ -97,7 +105,7 @@ public class CopilotService {
         }
 
         List<Path> candidates = new ArrayList<>();
-        for (String entry : pathEnv.split("[:]")) {
+        for (String entry : pathEnv.split(java.io.File.pathSeparator)) {
             if (entry == null || entry.isBlank()) {
                 continue;
             }
@@ -143,6 +151,10 @@ public class CopilotService {
         builder.redirectErrorStream(true);
         try {
             Process process = builder.start();
+            // Drain stdout/stderr to prevent pipe buffer overflow blocking the child process
+            try (var in = process.getInputStream()) {
+                in.transferTo(java.io.OutputStream.nullOutputStream());
+            }
             boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();

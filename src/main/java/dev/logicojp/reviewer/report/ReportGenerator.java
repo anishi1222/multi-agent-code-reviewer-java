@@ -19,8 +19,7 @@ import java.util.StringJoiner;
 public class ReportGenerator {
     
     private static final Logger logger = LoggerFactory.getLogger(ReportGenerator.class);
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     
     private final Path outputDirectory;
     private final TemplateService templateService;
@@ -39,7 +38,7 @@ public class ReportGenerator {
         AgentConfig config = result.agentConfig();
         String filename = "%s_%s.md".formatted(
             config.name(),
-            LocalDate.now().format(FILE_DATE_FORMATTER));
+            LocalDate.now().format(DATE_FORMATTER));
         Path reportPath = outputDirectory.resolve(filename);
         
         String reportContent = buildReportContent(result);

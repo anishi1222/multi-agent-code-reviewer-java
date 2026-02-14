@@ -20,11 +20,8 @@ public class ListAgentsCommand {
 
     private final AgentService agentService;
 
-    private int exitCode = ExitCodes.OK;
-
-    private List<Path> additionalAgentDirs;
-
-    private boolean helpRequested;
+    /// Parsed CLI options for the list command.
+    record ParsedOptions(List<Path> additionalAgentDirs) {}
 
     @Inject
     public ListAgentsCommand(AgentService agentService) {
@@ -32,43 +29,36 @@ public class ListAgentsCommand {
     }
 
     public int execute(String[] args) {
-        resetDefaults();
         try {
-            parseArgs(args);
-            if (helpRequested) {
+            ParsedOptions options = parseArgs(args);
+            if (options == null) {
                 return ExitCodes.OK;
             }
-            executeInternal();
+            return executeInternal(options);
         } catch (CliValidationException e) {
-            exitCode = ExitCodes.USAGE;
             if (!e.getMessage().isBlank()) {
                 System.err.println(e.getMessage());
             }
             if (e.showUsage()) {
                 CliUsage.printList(System.err);
             }
+            return ExitCodes.USAGE;
         } catch (Exception e) {
-            exitCode = ExitCodes.SOFTWARE;
             System.err.println("Error listing agents: " + e.getMessage());
+            return ExitCodes.SOFTWARE;
         }
-        return exitCode;
     }
 
-    private void resetDefaults() {
-        exitCode = ExitCodes.OK;
-        additionalAgentDirs = new ArrayList<>();
-        helpRequested = false;
-    }
-
-    private void parseArgs(String[] args) {
+    private ParsedOptions parseArgs(String[] args) {
         args = Objects.requireNonNullElse(args, new String[0]);
+        List<Path> additionalAgentDirs = new ArrayList<>();
+
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             switch (arg) {
                 case "-h", "--help" -> {
                     CliUsage.printList(System.out);
-                    helpRequested = true;
-                    return;
+                    return null;
                 }
                 case "--agents-dir" -> {
                     CliParsing.MultiValue values = CliParsing.readMultiValues(arg, args, i, "--agents-dir");
@@ -85,11 +75,13 @@ public class ListAgentsCommand {
                 }
             }
         }
+
+        return new ParsedOptions(List.copyOf(additionalAgentDirs));
     }
 
-    private void executeInternal() {
+    private int executeInternal(ParsedOptions options) {
         try {
-            List<Path> agentDirs = agentService.buildAgentDirectories(additionalAgentDirs);
+            List<Path> agentDirs = agentService.buildAgentDirectories(options.additionalAgentDirs());
             List<String> availableAgents = agentService.listAvailableAgents(agentDirs);
 
             System.out.println("Agent directories:");
@@ -100,13 +92,14 @@ public class ListAgentsCommand {
 
             if (availableAgents.isEmpty()) {
                 System.out.println("No agents found.");
-                return;
+                return ExitCodes.OK;
             }
 
             System.out.println("Available agents:");
             for (String agent : availableAgents) {
                 System.out.println("  - " + agent);
             }
+            return ExitCodes.OK;
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }

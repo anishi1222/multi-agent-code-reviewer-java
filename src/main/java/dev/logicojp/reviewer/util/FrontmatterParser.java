@@ -1,0 +1,165 @@
+package dev.logicojp.reviewer.util;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/// Shared utility for parsing YAML frontmatter from Markdown files.
+///
+/// Frontmatter is delimited by `---` lines at the start of the file:
+/// ```
+/// ---
+/// key: value
+/// nested:
+///   sub-key: sub-value
+/// ---
+/// Body content here...
+/// ```
+///
+/// This parser extracts top-level key-value pairs and nested blocks (one level deep).
+/// Used by agent definition parsers, skill parsers, instruction loaders, and prompt loaders.
+public final class FrontmatterParser {
+
+    private static final Pattern FRONTMATTER_PATTERN = Pattern.compile(
+        "^---\\s*\\n(.*?)\\n---\\s*\\n(.*)$",
+        Pattern.DOTALL
+    );
+
+    private FrontmatterParser() {}
+
+    /// Parsed result of a frontmatter-enabled file.
+    ///
+    /// @param metadata       Top-level key-value pairs from the frontmatter (quotes stripped)
+    /// @param body           The content after the closing `---` delimiter
+    /// @param hasFrontmatter Whether the front-matter delimiters were actually present
+    public record Parsed(Map<String, String> metadata, String body, boolean hasFrontmatter) {
+
+        /// Convenience accessor with a default value.
+        public String getOrDefault(String key, String defaultValue) {
+            return metadata.getOrDefault(key, defaultValue);
+        }
+
+        /// Returns the value for the given key, or {@code null} if absent.
+        public String get(String key) {
+            return metadata.get(key);
+        }
+    }
+
+    /// Parses YAML frontmatter from the given raw content.
+    ///
+    /// If no valid frontmatter delimiters are found, returns an empty metadata map
+    /// and the entire content as the body.
+    ///
+    /// @param rawContent The raw file content
+    /// @return A {@link Parsed} record with separated metadata and body
+    public static Parsed parse(String rawContent) {
+        if (rawContent == null || !rawContent.startsWith("---")) {
+            return new Parsed(Map.of(), rawContent != null ? rawContent : "", false);
+        }
+
+        Matcher matcher = FRONTMATTER_PATTERN.matcher(rawContent);
+        if (!matcher.matches()) {
+            return new Parsed(Map.of(), rawContent, false);
+        }
+
+        String frontmatter = matcher.group(1);
+        String body = matcher.group(2);
+
+        Map<String, String> metadata = parseFields(frontmatter);
+        return new Parsed(Map.copyOf(metadata), body, true);
+    }
+
+    /// Parses a nested block from frontmatter (e.g. `metadata:` section).
+    ///
+    /// @param frontmatterText The raw frontmatter text (between `---` delimiters)
+    /// @param blockKey        The key that starts the nested block (e.g. "metadata")
+    /// @return Key-value pairs from the nested block, or empty map if not found
+    public static Map<String, String> parseNestedBlock(String frontmatterText, String blockKey) {
+        Map<String, String> nested = new HashMap<>();
+        String[] lines = frontmatterText.split("\\n");
+        boolean inBlock = false;
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+
+            if (trimmed.equals(blockKey + ":")) {
+                inBlock = true;
+                continue;
+            }
+
+            if (!inBlock) continue;
+
+            // End of block: non-indented, non-empty line
+            if (!line.startsWith(" ") && !line.startsWith("\t") && !trimmed.isEmpty()) {
+                break;
+            }
+
+            if (!trimmed.isEmpty()) {
+                int colonIdx = trimmed.indexOf(':');
+                if (colonIdx > 0) {
+                    String key = trimmed.substring(0, colonIdx).trim();
+                    String value = stripQuotes(trimmed.substring(colonIdx + 1).trim());
+                    if (!value.isEmpty()) {
+                        nested.put(key, value);
+                    }
+                }
+            }
+        }
+
+        return nested.isEmpty() ? Map.of() : Map.copyOf(nested);
+    }
+
+    /// Extracts the raw frontmatter text (between `---` delimiters) from content.
+    /// Useful when callers need to perform additional custom parsing on the raw frontmatter.
+    ///
+    /// @param rawContent The raw file content
+    /// @return The raw frontmatter text, or {@code null} if no frontmatter is found
+    public static String extractRawFrontmatter(String rawContent) {
+        if (rawContent == null || !rawContent.startsWith("---")) {
+            return null;
+        }
+        Matcher matcher = FRONTMATTER_PATTERN.matcher(rawContent);
+        if (!matcher.matches()) {
+            return null;
+        }
+        return matcher.group(1);
+    }
+
+    /// Parses top-level key-value fields from frontmatter text.
+    /// Skips list items (lines starting with '-') and indented sub-keys.
+    private static Map<String, String> parseFields(String frontmatter) {
+        Map<String, String> fields = new HashMap<>();
+
+        for (String line : frontmatter.split("\\n")) {
+            // Skip blank lines, list items, and indented lines (sub-keys)
+            if (line.isBlank() || line.trim().startsWith("-")
+                    || line.startsWith(" ") || line.startsWith("\t")) {
+                continue;
+            }
+
+            int colonIdx = line.indexOf(':');
+            if (colonIdx <= 0) continue;
+
+            String key = line.substring(0, colonIdx).trim();
+            String value = stripQuotes(line.substring(colonIdx + 1).trim());
+
+            // Skip keys that start list/nested blocks (empty value after colon)
+            if (value.isEmpty()) continue;
+
+            fields.put(key, value);
+        }
+
+        return fields;
+    }
+
+    /// Strips surrounding single or double quotes from a value string.
+    static String stripQuotes(String value) {
+        if (value.length() >= 2
+                && ((value.startsWith("'") && value.endsWith("'"))
+                 || (value.startsWith("\"") && value.endsWith("\"")))) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
+    }
+}

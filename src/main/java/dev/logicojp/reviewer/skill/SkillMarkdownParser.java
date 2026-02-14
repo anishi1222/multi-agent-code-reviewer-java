@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.skill;
 
+import dev.logicojp.reviewer.util.FrontmatterParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,8 +8,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /// Parses Agent Skills specification files (SKILL.md).
@@ -29,11 +28,6 @@ public class SkillMarkdownParser {
 
     /// Configured skill filename
     private final String skillFilename;
-
-    private static final Pattern FRONTMATTER_PATTERN = Pattern.compile(
-        "^---\\s*\\n(.*?)\\n---\\s*\\n(.*)$",
-        Pattern.DOTALL
-    );
 
     /// Creates a parser with the default skill filename (SKILL.md).
     public SkillMarkdownParser() {
@@ -78,20 +72,21 @@ public class SkillMarkdownParser {
     public SkillDefinition parseContent(String content, String skillId) {
         String id = skillId;
 
-        Matcher frontmatterMatcher = FRONTMATTER_PATTERN.matcher(content);
-        if (!frontmatterMatcher.matches()) {
+        FrontmatterParser.Parsed parsed = FrontmatterParser.parse(content);
+        if (!parsed.hasFrontmatter()) {
             logger.warn("No valid frontmatter found in {}; using entire content as prompt.", skillId);
             return SkillDefinition.of(id, id, "", content.trim());
         }
 
-        String frontmatter = frontmatterMatcher.group(1);
-        String body = frontmatterMatcher.group(2).trim();
-
-        Map<String, String> simpleFields = parseSimpleFields(frontmatter);
-        Map<String, String> metadataMap = parseMetadataBlock(frontmatter);
+        Map<String, String> simpleFields = parsed.metadata();
+        String rawFrontmatter = FrontmatterParser.extractRawFrontmatter(content);
+        Map<String, String> metadataMap = rawFrontmatter != null
+            ? FrontmatterParser.parseNestedBlock(rawFrontmatter, "metadata")
+            : Map.of();
 
         String name = simpleFields.getOrDefault("name", id);
         String description = simpleFields.getOrDefault("description", "");
+        String body = parsed.body().trim();
 
         if (body.isBlank()) {
             throw new IllegalArgumentException("Skill file " + skillId + " has no prompt content after frontmatter.");
@@ -127,89 +122,5 @@ public class SkillMarkdownParser {
             logger.error("Failed to discover skills in {}: {}", skillsRoot, e.getMessage());
             return List.of();
         }
-    }
-
-    /// Parses simple key-value fields from frontmatter.
-    /// Skips list items (lines starting with '-') and indented sub-keys.
-    private Map<String, String> parseSimpleFields(String frontmatter) {
-        Map<String, String> fields = new HashMap<>();
-
-        for (String line : frontmatter.split("\\n")) {
-            // Skip blank lines, list items, and indented lines (sub-keys of parameters)
-            if (line.isBlank() || line.trim().startsWith("-") || line.startsWith(" ") || line.startsWith("\t")) {
-                continue;
-            }
-            int colonIdx = line.indexOf(':');
-            if (colonIdx <= 0) continue;
-
-            String key = line.substring(0, colonIdx).trim();
-            String value = line.substring(colonIdx + 1).trim();
-
-            // Skip keys that start list blocks (e.g. "parameters:")
-            if (value.isEmpty()) continue;
-
-            // Remove surrounding quotes
-            if ((value.startsWith("\"") && value.endsWith("\""))
-                || (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.substring(1, value.length() - 1);
-            }
-
-            fields.put(key, value);
-        }
-
-        return fields;
-    }
-
-    private void parseKeyValue(String text, Map<String, String> target) {
-        int colonIdx = text.indexOf(':');
-        if (colonIdx <= 0) return;
-
-        String key = text.substring(0, colonIdx).trim();
-        String value = text.substring(colonIdx + 1).trim();
-
-        // Remove surrounding quotes
-        if ((value.startsWith("\"") && value.endsWith("\""))
-            || (value.startsWith("'") && value.endsWith("'"))) {
-            value = value.substring(1, value.length() - 1);
-        }
-
-        target.put(key, value);
-    }
-
-    /// Parses the metadata block from frontmatter.
-    /// Expected format:
-    /// ```
-    /// metadata:
-    ///   agent: best-practices
-    ///   version: "1.0"
-    /// ```
-    private Map<String, String> parseMetadataBlock(String frontmatter) {
-        Map<String, String> metadata = new HashMap<>();
-
-        String[] lines = frontmatter.split("\\n");
-        boolean inMetadataBlock = false;
-
-        for (String line : lines) {
-            String trimmed = line.trim();
-
-            // Detect start of metadata block
-            if (trimmed.equals("metadata:")) {
-                inMetadataBlock = true;
-                continue;
-            }
-
-            if (!inMetadataBlock) continue;
-
-            // End of metadata block: non-indented, non-empty line
-            if (!line.startsWith(" ") && !line.startsWith("\t") && !trimmed.isEmpty()) {
-                break;
-            }
-
-            if (!trimmed.isEmpty()) {
-                parseKeyValue(trimmed, metadata);
-            }
-        }
-
-        return metadata.isEmpty() ? Map.of() : Map.copyOf(metadata);
     }
 }

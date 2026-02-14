@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /// Service for loading and processing templates.
 /// Supports loading from external files with fallback to classpath resources.
@@ -21,6 +22,7 @@ public class TemplateService {
     private static final Logger logger = LoggerFactory.getLogger(TemplateService.class);
 
     private final TemplateConfig config;
+    private final Map<String, String> templateCache = new ConcurrentHashMap<>();
 
     @Inject
     public TemplateService(TemplateConfig config) {
@@ -38,10 +40,16 @@ public class TemplateService {
     }
 
     /// Loads raw template content without placeholder substitution.
+    /// Results are cached in memory — each template is read from disk at most once.
     ///
     /// @param templateName The template name
     /// @return The raw template content
     public String loadTemplateContent(String templateName) {
+        return templateCache.computeIfAbsent(templateName, this::loadTemplateFromSource);
+    }
+
+    /// Loads template content from the filesystem or classpath.
+    private String loadTemplateFromSource(String templateName) {
         Path templatePath = Path.of(config.directory(), templateName);
 
         // Try external file first

@@ -60,7 +60,8 @@ public class ReviewApp {
         }
 
         if (versionRequested) {
-            System.out.println("Multi-Agent Reviewer 1.0.0");
+            String version = getClass().getPackage().getImplementationVersion();
+            System.out.println("Multi-Agent Reviewer " + (version != null ? version : "dev"));
             return ExitCodes.OK;
         }
 
@@ -103,6 +104,9 @@ public class ReviewApp {
         };
     }
 
+    /// Enables debug-level logging at runtime.
+    /// Logback implementation direct dependency — SLF4J does not provide a dynamic log-level API.
+    /// This is an acceptable trade-off for implementing the --verbose CLI flag at runtime.
     private void enableVerboseLogging() {
         try {
             ch.qos.logback.classic.LoggerContext context =

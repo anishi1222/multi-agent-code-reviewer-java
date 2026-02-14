@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.instruction;
 
 import dev.logicojp.reviewer.target.ReviewTarget;
+import dev.logicojp.reviewer.util.FrontmatterParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /// Loads custom instructions from repository or local directory.
@@ -181,20 +183,20 @@ public class CustomInstructionLoader {
     }
 
     /// Loads a single instruction file.
-    private java.util.Optional<CustomInstruction> loadInstructionFile(Path path) {
+    private Optional<CustomInstruction> loadInstructionFile(Path path) {
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
 
         try {
             String content = Files.readString(path, StandardCharsets.UTF_8);
             if (content.isBlank()) {
                 logger.debug("Instruction file is empty: {}", path);
-                return java.util.Optional.empty();
+                return Optional.empty();
             }
 
             logger.info("Loaded custom instruction from: {}", path);
-            return java.util.Optional.of(new CustomInstruction(
+            return Optional.of(new CustomInstruction(
                 path.toString(),
                 content.trim(),
                 InstructionSource.LOCAL_FILE,
@@ -203,7 +205,7 @@ public class CustomInstructionLoader {
             ));
         } catch (IOException e) {
             logger.warn("Failed to read instruction file {}: {}", path, e.getMessage());
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
     }
 
@@ -221,47 +223,20 @@ public class CustomInstructionLoader {
     /// @param rawContent The raw file content
     /// @return ParsedInstruction with separated content and metadata
     static ParsedInstruction parseFrontmatter(String rawContent) {
-        if (rawContent == null || !rawContent.startsWith("---")) {
+        FrontmatterParser.Parsed parsed = FrontmatterParser.parse(rawContent);
+
+        if (!parsed.hasFrontmatter()) {
             return new ParsedInstruction(rawContent, null, null);
         }
 
-        // Find the closing --- delimiter
-        int endIndex = rawContent.indexOf("\n---", 3);
-        if (endIndex < 0) {
-            // No closing delimiter found — treat entire content as body
-            return new ParsedInstruction(rawContent, null, null);
-        }
-
-        String frontmatter = rawContent.substring(3, endIndex).trim();
-        // Skip past the closing --- and any trailing newline
-        String content = rawContent.substring(endIndex + 4).trim();
-
-        String applyTo = extractFrontmatterValue(frontmatter, "applyTo");
-        String description = extractFrontmatterValue(frontmatter, "description");
+        String content = parsed.body().trim();
+        String applyTo = parsed.get("applyTo");
+        String description = parsed.get("description");
 
         return new ParsedInstruction(
             content.isEmpty() ? rawContent : content,
             applyTo,
             description
         );
-    }
-
-    /// Extracts a value for the given key from YAML frontmatter text.
-    /// Supports both quoted ('value' or "value") and unquoted values.
-    private static String extractFrontmatterValue(String frontmatter, String key) {
-        for (String line : frontmatter.split("\n")) {
-            line = line.trim();
-            if (line.startsWith(key + ":")) {
-                String value = line.substring(key.length() + 1).trim();
-                // Remove surrounding quotes
-                if (value.length() >= 2
-                        && ((value.startsWith("'") && value.endsWith("'"))
-                         || (value.startsWith("\"") && value.endsWith("\"")))) {
-                    value = value.substring(1, value.length() - 1);
-                }
-                return value.isEmpty() ? null : value;
-            }
-        }
-        return null;
     }
 }

@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -66,6 +65,16 @@ public class LocalFileProvider {
         "md", "rst", "adoc"
     );
 
+    /// Filename patterns indicating potentially sensitive configuration files.
+    /// Files matching these patterns are excluded from collection to prevent
+    /// accidental transmission of credentials to external LLM services.
+    private static final Set<String> SENSITIVE_FILE_PATTERNS = Set.of(
+        "application-prod", "application-staging", "application-secret",
+        "secrets", "credentials", ".env",
+        "service-account", "keystore", "truststore",
+        "id_rsa", "id_ed25519", "id_ecdsa"
+    );
+
     /// A single collected source file.
     /// @param relativePath Path relative to the base directory
     /// @param content File content as a string
@@ -95,11 +104,14 @@ public class LocalFileProvider {
         List<LocalFile> files = new ArrayList<>();
         long totalSize = 0;
 
-        try (Stream<Path> stream = Files.walk(baseDirectory, FileVisitOption.FOLLOW_LINKS)) {
+        try (Stream<Path> stream = Files.walk(baseDirectory)) {
             List<Path> candidates = stream
                 .filter(Files::isRegularFile)
+                .filter(p -> !Files.isSymbolicLink(p))
+                .filter(this::isWithinBaseDirectory)
                 .filter(this::isSourceFile)
                 .filter(this::isNotInIgnoredDirectory)
+                .filter(this::isNotSensitiveFile)
                 .sorted()
                 .toList();
 
@@ -204,6 +216,27 @@ public class LocalFileProvider {
             }
         }
         return true;
+    }
+
+    /// Checks if the file's real path is within the base directory.
+    /// Prevents symlink-based path traversal attacks.
+    private boolean isWithinBaseDirectory(Path path) {
+        try {
+            Path realPath = path.toRealPath();
+            Path realBase = baseDirectory.toRealPath();
+            return realPath.startsWith(realBase);
+        } catch (IOException e) {
+            logger.debug("Cannot resolve real path for {}: {}", path, e.getMessage());
+            return false;
+        }
+    }
+
+    /// Checks if the file matches a sensitive configuration file pattern.
+    /// Excludes files that may contain credentials or secrets.
+    private boolean isNotSensitiveFile(Path path) {
+        String fileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        return SENSITIVE_FILE_PATTERNS.stream()
+            .noneMatch(fileName::contains);
     }
 
     private String detectLanguage(String relativePath) {

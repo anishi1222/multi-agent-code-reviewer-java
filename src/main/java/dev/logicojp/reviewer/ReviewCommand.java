@@ -47,50 +47,35 @@ public class ReviewCommand {
 
     private final ExecutionConfig executionConfig;
 
-    private int exitCode = ExitCodes.OK;
-
-    /// Target selection - either GitHub repository or local directory.
-    static class TargetSelection {
-        private String repository;
-        private Path localDirectory;
+    /// Target selection — sealed interface for type-safe exclusive choice.
+    sealed interface TargetSelection {
+        record Repository(String repository) implements TargetSelection {}
+        record LocalDirectory(Path directory) implements TargetSelection {}
     }
 
-    private TargetSelection targetSelection;
-
-    static class AgentSelection {
-        private boolean allAgents;
-        private List<String> agents;
+    /// Agent selection — sealed interface for type-safe exclusive choice.
+    sealed interface AgentSelection {
+        record All() implements AgentSelection {}
+        record Named(List<String> agents) implements AgentSelection {}
     }
 
-    private AgentSelection agentSelection;
-
-    private Path outputDirectory;
-
-    private List<Path> additionalAgentDirs;
-
-    private String githubToken;
-
-    private int parallelism;
-
-    private boolean noSummary;
-
-    // LLM Model options
-    private String reviewModel;
-
-    private String reportModel;
-
-    private String summaryModel;
-
-    private String defaultModel;
-
-    // Custom instruction options
-    private List<Path> instructionPaths;
-
-    private boolean noInstructions;
-
-    private boolean noPrompts;
-
-    private boolean helpRequested;
+    /// Parsed CLI options for a review run.
+    record ParsedOptions(
+        TargetSelection target,
+        AgentSelection agents,
+        Path outputDirectory,
+        List<Path> additionalAgentDirs,
+        String githubToken,
+        int parallelism,
+        boolean noSummary,
+        String reviewModel,
+        String reportModel,
+        String summaryModel,
+        String defaultModel,
+        List<Path> instructionPaths,
+        boolean noInstructions,
+        boolean noPrompts
+    ) {}
 
     @Inject
     public ReviewCommand(
@@ -110,80 +95,74 @@ public class ReviewCommand {
     }
 
     public int execute(String[] args) {
-        resetDefaults();
         try {
-            parseArgs(args);
-            if (helpRequested) {
+            ParsedOptions options = parseArgs(args);
+            if (options == null) {
+                // --help was requested
                 return ExitCodes.OK;
             }
-            executeInternal();
+            return executeInternal(options);
         } catch (CliValidationException e) {
-            exitCode = ExitCodes.USAGE;
             System.err.println(e.getMessage());
             if (e.showUsage()) {
                 CliUsage.printRun(System.err);
             }
+            return ExitCodes.USAGE;
         } catch (Exception e) {
-            exitCode = ExitCodes.SOFTWARE;
             logger.error("Execution failed: {}", e.getMessage(), e);
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(System.err);
+            return ExitCodes.SOFTWARE;
         }
-        return exitCode;
     }
 
-    private void resetDefaults() {
-        exitCode = ExitCodes.OK;
-        targetSelection = null;
-        agentSelection = null;
-        outputDirectory = Path.of("./reports");
-        additionalAgentDirs = new ArrayList<>();
-        githubToken = System.getenv("GITHUB_TOKEN");
-        parallelism = executionConfig.parallelism();
-        noSummary = false;
-        reviewModel = null;
-        reportModel = null;
-        summaryModel = null;
-        defaultModel = null;
-        instructionPaths = new ArrayList<>();
-        noInstructions = false;
-        noPrompts = false;
-        helpRequested = false;
-    }
-
-    private void parseArgs(String[] args) {
+    private ParsedOptions parseArgs(String[] args) {
         args = Objects.requireNonNullElse(args, new String[0]);
+
+        // Mutable accumulators during parsing
+        String repository = null;
+        Path localDirectory = null;
+        boolean allAgents = false;
+        List<String> agentNames = new ArrayList<>();
+        Path outputDirectory = Path.of("./reports");
+        List<Path> additionalAgentDirs = new ArrayList<>();
+        String githubToken = System.getenv("GITHUB_TOKEN");
+        int parallelism = executionConfig.parallelism();
+        boolean noSummary = false;
+        String reviewModel = null;
+        String reportModel = null;
+        String summaryModel = null;
+        String defaultModel = null;
+        List<Path> instructionPaths = new ArrayList<>();
+        boolean noInstructions = false;
+        boolean noPrompts = false;
+
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             switch (arg) {
                 case "-h", "--help" -> {
                     CliUsage.printRun(System.out);
-                    helpRequested = true;
-                    return;
+                    return null;
                 }
                 case "-r", "--repo" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--repo");
                     i = value.newIndex();
-                    ensureTargetSelection().repository = value.value();
+                    repository = value.value();
                 }
                 case "-l", "--local" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--local");
                     i = value.newIndex();
-                    ensureTargetSelection().localDirectory = Path.of(value.value());
+                    localDirectory = Path.of(value.value());
                 }
-                case "--all" -> ensureAgentSelection().allAgents = true;
+                case "--all" -> allAgents = true;
                 case "-a", "--agents" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--agents");
                     i = value.newIndex();
-                    List<String> agents = CliParsing.splitComma(value.value());
-                    if (agents.isEmpty()) {
+                    List<String> parsed = CliParsing.splitComma(value.value());
+                    if (parsed.isEmpty()) {
                         throw new CliValidationException("--agents requires at least one value", true);
                     }
-                    AgentSelection selection = ensureAgentSelection();
-                    if (selection.agents == null) {
-                        selection.agents = new ArrayList<>();
-                    }
-                    selection.agents.addAll(agents);
+                    agentNames.addAll(parsed);
                 }
                 case "-o", "--output" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--output");
@@ -200,7 +179,7 @@ public class ReviewCommand {
                 case "--token" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--token");
                     i = value.newIndex();
-                    githubToken = value.value();
+                    githubToken = readToken(value.value());
                 }
                 case "--parallelism" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--parallelism");
@@ -246,40 +225,45 @@ public class ReviewCommand {
             }
         }
 
-        validateSelections();
+        // Validate and build target selection
+        TargetSelection target = validateTargetSelection(repository, localDirectory);
+
+        // Validate and build agent selection
+        AgentSelection agents = validateAgentSelection(allAgents, agentNames);
+
+        return new ParsedOptions(
+            target, agents, outputDirectory, List.copyOf(additionalAgentDirs),
+            githubToken, parallelism, noSummary,
+            reviewModel, reportModel, summaryModel, defaultModel,
+            List.copyOf(instructionPaths), noInstructions, noPrompts
+        );
     }
 
-    private TargetSelection ensureTargetSelection() {
-        if (targetSelection == null) {
-            targetSelection = new TargetSelection();
-        }
-        return targetSelection;
-    }
-
-    private AgentSelection ensureAgentSelection() {
-        if (agentSelection == null) {
-            agentSelection = new AgentSelection();
-        }
-        return agentSelection;
-    }
-
-    private void validateSelections() {
-        if (agentSelection == null) {
-            throw new CliValidationException("Either --all or --agents must be specified.", true);
-        }
-        boolean hasAll = agentSelection.allAgents;
-        boolean hasAgents = agentSelection.agents != null && !agentSelection.agents.isEmpty();
-        if (hasAll == hasAgents) {
-            throw new CliValidationException("Specify either --all or --agents (not both).", true);
-        }
-        if (targetSelection == null) {
+    private static TargetSelection validateTargetSelection(String repository, Path localDirectory) {
+        boolean hasRepo = repository != null && !repository.isBlank();
+        boolean hasLocal = localDirectory != null;
+        if (!hasRepo && !hasLocal) {
             throw new CliValidationException("Either --repo or --local must be specified.", true);
         }
-        boolean hasRepo = targetSelection.repository != null && !targetSelection.repository.isBlank();
-        boolean hasLocal = targetSelection.localDirectory != null;
-        if (hasRepo == hasLocal) {
+        if (hasRepo && hasLocal) {
             throw new CliValidationException("Specify either --repo or --local (not both).", true);
         }
+        return hasRepo
+            ? new TargetSelection.Repository(repository)
+            : new TargetSelection.LocalDirectory(localDirectory);
+    }
+
+    private static AgentSelection validateAgentSelection(boolean allAgents, List<String> agentNames) {
+        boolean hasAgents = !agentNames.isEmpty();
+        if (!allAgents && !hasAgents) {
+            throw new CliValidationException("Either --all or --agents must be specified.", true);
+        }
+        if (allAgents && hasAgents) {
+            throw new CliValidationException("Specify either --all or --agents (not both).", true);
+        }
+        return allAgents
+            ? new AgentSelection.All()
+            : new AgentSelection.Named(List.copyOf(agentNames));
     }
 
     private int parseInt(String value, String optionName) {
@@ -290,78 +274,92 @@ public class ReviewCommand {
         }
     }
 
-    private void executeInternal() throws Exception {
+    /// Reads a token value, supporting stdin input via "-" to avoid
+    /// exposing the token in process listings or shell history.
+    private static String readToken(String value) {
+        if ("-".equals(value)) {
+            try {
+                if (System.console() != null) {
+                    char[] chars = System.console().readPassword("GitHub Token: ");
+                    return chars != null ? new String(chars).trim() : "";
+                }
+                return new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
+            } catch (java.io.IOException e) {
+                throw new CliValidationException("Failed to read token from stdin: " + e.getMessage(), false);
+            }
+        }
+        return value;
+    }
+
+    private int executeInternal(ParsedOptions options) throws Exception {
         // Build review target
         ReviewTarget target;
         String resolvedToken = null;
-        if (targetSelection.repository != null) {
-            GitHubTokenResolver tokenResolver = new GitHubTokenResolver(executionConfig.ghAuthTimeoutSeconds());
-            resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
-            target = ReviewTarget.gitHub(targetSelection.repository);
+        switch (options.target()) {
+            case TargetSelection.Repository(String repository) -> {
+                GitHubTokenResolver tokenResolver = new GitHubTokenResolver(executionConfig.ghAuthTimeoutSeconds());
+                resolvedToken = tokenResolver.resolve(options.githubToken()).orElse(null);
+                target = ReviewTarget.gitHub(repository);
 
-            // Validate GitHub token for repository access
-            if (resolvedToken == null || resolvedToken.isBlank()) {
-                throw new CliValidationException(
-                    "GitHub token is required for repository review. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.",
-                    true
-                );
+                if (resolvedToken == null || resolvedToken.isBlank()) {
+                    throw new CliValidationException(
+                        "GitHub token is required for repository review. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.",
+                        true
+                    );
+                }
             }
-        } else if (targetSelection.localDirectory != null) {
-            Path localPath = targetSelection.localDirectory.toAbsolutePath();
-            if (!Files.exists(localPath)) {
-                throw new CliValidationException(
-                    "Local directory does not exist: " + localPath,
-                    true
-                );
+            case TargetSelection.LocalDirectory(Path localDir) -> {
+                Path localPath = localDir.toAbsolutePath();
+                if (!Files.exists(localPath)) {
+                    throw new CliValidationException(
+                        "Local directory does not exist: " + localPath,
+                        true
+                    );
+                }
+                if (!Files.isDirectory(localPath)) {
+                    throw new CliValidationException(
+                        "Path is not a directory: " + localPath,
+                        true
+                    );
+                }
+                target = ReviewTarget.local(localPath);
             }
-            if (!Files.isDirectory(localPath)) {
-                throw new CliValidationException(
-                    "Path is not a directory: " + localPath,
-                    true
-                );
-            }
-            target = ReviewTarget.local(localPath);
-        } else {
-            throw new CliValidationException("Either --repo or --local must be specified.", true);
         }
 
         // Build model configuration
-        ModelConfig modelConfig = buildModelConfig();
+        ModelConfig modelConfig = buildModelConfig(options);
 
         // Configure agent directories
-        List<Path> agentDirs = agentService.buildAgentDirectories(additionalAgentDirs);
+        List<Path> agentDirs = agentService.buildAgentDirectories(options.additionalAgentDirs());
 
         // Load agent configurations
-        Map<String, AgentConfig> agentConfigs;
-        if (agentSelection.allAgents) {
-            agentConfigs = agentService.loadAllAgents(agentDirs);
-        } else {
-            agentConfigs = agentService.loadAgents(agentDirs, agentSelection.agents);
-        }
+        Map<String, AgentConfig> agentConfigs = switch (options.agents()) {
+            case AgentSelection.All() -> agentService.loadAllAgents(agentDirs);
+            case AgentSelection.Named(List<String> names) -> agentService.loadAgents(agentDirs, names);
+        };
 
         if (agentConfigs.isEmpty()) {
-            exitCode = ExitCodes.SOFTWARE;
             System.err.println("Error: No agents found. Check the agents directories:");
             for (Path dir : agentDirs) {
                 System.err.println("  - " + dir);
             }
-            return;
+            return ExitCodes.SOFTWARE;
         }
 
         // Apply model overrides if specified
-        if (reviewModel != null) {
+        if (options.reviewModel() != null) {
             for (Map.Entry<String, AgentConfig> entry : agentConfigs.entrySet()) {
-                entry.setValue(entry.getValue().withModel(reviewModel));
+                entry.setValue(entry.getValue().withModel(options.reviewModel()));
             }
         }
 
         // Resolve output directory with repository sub-path
-        outputDirectory = outputDirectory.resolve(target.repositorySubPath());
+        Path outputDirectory = options.outputDirectory().resolve(target.repositorySubPath());
 
-        printBanner(agentConfigs, agentDirs, modelConfig, target);
+        printBanner(agentConfigs, agentDirs, modelConfig, target, outputDirectory, options.reviewModel());
 
         // Load custom instructions
-        List<CustomInstruction> customInstructions = loadCustomInstructions(target);
+        List<CustomInstruction> customInstructions = loadCustomInstructions(target, options);
 
 
         // Execute reviews using the Copilot service
@@ -370,7 +368,7 @@ public class ReviewCommand {
         try {
             System.out.println("Starting reviews...");
             List<ReviewResult> results = reviewService.executeReviews(
-                agentConfigs, target, resolvedToken, parallelism,
+                agentConfigs, target, resolvedToken, options.parallelism(),
                 customInstructions, modelConfig.reasoningEffort());
 
             // Generate individual reports
@@ -382,7 +380,7 @@ public class ReviewCommand {
             }
 
             // Generate executive summary
-            if (!noSummary) {
+            if (!options.noSummary()) {
                 System.out.println("\nGenerating executive summary...");
                 Path summaryPath = reportService.generateSummary(
                     results, target.displayName(), outputDirectory,
@@ -391,39 +389,40 @@ public class ReviewCommand {
             }
 
             // Print summary
-            printCompletionSummary(results);
+            printCompletionSummary(results, outputDirectory);
 
         } finally {
             copilotService.shutdown();
         }
+        return ExitCodes.OK;
     }
 
-    private ModelConfig buildModelConfig() {
+    private ModelConfig buildModelConfig(ParsedOptions options) {
         ModelConfig baseConfig = defaultModelConfig != null ? defaultModelConfig : new ModelConfig();
         ModelConfig.Builder builder = ModelConfig.builder()
             .reviewModel(baseConfig.reviewModel())
             .reportModel(baseConfig.reportModel())
             .summaryModel(baseConfig.summaryModel());
 
-        if (defaultModel != null) {
-            builder.defaultModel(defaultModel);
+        if (options.defaultModel() != null) {
+            builder.defaultModel(options.defaultModel());
         }
-        if (reviewModel != null) {
-            builder.reviewModel(reviewModel);
+        if (options.reviewModel() != null) {
+            builder.reviewModel(options.reviewModel());
         }
-        if (reportModel != null) {
-            builder.reportModel(reportModel);
+        if (options.reportModel() != null) {
+            builder.reportModel(options.reportModel());
         }
-        if (summaryModel != null) {
-            builder.summaryModel(summaryModel);
+        if (options.summaryModel() != null) {
+            builder.summaryModel(options.summaryModel());
         }
 
         return builder.build();
     }
 
     /// Loads custom instructions from specified paths or target directory.
-    private List<CustomInstruction> loadCustomInstructions(ReviewTarget target) {
-        if (noInstructions) {
+    private List<CustomInstruction> loadCustomInstructions(ReviewTarget target, ParsedOptions options) {
+        if (options.noInstructions()) {
             logger.info("Custom instructions disabled by --no-instructions flag");
             return List.of();
         }
@@ -431,8 +430,8 @@ public class ReviewCommand {
         List<CustomInstruction> instructions = new ArrayList<>();
 
         // Load from explicitly specified paths
-        if (instructionPaths != null && !instructionPaths.isEmpty()) {
-            for (Path path : instructionPaths) {
+        if (!options.instructionPaths().isEmpty()) {
+            for (Path path : options.instructionPaths()) {
                 try {
                     if (Files.exists(path) && Files.isRegularFile(path)) {
                         String content = Files.readString(path);
@@ -453,7 +452,7 @@ public class ReviewCommand {
 
         // Also try to load from target directory (for local targets)
         if (target.isLocal()) {
-            boolean shouldLoadPrompts = !noPrompts;
+            boolean shouldLoadPrompts = !options.noPrompts();
             CustomInstructionLoader loader = new CustomInstructionLoader(null, shouldLoadPrompts);
             List<CustomInstruction> targetInstructions = loader.loadForTarget(target);
             for (CustomInstruction instruction : targetInstructions) {
@@ -467,7 +466,8 @@ public class ReviewCommand {
 
     private void printBanner(Map<String, AgentConfig> agentConfigs,
                              List<Path> agentDirs, ModelConfig modelConfig,
-                             ReviewTarget target) {
+                             ReviewTarget target, Path outputDirectory,
+                             String reviewModel) {
         System.out.println("╔════════════════════════════════════════════════════════════╗");
         System.out.println("║           Multi-Agent Code Reviewer                       ║");
         System.out.println("╚════════════════════════════════════════════════════════════╝");
@@ -488,7 +488,7 @@ public class ReviewCommand {
         System.out.println();
     }
 
-    private void printCompletionSummary(List<ReviewResult> results) {
+    private void printCompletionSummary(List<ReviewResult> results, Path outputDirectory) {
         System.out.println();
         System.out.println("════════════════════════════════════════════════════════════");
         System.out.println("Review completed!");

@@ -6,6 +6,7 @@ import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.instruction.CustomInstructionLoader;
 import dev.logicojp.reviewer.orchestrator.ReviewOrchestrator;
+import dev.logicojp.reviewer.orchestrator.ReviewOrchestratorFactory;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import jakarta.inject.Inject;
@@ -22,18 +23,15 @@ public class ReviewService {
     
     private static final Logger logger = LoggerFactory.getLogger(ReviewService.class);
     
-    private final CopilotService copilotService;
-    private final GithubMcpConfig githubMcpConfig;
+    private final ReviewOrchestratorFactory orchestratorFactory;
     private final ExecutionConfig executionConfig;
     private final TemplateService templateService;
     
     @Inject
-    public ReviewService(CopilotService copilotService,
-                         GithubMcpConfig githubMcpConfig,
+    public ReviewService(ReviewOrchestratorFactory orchestratorFactory,
                          ExecutionConfig executionConfig,
                          TemplateService templateService) {
-        this.copilotService = copilotService;
-        this.githubMcpConfig = githubMcpConfig;
+        this.orchestratorFactory = orchestratorFactory;
         this.executionConfig = executionConfig;
         this.templateService = templateService;
     }
@@ -87,8 +85,8 @@ public class ReviewService {
             logger.info("Loaded output constraints from template ({} chars)", outputConstraints.length());
         }
         
-        ReviewOrchestrator orchestrator = new ReviewOrchestrator(
-            copilotService.getClient(), githubToken, githubMcpConfig, overriddenConfig,
+        ReviewOrchestrator orchestrator = orchestratorFactory.create(
+            githubToken, overriddenConfig,
             effectiveInstructions, reasoningEffort, outputConstraints);
         
         try {

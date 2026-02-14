@@ -8,7 +8,7 @@
     </appender>
     
     <!-- Application loggers -->
-    <logger name="com.example.reviewer" level="INFO"/>
+    <logger name="dev.logicojp.reviewer" level="INFO"/>
 
     <!-- Third-party loggers -->
     <logger name="com.github.copilot.sdk" level="WARN"/>

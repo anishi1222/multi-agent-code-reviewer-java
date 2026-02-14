@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.orchestrator;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.agent.ReviewAgent;
+import dev.logicojp.reviewer.agent.ReviewContext;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
@@ -85,10 +86,11 @@ public class ReviewOrchestrator {
             * (executionConfig.maxRetries() + 1L);
         
         for (var config : agents.values()) {
-            var agent = new ReviewAgent(config, client, githubToken, githubMcpConfig,
+            var context = new ReviewContext(client, githubToken, githubMcpConfig,
                 executionConfig.agentTimeoutMinutes(), executionConfig.idleTimeoutMinutes(),
                 customInstructions, reasoningEffort,
                 executionConfig.maxRetries(), outputConstraints);
+            var agent = new ReviewAgent(config, context);
             CompletableFuture<ReviewResult> future = CompletableFuture
                 .supplyAsync(() -> {
                     try {
@@ -162,10 +164,11 @@ public class ReviewOrchestrator {
         List<StructuredTaskScope.Subtask<ReviewResult>> tasks = new ArrayList<>(agents.size());
         try (var scope = StructuredTaskScope.<ReviewResult>open()) {
             for (var config : agents.values()) {
-                var agent = new ReviewAgent(config, client, githubToken, githubMcpConfig,
+                var context = new ReviewContext(client, githubToken, githubMcpConfig,
                     executionConfig.agentTimeoutMinutes(), executionConfig.idleTimeoutMinutes(),
                     customInstructions, reasoningEffort,
                     executionConfig.maxRetries(), outputConstraints);
+                var agent = new ReviewAgent(config, context);
                 tasks.add(scope.fork(() -> {
                     try {
                         concurrencyLimit.acquire();

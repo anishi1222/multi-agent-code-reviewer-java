@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.agent;
 
 import dev.logicojp.reviewer.config.ModelConfig;
+import dev.logicojp.reviewer.util.FrontmatterParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,19 +64,15 @@ public class AgentMarkdownParser {
     
     /// Parses markdown content and returns an AgentConfig.
     public AgentConfig parseContent(String content, String filename) {
-        Matcher frontmatterMatcher = FRONTMATTER_PATTERN.matcher(content);
+        FrontmatterParser.Parsed parsed = FrontmatterParser.parse(content);
 
-        if (!frontmatterMatcher.matches()) {
+        if (!parsed.hasFrontmatter()) {
             logger.warn("No valid frontmatter found in {}", filename);
-            // Try to parse without frontmatter
             return parseWithoutFrontmatter(content, filename);
         }
 
-        String frontmatter = frontmatterMatcher.group(1);
-        String body = frontmatterMatcher.group(2);
-
-        // Parse frontmatter as simple key-value pairs
-        Map<String, String> metadata = parseFrontmatter(frontmatter);
+        Map<String, String> metadata = parsed.metadata();
+        String body = parsed.body();
 
         // Extract name from filename if not in frontmatter
         String name = metadata.getOrDefault("name", extractNameFromFilename(filename));
@@ -139,31 +136,6 @@ public class AgentMarkdownParser {
         );
         config.validateRequired();
         return config;
-    }
-    
-    private Map<String, String> parseFrontmatter(String frontmatter) {
-        Map<String, String> metadata = new HashMap<>();
-        
-        for (String line : frontmatter.split("\\n")) {
-            line = line.trim();
-            if (line.isEmpty() || !line.contains(":")) {
-                continue;
-            }
-            
-            int colonIndex = line.indexOf(':');
-            String key = line.substring(0, colonIndex).trim();
-            String value = line.substring(colonIndex + 1).trim();
-            
-            // Remove quotes if present
-            if ((value.startsWith("\"") && value.endsWith("\"")) ||
-                (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.substring(1, value.length() - 1);
-            }
-            
-            metadata.put(key, value);
-        }
-        
-        return metadata;
     }
     
     private List<String> extractFocusAreas(String body) {

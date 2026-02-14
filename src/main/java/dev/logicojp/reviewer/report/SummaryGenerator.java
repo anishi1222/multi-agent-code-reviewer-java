@@ -22,8 +22,7 @@ import java.util.concurrent.TimeUnit;
 public class SummaryGenerator {
     
     private static final Logger logger = LoggerFactory.getLogger(SummaryGenerator.class);
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     
     private final Path outputDirectory;
     private final CopilotClient client;
@@ -55,7 +54,7 @@ public class SummaryGenerator {
         ensureOutputDirectory();
         
         String filename = "executive_summary_%s.md".formatted(
-            LocalDate.now().format(FILE_DATE_FORMATTER));
+            LocalDate.now().format(DATE_FORMATTER));
         Path summaryPath = outputDirectory.resolve(filename);
         
         logger.info("Generating executive summary from {} review results", results.size());
@@ -192,7 +191,7 @@ public class SummaryGenerator {
         for (ReviewResult result : results) {
             String filename = "%s_%s.md".formatted(
                 result.agentConfig().name(),
-                LocalDate.now().format(FILE_DATE_FORMATTER));
+                LocalDate.now().format(DATE_FORMATTER));
             var linkPlaceholders = Map.of(
                 "displayName", result.agentConfig().displayName(),
                 "filename", filename);

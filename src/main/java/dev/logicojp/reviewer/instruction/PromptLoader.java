@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.instruction;
 
+import dev.logicojp.reviewer.util.FrontmatterParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,44 +104,20 @@ public class PromptLoader {
     /// @param rawContent The raw file content
     /// @return ParsedPrompt with separated content and metadata
     static ParsedPrompt parseFrontmatter(String rawContent) {
-        if (rawContent == null || !rawContent.startsWith("---")) {
+        FrontmatterParser.Parsed parsed = FrontmatterParser.parse(rawContent);
+
+        if (!parsed.hasFrontmatter()) {
             return new ParsedPrompt(rawContent, null, null);
         }
 
-        int endIndex = rawContent.indexOf("\n---", 3);
-        if (endIndex < 0) {
-            return new ParsedPrompt(rawContent, null, null);
-        }
-
-        String frontmatter = rawContent.substring(3, endIndex).trim();
-        String content = rawContent.substring(endIndex + 4).trim();
-
-        String description = extractFrontmatterValue(frontmatter, "description");
-        String agent = extractFrontmatterValue(frontmatter, "agent");
+        String content = parsed.body().trim();
+        String description = parsed.get("description");
+        String agent = parsed.get("agent");
 
         return new ParsedPrompt(
             content.isEmpty() ? rawContent : content,
             description,
             agent
         );
-    }
-
-    /// Extracts a value for the given key from YAML frontmatter text.
-    /// Supports both quoted ('value' or "value") and unquoted values.
-    private static String extractFrontmatterValue(String frontmatter, String key) {
-        for (String line : frontmatter.split("\n")) {
-            line = line.trim();
-            if (line.startsWith(key + ":")) {
-                String value = line.substring(key.length() + 1).trim();
-                // Remove surrounding quotes
-                if (value.length() >= 2
-                        && ((value.startsWith("'") && value.endsWith("'"))
-                         || (value.startsWith("\"") && value.endsWith("\"")))) {
-                    value = value.substring(1, value.length() - 1);
-                }
-                return value.isEmpty() ? null : value;
-            }
-        }
-        return null;
     }
 }

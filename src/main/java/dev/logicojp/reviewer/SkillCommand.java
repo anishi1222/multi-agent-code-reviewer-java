@@ -35,14 +35,15 @@ public class SkillCommand {
     private final SkillService skillService;
     private final ExecutionConfig executionConfig;
 
-    private int exitCode = ExitCodes.OK;
-    private String skillId;
-    private List<String> paramStrings;
-    private String githubToken;
-    private String model;
-    private List<Path> additionalAgentDirs;
-    private boolean listSkills;
-    private boolean helpRequested;
+    /// Parsed CLI options for the skill command.
+    record ParsedOptions(
+        String skillId,
+        List<String> paramStrings,
+        String githubToken,
+        String model,
+        List<Path> additionalAgentDirs,
+        boolean listSkills
+    ) {}
 
     @Inject
     public SkillCommand(
@@ -58,49 +59,43 @@ public class SkillCommand {
     }
 
     public int execute(String[] args) {
-        resetDefaults();
         try {
-            parseArgs(args);
-            if (helpRequested) {
+            ParsedOptions options = parseArgs(args);
+            if (options == null) {
                 return ExitCodes.OK;
             }
-            executeInternal();
+            return executeInternal(options);
         } catch (CliValidationException e) {
-            exitCode = ExitCodes.USAGE;
             if (!e.getMessage().isBlank()) {
                 System.err.println(e.getMessage());
             }
             if (e.showUsage()) {
                 CliUsage.printSkill(System.err);
             }
+            return ExitCodes.USAGE;
         } catch (Exception e) {
-            exitCode = ExitCodes.SOFTWARE;
             logger.error("Skill execution failed: {}", e.getMessage(), e);
             System.err.println("Error: " + e.getMessage());
+            return ExitCodes.SOFTWARE;
         }
-        return exitCode;
     }
 
-    private void resetDefaults() {
-        exitCode = ExitCodes.OK;
-        skillId = null;
-        paramStrings = new ArrayList<>();
-        githubToken = System.getenv("GITHUB_TOKEN");
-        model = ModelConfig.DEFAULT_MODEL;
-        additionalAgentDirs = new ArrayList<>();
-        listSkills = false;
-        helpRequested = false;
-    }
-
-    private void parseArgs(String[] args) {
+    private ParsedOptions parseArgs(String[] args) {
         args = Objects.requireNonNullElse(args, new String[0]);
+
+        String skillId = null;
+        List<String> paramStrings = new ArrayList<>();
+        String githubToken = System.getenv("GITHUB_TOKEN");
+        String model = ModelConfig.DEFAULT_MODEL;
+        List<Path> additionalAgentDirs = new ArrayList<>();
+        boolean listSkills = false;
+
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             switch (arg) {
                 case "-h", "--help" -> {
                     CliUsage.printSkill(System.out);
-                    helpRequested = true;
-                    return;
+                    return null;
                 }
                 case "-p", "--param" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--param");
@@ -110,7 +105,7 @@ public class SkillCommand {
                 case "--token" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--token");
                     i = value.newIndex();
-                    githubToken = value.value();
+                    githubToken = readToken(value.value());
                 }
                 case "--model" -> {
                     CliParsing.OptionValue value = CliParsing.readSingleValue(arg, args, i, "--model");
@@ -137,43 +132,50 @@ public class SkillCommand {
                 }
             }
         }
+
+        return new ParsedOptions(
+            skillId, List.copyOf(paramStrings), githubToken, model,
+            List.copyOf(additionalAgentDirs), listSkills
+        );
     }
 
-    private void executeInternal() throws Exception {
-        List<Path> agentDirs = agentService.buildAgentDirectories(additionalAgentDirs);
+    private int executeInternal(ParsedOptions options) throws Exception {
+        List<Path> agentDirs = agentService.buildAgentDirectories(options.additionalAgentDirs());
         Map<String, AgentConfig> agents = agentService.loadAllAgents(agentDirs);
         skillService.registerAllAgentSkills(agents);
-        if (listSkills) {
+        if (options.listSkills()) {
             listAvailableSkills();
-            return;
+            return ExitCodes.OK;
         }
-        if (skillId == null || skillId.isBlank()) {
+        if (options.skillId() == null || options.skillId().isBlank()) {
             throw new CliValidationException("Skill ID required. Use --list to see available skills.", true);
         }
         GitHubTokenResolver tokenResolver = new GitHubTokenResolver(executionConfig.ghAuthTimeoutSeconds());
-        String resolvedToken = tokenResolver.resolve(githubToken).orElse(null);
+        String resolvedToken = tokenResolver.resolve(options.githubToken()).orElse(null);
         if (resolvedToken == null || resolvedToken.isBlank()) {
             throw new CliValidationException(
                 "GitHub token is required. Set GITHUB_TOKEN, use --token, or login with `gh auth login`.",
                 true
             );
         }
-        Map<String, String> parameters = parseParameters();
-        if (skillService.getSkill(skillId).isEmpty()) {
-            throw new CliValidationException("Skill not found: " + skillId, true);
+        Map<String, String> parameters = parseParameters(options.paramStrings());
+        if (skillService.getSkill(options.skillId()).isEmpty()) {
+            throw new CliValidationException("Skill not found: " + options.skillId(), true);
         }
         copilotService.initialize(resolvedToken);
         try {
-            System.out.println("Executing skill: " + skillId);
+            System.out.println("Executing skill: " + options.skillId());
             System.out.println("Parameters: " + parameters);
-            SkillResult result = skillService.executeSkill(skillId, parameters, resolvedToken, model)
+            SkillResult result = skillService.executeSkill(
+                    options.skillId(), parameters, resolvedToken, options.model())
                 .get(10, TimeUnit.MINUTES);
             if (result.isSuccess()) {
                 System.out.println("=== Skill Result ===\n");
                 System.out.println(result.content());
+                return ExitCodes.OK;
             } else {
                 System.err.println("Skill execution failed: " + result.errorMessage());
-                exitCode = ExitCodes.SOFTWARE;
+                return ExitCodes.SOFTWARE;
             }
         } finally {
             copilotService.shutdown();
@@ -200,7 +202,7 @@ public class SkillCommand {
         }
     }
 
-    private Map<String, String> parseParameters() {
+    private static Map<String, String> parseParameters(List<String> paramStrings) {
         Map<String, String> params = new HashMap<>();
         if (paramStrings != null) {
             for (String paramStr : paramStrings) {
@@ -211,5 +213,22 @@ public class SkillCommand {
             }
         }
         return params;
+    }
+
+    /// Reads a token value, supporting stdin input via "-" to avoid
+    /// exposing the token in process listings or shell history.
+    private static String readToken(String value) {
+        if ("-".equals(value)) {
+            try {
+                if (System.console() != null) {
+                    char[] chars = System.console().readPassword("GitHub Token: ");
+                    return chars != null ? new String(chars).trim() : "";
+                }
+                return new String(System.in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
+            } catch (java.io.IOException e) {
+                throw new CliValidationException("Failed to read token from stdin: " + e.getMessage(), false);
+            }
+        }
+        return value;
     }
 }

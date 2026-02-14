@@ -40,34 +40,24 @@ public record TemplateConfig(
     private static final String DEFAULT_OUTPUT_CONSTRAINTS = "output-constraints.md";
 
     public TemplateConfig {
-        directory = (directory == null || directory.isBlank()) ? DEFAULT_DIRECTORY : directory;
-        summarySystemPrompt = (summarySystemPrompt == null || summarySystemPrompt.isBlank()) 
-            ? DEFAULT_SUMMARY_SYSTEM : summarySystemPrompt;
-        summaryUserPrompt = (summaryUserPrompt == null || summaryUserPrompt.isBlank()) 
-            ? DEFAULT_SUMMARY_USER : summaryUserPrompt;
-        defaultOutputFormat = (defaultOutputFormat == null || defaultOutputFormat.isBlank())
-            ? DEFAULT_OUTPUT_FORMAT : defaultOutputFormat;
-        report = (report == null || report.isBlank())
-            ? DEFAULT_REPORT : report;
-        executiveSummary = (executiveSummary == null || executiveSummary.isBlank())
-            ? DEFAULT_EXECUTIVE_SUMMARY : executiveSummary;
-        fallbackSummary = (fallbackSummary == null || fallbackSummary.isBlank())
-            ? DEFAULT_FALLBACK_SUMMARY : fallbackSummary;
-        localReviewContent = (localReviewContent == null || localReviewContent.isBlank())
-            ? DEFAULT_LOCAL_REVIEW_CONTENT : localReviewContent;
-        summaryResultEntry = (summaryResultEntry == null || summaryResultEntry.isBlank())
-            ? DEFAULT_SUMMARY_RESULT_ENTRY : summaryResultEntry;
-        summaryResultErrorEntry = (summaryResultErrorEntry == null || summaryResultErrorEntry.isBlank())
-            ? DEFAULT_SUMMARY_RESULT_ERROR_ENTRY : summaryResultErrorEntry;
-        fallbackAgentRow = (fallbackAgentRow == null || fallbackAgentRow.isBlank())
-            ? DEFAULT_FALLBACK_AGENT_ROW : fallbackAgentRow;
-        fallbackAgentSuccess = (fallbackAgentSuccess == null || fallbackAgentSuccess.isBlank())
-            ? DEFAULT_FALLBACK_AGENT_SUCCESS : fallbackAgentSuccess;
-        fallbackAgentFailure = (fallbackAgentFailure == null || fallbackAgentFailure.isBlank())
-            ? DEFAULT_FALLBACK_AGENT_FAILURE : fallbackAgentFailure;
-        reportLinkEntry = (reportLinkEntry == null || reportLinkEntry.isBlank())
-            ? DEFAULT_REPORT_LINK_ENTRY : reportLinkEntry;
-        outputConstraints = (outputConstraints == null || outputConstraints.isBlank())
-            ? DEFAULT_OUTPUT_CONSTRAINTS : outputConstraints;
+        directory = defaultIfBlank(directory, DEFAULT_DIRECTORY);
+        summarySystemPrompt = defaultIfBlank(summarySystemPrompt, DEFAULT_SUMMARY_SYSTEM);
+        summaryUserPrompt = defaultIfBlank(summaryUserPrompt, DEFAULT_SUMMARY_USER);
+        defaultOutputFormat = defaultIfBlank(defaultOutputFormat, DEFAULT_OUTPUT_FORMAT);
+        report = defaultIfBlank(report, DEFAULT_REPORT);
+        executiveSummary = defaultIfBlank(executiveSummary, DEFAULT_EXECUTIVE_SUMMARY);
+        fallbackSummary = defaultIfBlank(fallbackSummary, DEFAULT_FALLBACK_SUMMARY);
+        localReviewContent = defaultIfBlank(localReviewContent, DEFAULT_LOCAL_REVIEW_CONTENT);
+        summaryResultEntry = defaultIfBlank(summaryResultEntry, DEFAULT_SUMMARY_RESULT_ENTRY);
+        summaryResultErrorEntry = defaultIfBlank(summaryResultErrorEntry, DEFAULT_SUMMARY_RESULT_ERROR_ENTRY);
+        fallbackAgentRow = defaultIfBlank(fallbackAgentRow, DEFAULT_FALLBACK_AGENT_ROW);
+        fallbackAgentSuccess = defaultIfBlank(fallbackAgentSuccess, DEFAULT_FALLBACK_AGENT_SUCCESS);
+        fallbackAgentFailure = defaultIfBlank(fallbackAgentFailure, DEFAULT_FALLBACK_AGENT_FAILURE);
+        reportLinkEntry = defaultIfBlank(reportLinkEntry, DEFAULT_REPORT_LINK_ENTRY);
+        outputConstraints = defaultIfBlank(outputConstraints, DEFAULT_OUTPUT_CONSTRAINTS);
+    }
+
+    private static String defaultIfBlank(String value, String defaultValue) {
+        return (value == null || value.isBlank()) ? defaultValue : value;
     }
 }

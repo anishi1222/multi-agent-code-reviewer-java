@@ -1,6 +1,5 @@
 package dev.logicojp.reviewer.agent;
 
-import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.report.ContentSanitizer;
 import dev.logicojp.reviewer.report.ReviewResult;
@@ -31,36 +30,11 @@ public class ReviewAgent {
     private static final Logger logger = LoggerFactory.getLogger(ReviewAgent.class);
     
     private final AgentConfig config;
-    private final CopilotClient client;
-    private final String githubToken;
-    private final GithubMcpConfig githubMcpConfig;
-    private final long timeoutMinutes;
-    private final long idleTimeoutMinutes;
-    private final List<CustomInstruction> customInstructions;
-    private final String reasoningEffort;
-    private final int maxRetries;
-    private final String outputConstraints;
+    private final ReviewContext ctx;
 
-    public ReviewAgent(AgentConfig config,
-                       CopilotClient client,
-                       String githubToken,
-                       GithubMcpConfig githubMcpConfig,
-                       long timeoutMinutes,
-                       long idleTimeoutMinutes,
-                       List<CustomInstruction> customInstructions,
-                       String reasoningEffort,
-                       int maxRetries,
-                       String outputConstraints) {
+    public ReviewAgent(AgentConfig config, ReviewContext ctx) {
         this.config = config;
-        this.client = client;
-        this.githubToken = githubToken;
-        this.githubMcpConfig = githubMcpConfig;
-        this.timeoutMinutes = timeoutMinutes;
-        this.idleTimeoutMinutes = idleTimeoutMinutes;
-        this.customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
-        this.reasoningEffort = reasoningEffort;
-        this.maxRetries = maxRetries;
-        this.outputConstraints = outputConstraints;
+        this.ctx = ctx;
     }
     
     /// Executes the review synchronously on the calling thread with retry support.
@@ -68,7 +42,7 @@ public class ReviewAgent {
     /// @param target The target to review (GitHub repository or local directory)
     /// @return ReviewResult containing the review content
     public ReviewResult review(ReviewTarget target) {
-        int totalAttempts = maxRetries + 1;
+        int totalAttempts = ctx.maxRetries() + 1;
         ReviewResult lastResult = null;
         
         for (int attempt = 1; attempt <= totalAttempts; attempt++) {
@@ -118,81 +92,33 @@ public class ReviewAgent {
         logger.info("Starting review with agent: {} for target: {}", 
             config.name(), target.displayName());
         
-        // Java 21+: Pattern matching for switch with record patterns
-        return switch (target) {
-            case ReviewTarget.LocalTarget(Path directory) -> executeLocalReview(directory, target);
-            case ReviewTarget.GitHubTarget(String repository) -> executeGitHubReview(repository, target);
-        };
-    }
-    
-    private ReviewResult executeGitHubReview(String repository, ReviewTarget target) throws Exception {
-        
-        // Configure GitHub MCP server for repository access
-        Map<String, Object> githubMcp = githubMcpConfig.toMcpServer(githubToken);
-        
-        // Create session with agent configuration
-        String systemPrompt = buildSystemPromptWithCustomInstruction();
-        var sessionConfig = new SessionConfig()
-            .setModel(config.model())
-            .setSystemMessage(new SystemMessageConfig()
-                .setMode(SystemMessageMode.APPEND)
-                .setContent(systemPrompt))
-            .setMcpServers(Map.of("github", githubMcp));
-
-        // Explicitly set reasoning effort for reasoning models (e.g. Claude Opus)
-        String effort = resolveReasoningEffort(config.model(), reasoningEffort);
-        if (effort != null) {
-            logger.info("Setting reasoning effort '{}' for model: {}", effort, config.model());
-            sessionConfig.setReasoningEffort(effort);
-        }
-
-        var session = client.createSession(sessionConfig).get(timeoutMinutes, TimeUnit.MINUTES);
-        
-        try {
-            // Build the instruction
-            String instruction = config.buildInstruction(repository);
-            
-            // Send instruction and collect content with activity-based idle timeout
-            String content = sendAndCollectContent(session, instruction);
-            
-            if (content == null || content.isBlank()) {
-                return ReviewResult.builder()
-                    .agentConfig(config)
-                    .repository(repository)
-                    .success(false)
-                    .errorMessage("Agent returned empty review content — model may have timed out during MCP tool calls")
-                    .timestamp(LocalDateTime.now())
-                    .build();
+        // Prepare target-specific instruction and optional MCP server configuration
+        String instruction;
+        Map<String, Object> mcpServers;
+        switch (target) {
+            case ReviewTarget.LocalTarget(Path directory) -> {
+                LocalFileProvider fileProvider = new LocalFileProvider(directory);
+                var localFiles = fileProvider.collectFiles();
+                String sourceContent = fileProvider.generateReviewContent(localFiles);
+                String directorySummary = fileProvider.generateDirectorySummary(localFiles);
+                logger.info("Collected source files from local directory: {}", directory);
+                logger.debug("Directory summary:\n{}", directorySummary);
+                instruction = config.buildLocalInstruction(target.displayName(), sourceContent);
+                mcpServers = null;
             }
-            
-            logger.info("Review completed for agent: {} (content length: {} chars)", 
-                config.name(), content.length());
-            
-            return ReviewResult.builder()
-                .agentConfig(config)
-                .repository(repository)
-                .content(content)
-                .success(true)
-                .timestamp(LocalDateTime.now())
-                .build();
-                
-        } finally {
-            session.close();
+            case ReviewTarget.GitHubTarget(String repository) -> {
+                instruction = config.buildInstruction(repository);
+                mcpServers = Map.of("github", ctx.githubMcpConfig().toMcpServer(ctx.githubToken()));
+            }
         }
+
+        return executeReviewCommon(target.displayName(), instruction, mcpServers);
     }
-    
-    private ReviewResult executeLocalReview(Path localPath, ReviewTarget target) throws Exception {
-        
-        // Collect files from local directory
-        LocalFileProvider fileProvider = new LocalFileProvider(localPath);
-        var localFiles = fileProvider.collectFiles();
-        String sourceContent = fileProvider.generateReviewContent(localFiles);
-        String directorySummary = fileProvider.generateDirectorySummary(localFiles);
-        
-        logger.info("Collected source files from local directory: {}", localPath);
-        logger.debug("Directory summary:\n{}", directorySummary);
-        
-        // Create session without MCP servers (no external tools needed for local review)
+
+    /// Common review execution: configures session, sends instruction, collects result.
+    private ReviewResult executeReviewCommon(String displayName,
+                                             String instruction,
+                                             Map<String, Object> mcpServers) throws Exception {
         String systemPrompt = buildSystemPromptWithCustomInstruction();
         var sessionConfig = new SessionConfig()
             .setModel(config.model())
@@ -200,43 +126,45 @@ public class ReviewAgent {
                 .setMode(SystemMessageMode.APPEND)
                 .setContent(systemPrompt));
 
-        // Explicitly set reasoning effort for reasoning models (e.g. Claude Opus)
-        String effort = resolveReasoningEffort(config.model(), reasoningEffort);
+        if (mcpServers != null) {
+            sessionConfig.setMcpServers(mcpServers);
+        }
+
+        String effort = resolveReasoningEffort(config.model(), ctx.reasoningEffort());
         if (effort != null) {
             logger.info("Setting reasoning effort '{}' for model: {}", effort, config.model());
             sessionConfig.setReasoningEffort(effort);
         }
 
-        var session = client.createSession(sessionConfig).get(timeoutMinutes, TimeUnit.MINUTES);
-        
+        var session = ctx.client().createSession(sessionConfig)
+            .get(ctx.timeoutMinutes(), TimeUnit.MINUTES);
+
         try {
-            // Build the instruction with embedded source code
-            String instruction = config.buildLocalInstruction(target.displayName(), sourceContent);
-            
-            // Send instruction and collect content with activity-based idle timeout
             String content = sendAndCollectContent(session, instruction);
-            
+
             if (content == null || content.isBlank()) {
+                String errorMsg = mcpServers != null
+                    ? "Agent returned empty review content — model may have timed out during MCP tool calls"
+                    : "Agent returned empty review content";
                 return ReviewResult.builder()
                     .agentConfig(config)
-                    .repository(target.displayName())
+                    .repository(displayName)
                     .success(false)
-                    .errorMessage("Agent returned empty review content")
+                    .errorMessage(errorMsg)
                     .timestamp(LocalDateTime.now())
                     .build();
             }
-            
-            logger.info("Local review completed for agent: {} (content length: {} chars)", 
+
+            logger.info("Review completed for agent: {} (content length: {} chars)",
                 config.name(), content.length());
-            
+
             return ReviewResult.builder()
                 .agentConfig(config)
-                .repository(target.displayName())
+                .repository(displayName)
                 .content(content)
                 .success(true)
                 .timestamp(LocalDateTime.now())
                 .build();
-                
         } finally {
             session.close();
         }
@@ -261,8 +189,8 @@ public class ReviewAgent {
     /// @param instruction the review instruction to send
     /// @return the review content, or null if all strategies failed
     private String sendAndCollectContent(CopilotSession session, String instruction) throws Exception {
-        long idleTimeoutMs = TimeUnit.MINUTES.toMillis(idleTimeoutMinutes);
-        long maxTimeoutMs = TimeUnit.MINUTES.toMillis(timeoutMinutes);
+        long idleTimeoutMs = TimeUnit.MINUTES.toMillis(ctx.idleTimeoutMinutes());
+        long maxTimeoutMs = TimeUnit.MINUTES.toMillis(ctx.timeoutMinutes());
 
         // Primary attempt
         String content = sendWithActivityTimeout(session, instruction, idleTimeoutMs, maxTimeoutMs);
@@ -377,7 +305,7 @@ public class ReviewAgent {
             try {
                 // Send asynchronously — no internal SDK timeout!
                 logger.debug("Agent {}: sending prompt asynchronously (idle timeout: {} min, max: {} min)",
-                    config.name(), idleTimeoutMinutes, timeoutMinutes);
+                    config.name(), ctx.idleTimeoutMinutes(), ctx.timeoutMinutes());
                 session.send(new MessageOptions().setPrompt(prompt));
 
                 // Wait with maximum wall-clock safety net
@@ -414,14 +342,14 @@ public class ReviewAgent {
         sb.append(config.buildFullSystemPrompt());
         
         // Append output constraints loaded from template
-        if (outputConstraints != null && !outputConstraints.isBlank()) {
+        if (ctx.outputConstraints() != null && !ctx.outputConstraints().isBlank()) {
             sb.append("\n");
-            sb.append(outputConstraints.trim());
+            sb.append(ctx.outputConstraints().trim());
             sb.append("\n");
         }
         
-        if (!customInstructions.isEmpty()) {
-            for (CustomInstruction instruction : customInstructions) {
+        if (!ctx.customInstructions().isEmpty()) {
+            for (CustomInstruction instruction : ctx.customInstructions()) {
                 if (!instruction.isEmpty()) {
                     sb.append("\n\n");
                     sb.append(instruction.toPromptSection());
