@@ -68,7 +68,7 @@ jobs:
   build-native-image:
     name: Build Native Image
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: supply-chain-guard
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
