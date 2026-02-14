@@ -15,6 +15,9 @@ reviewer:
   feature-flags:
     structured-concurrency: ${REVIEWER_STRUCTURED_CONCURRENCY:false}
     structured-concurrency-skills: ${REVIEWER_STRUCTURED_CONCURRENCY_SKILLS:${REVIEWER_STRUCTURED_CONCURRENCY:false}}
+  local-files:
+    max-file-size: 262144
+    max-total-size: 2097152
   templates:
     directory: templates
     default-output-format: default-output-format.md
