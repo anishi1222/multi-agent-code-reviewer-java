@@ -1265,6 +1265,15 @@
       ]
     },
     {
+      "type": "dev.logicojp.reviewer.cli.$CliOutput$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "dev.logicojp.reviewer.cli.$ListAgentsCommand$Definition",
       "methods": [
         {

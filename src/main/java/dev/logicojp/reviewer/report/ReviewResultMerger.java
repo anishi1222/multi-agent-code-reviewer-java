@@ -13,6 +13,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,6 +32,9 @@ public final class ReviewResultMerger {
     private static final Pattern TABLE_ROW_TEMPLATE = Pattern.compile(
         "(?m)^\\|\\s*\\*\\*%s\\*\\*\\s*\\|\\s*(.*?)\\s*\\|\\s*$");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern KEYWORD_PATTERN = Pattern.compile("[a-z0-9_]+|[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}]{2,}");
+    private static final Map<String, Pattern> TABLE_VALUE_PATTERNS = new ConcurrentHashMap<>();
+    private static final double NEAR_DUPLICATE_SIMILARITY = 0.80d;
 
     private ReviewResultMerger() {
         // utility class
@@ -115,12 +121,20 @@ public final class ReviewResultMerger {
 
             for (FindingBlock block : blocks) {
                 String key = findingKey(block);
-                aggregatedFindings.compute(
-                    key,
-                    (_, existing) -> existing == null
-                        ? AggregatedFinding.from(block, passNumber)
-                        : existing.withPass(passNumber)
-                );
+                AggregatedFinding existingExact = aggregatedFindings.get(key);
+                if (existingExact != null) {
+                    aggregatedFindings.put(key, existingExact.withPass(passNumber));
+                    continue;
+                }
+
+                String nearDuplicateKey = findNearDuplicateKey(aggregatedFindings, block);
+                if (nearDuplicateKey != null) {
+                    AggregatedFinding nearExisting = aggregatedFindings.get(nearDuplicateKey);
+                    aggregatedFindings.put(nearDuplicateKey, nearExisting.withPass(passNumber));
+                    continue;
+                }
+
+                aggregatedFindings.put(key, AggregatedFinding.from(block, passNumber));
             }
         }
 
@@ -200,8 +214,31 @@ public final class ReviewResultMerger {
         return "raw|" + normalizeText(block.body());
     }
 
+    private static String findNearDuplicateKey(Map<String, AggregatedFinding> existing,
+                                               FindingBlock incoming) {
+        String incomingTitle = normalizeText(incoming.title());
+        String incomingPriority = normalizeText(extractTableValue(incoming.body(), "Priority"));
+        String incomingSummary = normalizeText(extractTableValue(incoming.body(), "指摘の概要"));
+        String incomingLocation = normalizeText(extractTableValue(incoming.body(), "該当箇所"));
+
+        for (var entry : existing.entrySet()) {
+            if (entry.getValue().isNearDuplicateOf(
+                incomingTitle,
+                incomingPriority,
+                incomingSummary,
+                incomingLocation
+            )) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
     private static String extractTableValue(String body, String key) {
-        Pattern pattern = Pattern.compile(TABLE_ROW_TEMPLATE.pattern().formatted(Pattern.quote(key)));
+        Pattern pattern = TABLE_VALUE_PATTERNS.computeIfAbsent(
+            key,
+            k -> Pattern.compile(TABLE_ROW_TEMPLATE.pattern().formatted(Pattern.quote(k)))
+        );
         Matcher matcher = pattern.matcher(body);
         return matcher.find() ? matcher.group(1).trim() : "";
     }
@@ -229,9 +266,87 @@ public final class ReviewResultMerger {
             .replace("`", "")
             .replace("*", "")
             .replace("_", "")
+            .replace("|", " ")
+            .replace("・", " ")
+            .replace("/", " ")
             .trim();
         normalized = WHITESPACE.matcher(normalized).replaceAll(" ");
         return normalized;
+    }
+
+    private static boolean hasCommonKeyword(String left, String right) {
+        Set<String> leftWords = extractKeywords(left);
+        Set<String> rightWords = extractKeywords(right);
+        if (leftWords.isEmpty() || rightWords.isEmpty()) {
+            return false;
+        }
+        for (String word : leftWords) {
+            if (rightWords.contains(word)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Set<String> extractKeywords(String text) {
+        if (text == null || text.isBlank()) {
+            return Set.of();
+        }
+        Set<String> keywords = new LinkedHashSet<>();
+        Matcher matcher = KEYWORD_PATTERN.matcher(text);
+        while (matcher.find()) {
+            String token = matcher.group();
+            if (token.length() >= 2) {
+                keywords.add(token);
+            }
+        }
+        return keywords;
+    }
+
+    private static boolean isSimilarText(String left, String right) {
+        if (left.isEmpty() || right.isEmpty()) {
+            return false;
+        }
+        if (left.equals(right)) {
+            return true;
+        }
+        if (left.length() >= 8 && right.contains(left)) {
+            return true;
+        }
+        if (right.length() >= 8 && left.contains(right)) {
+            return true;
+        }
+        return diceCoefficient(left, right) >= NEAR_DUPLICATE_SIMILARITY;
+    }
+
+    private static double diceCoefficient(String left, String right) {
+        Set<String> leftBigrams = bigrams(left);
+        Set<String> rightBigrams = bigrams(right);
+
+        if (leftBigrams.isEmpty() || rightBigrams.isEmpty()) {
+            return 0.0d;
+        }
+
+        int overlap = 0;
+        for (String gram : leftBigrams) {
+            if (rightBigrams.contains(gram)) {
+                overlap++;
+            }
+        }
+        return (2.0d * overlap) / (leftBigrams.size() + rightBigrams.size());
+    }
+
+    private static Set<String> bigrams(String text) {
+        String compact = text.replace(" ", "");
+        if (compact.length() < 2) {
+            return Set.of(compact);
+        }
+
+        Set<String> grams = new HashSet<>();
+        for (int i = 0; i < compact.length() - 1; i++) {
+            grams.add(compact.substring(i, i + 2));
+        }
+        return grams;
     }
 
     private record HeaderMatch(int startIndex, int endIndex, String title) {
@@ -240,7 +355,13 @@ public final class ReviewResultMerger {
     private record FindingBlock(String title, String body) {
     }
 
-    private record AggregatedFinding(String title, String body, Set<Integer> passNumbers) {
+    private record AggregatedFinding(String title,
+                                     String body,
+                                     Set<Integer> passNumbers,
+                                     String normalizedTitle,
+                                     String normalizedPriority,
+                                     String normalizedSummary,
+                                     String normalizedLocation) {
 
         private AggregatedFinding {
             Objects.requireNonNull(title);
@@ -249,10 +370,17 @@ public final class ReviewResultMerger {
         }
 
         static AggregatedFinding from(FindingBlock block, int passNumber) {
+            String normalizedPriority = normalizeText(extractTableValue(block.body(), "Priority"));
+            String normalizedSummary = normalizeText(extractTableValue(block.body(), "指摘の概要"));
+            String normalizedLocation = normalizeText(extractTableValue(block.body(), "該当箇所"));
             return new AggregatedFinding(
                 block.title(),
                 block.body(),
-                new LinkedHashSet<>(Set.of(passNumber))
+                new LinkedHashSet<>(Set.of(passNumber)),
+                normalizeText(block.title()),
+                normalizedPriority,
+                normalizedSummary,
+                normalizedLocation
             );
         }
 
@@ -260,14 +388,50 @@ public final class ReviewResultMerger {
             return new AggregatedFinding(
                 "レビュー結果",
                 rawContent,
-                new LinkedHashSet<>(Set.of(passNumber))
+                new LinkedHashSet<>(Set.of(passNumber)),
+                normalizeText("レビュー結果"),
+                "",
+                normalizeText(rawContent),
+                ""
             );
+        }
+
+        boolean isNearDuplicateOf(String incomingTitle,
+                                  String incomingPriority,
+                                  String incomingSummary,
+                                  String incomingLocation) {
+            if (!normalizedPriority.isEmpty() && !incomingPriority.isEmpty()
+                && !normalizedPriority.equals(incomingPriority)) {
+                return false;
+            }
+
+            if (!normalizedLocation.isEmpty() && !incomingLocation.isEmpty()) {
+                if (!isSimilarText(normalizedLocation, incomingLocation)) {
+                    return false;
+                }
+                if (isSimilarText(normalizedSummary, incomingSummary)
+                    || isSimilarText(normalizedTitle, incomingTitle)
+                    || hasCommonKeyword(normalizedTitle, incomingTitle)) {
+                    return true;
+                }
+            }
+
+            return isSimilarText(normalizedSummary, incomingSummary)
+                && isSimilarText(normalizedTitle, incomingTitle);
         }
 
         AggregatedFinding withPass(int passNumber) {
             LinkedHashSet<Integer> updated = new LinkedHashSet<>(passNumbers);
             updated.add(passNumber);
-            return new AggregatedFinding(title, body, updated);
+            return new AggregatedFinding(
+                title,
+                body,
+                updated,
+                normalizedTitle,
+                normalizedPriority,
+                normalizedSummary,
+                normalizedLocation
+            );
         }
     }
 }

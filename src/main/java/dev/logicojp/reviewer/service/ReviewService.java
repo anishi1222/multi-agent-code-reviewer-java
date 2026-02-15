@@ -63,16 +63,10 @@ public class ReviewService {
         List<CustomInstruction> effectiveInstructions = customInstructions;
         if (effectiveInstructions == null) {
             List<CustomInstruction> loadedInstructions = instructionLoader.loadForTarget(target);
-            List<CustomInstruction> safeInstructions = loadedInstructions.stream()
-                .filter(instruction -> {
-                    var validation = CustomInstructionSafetyValidator.validate(instruction);
-                    if (!validation.safe()) {
-                        logger.warn("Skipped unsafe auto-loaded instruction {}: {}",
-                            instruction.sourcePath(), validation.reason());
-                    }
-                    return validation.safe();
-                })
-                .toList();
+            List<CustomInstruction> safeInstructions = CustomInstructionSafetyValidator.filterSafe(
+                loadedInstructions,
+                "Skipped unsafe auto-loaded instruction"
+            );
 
             effectiveInstructions = safeInstructions;
 

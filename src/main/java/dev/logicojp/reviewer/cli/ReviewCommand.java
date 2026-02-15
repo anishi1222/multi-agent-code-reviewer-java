@@ -113,7 +113,8 @@ public class ReviewCommand {
             this::parseArgs,
             this::executeInternal,
             CliUsage::printRun,
-            logger
+            logger,
+            output
         );
     }
 
@@ -419,7 +420,7 @@ public class ReviewCommand {
                     results, context.target().displayName(), context.outputDirectory(),
                     context.modelConfig().summaryModel(), context.modelConfig().reasoningEffort());
                 output.println("  ✓ " + summaryPath.getFileName());
-            } catch (Exception e) {
+            } catch (IOException e) {
                 logger.error("Summary generation failed: {}", e.getMessage(), e);
                 output.errorln("Warning: Summary generation failed: " + e.getMessage());
             }
@@ -516,14 +517,13 @@ public class ReviewCommand {
     private void addIfSafe(CustomInstruction instruction,
                            List<CustomInstruction> instructions,
                            String loadedPrefix) {
-        CustomInstructionSafetyValidator.ValidationResult result =
-            CustomInstructionSafetyValidator.validate(instruction);
-        if (result.safe()) {
+        List<CustomInstruction> safe = CustomInstructionSafetyValidator.filterSafe(
+            List.of(instruction),
+            "Skipped unsafe instruction"
+        );
+        if (!safe.isEmpty()) {
             instructions.add(instruction);
             output.println(loadedPrefix + instruction.sourcePath());
-        } else {
-            output.errorln("⚠  Skipped unsafe instruction: "
-                + instruction.sourcePath() + " (" + result.reason() + ")");
         }
     }
 

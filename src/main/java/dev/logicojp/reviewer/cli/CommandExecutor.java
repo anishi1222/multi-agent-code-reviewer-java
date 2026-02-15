@@ -31,7 +31,8 @@ public final class CommandExecutor {
             Function<String[], Optional<T>> parser,
             Function<T, Integer> executor,
             Consumer<PrintStream> usagePrinter,
-            Logger logger) {
+            Logger logger,
+            CliOutput output) {
         try {
             Optional<T> options = parser.apply(args);
             if (options.isEmpty()) {
@@ -41,16 +42,25 @@ public final class CommandExecutor {
             return executor.apply(options.get());
         } catch (CliValidationException e) {
             if (!e.getMessage().isBlank()) {
-                System.err.println(e.getMessage());
+                output.errorln(e.getMessage());
             }
             if (e.showUsage()) {
-                usagePrinter.accept(System.err);
+                usagePrinter.accept(output.err());
             }
             return ExitCodes.USAGE;
         } catch (Exception e) {
             logger.error("Execution failed: {}", e.getMessage(), e);
-            System.err.println("Error: " + e.getMessage());
+            output.errorln("Error: " + e.getMessage());
             return ExitCodes.SOFTWARE;
         }
+    }
+
+    public static <T> int execute(
+            String[] args,
+            Function<String[], Optional<T>> parser,
+            Function<T, Integer> executor,
+            Consumer<PrintStream> usagePrinter,
+            Logger logger) {
+        return execute(args, parser, executor, usagePrinter, logger, new CliOutput());
     }
 }

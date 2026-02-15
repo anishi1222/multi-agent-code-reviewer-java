@@ -17,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /// Collects source files from a local directory for code review.
 ///
@@ -34,65 +35,10 @@ public class LocalFileProvider {
     /// Default maximum total content size (2 MB) — configurable via LocalFileConfig
     private final long maxTotalSize;
 
-    /// Directories to skip during file collection
-    private static final Set<String> IGNORED_DIRECTORIES = Set.of(
-        ".git", ".svn", ".hg",
-        "node_modules", "bower_components",
-        "target", "build", "out", "dist", "bin", "obj",
-        ".gradle", ".mvn", ".idea", ".vscode", ".vs",
-        "__pycache__", ".mypy_cache", ".pytest_cache",
-        "vendor", ".bundle",
-        "coverage", ".nyc_output",
-        ".terraform"
-    );
-
-    /// Source code file extensions to include
-    private static final Set<String> SOURCE_EXTENSIONS = Set.of(
-        // JVM
-        "java", "kt", "kts", "groovy", "scala", "clj",
-        // Web
-        "js", "jsx", "ts", "tsx", "mjs", "cjs", "vue", "svelte",
-        // Systems
-        "c", "cpp", "cc", "cxx", "h", "hpp", "rs", "go", "zig",
-        // Scripting
-        "py", "rb", "php", "pl", "pm", "lua", "r",
-        // Shell
-        "sh", "bash", "zsh", "fish", "ps1", "psm1",
-        // .NET
-        "cs", "fs", "vb",
-        // Mobile
-        "swift", "m", "mm",
-        // Data / Config
-        "sql", "graphql", "gql", "proto",
-        // Markup / Config (commonly reviewed)
-        "yaml", "yml", "json", "toml", "xml", "properties",
-        // Build
-        "gradle", "cmake", "makefile",
-        // Docs (small, relevant)
-        "md", "rst", "adoc"
-    );
-
-    /// Filename patterns indicating potentially sensitive configuration files.
-    /// Files matching these patterns are excluded from collection to prevent
-    /// accidental transmission of credentials to external LLM services.
-    private static final Set<String> SENSITIVE_FILE_PATTERNS = Set.of(
-        "application-prod", "application-staging", "application-secret",
-        "application-local", "application-dev", "application-ci",
-        "secrets", "credentials", ".env",
-        ".env.local", ".env.production", ".env.development",
-        ".env.staging", ".env.test",
-        "service-account", "keystore", "truststore",
-        "id_rsa", "id_ed25519", "id_ecdsa",
-        ".netrc", ".npmrc", ".pypirc", ".docker/config",
-        "vault-config", "aws-credentials",
-        "terraform.tfvars", "kubeconfig", ".kube/config",
-        "htpasswd", "shadow"
-    );
-
-    /// File extensions indicating potentially sensitive files (certificates, keys).
-    private static final Set<String> SENSITIVE_EXTENSIONS = Set.of(
-        "pem", "key", "p12", "pfx", "jks", "keystore", "cert"
-    );
+    private final Set<String> ignoredDirectories;
+    private final Set<String> sourceExtensions;
+    private final Set<String> sensitiveFilePatterns;
+    private final Set<String> sensitiveExtensions;
 
     /// A single collected source file.
     /// @param relativePath Path relative to the base directory
@@ -116,9 +62,7 @@ public class LocalFileProvider {
     /// Creates a new LocalFileProvider for the given directory with default limits.
     /// @param baseDirectory The root directory to collect files from
     public LocalFileProvider(Path baseDirectory) {
-        this(baseDirectory,
-            LocalFileConfig.DEFAULT_MAX_FILE_SIZE,
-            LocalFileConfig.DEFAULT_MAX_TOTAL_SIZE);
+        this(baseDirectory, new LocalFileConfig());
     }
 
     /// Creates a new LocalFileProvider for the given directory with configurable limits.
@@ -126,11 +70,19 @@ public class LocalFileProvider {
     /// @param maxFileSize Maximum size per file in bytes
     /// @param maxTotalSize Maximum total content size in bytes
     public LocalFileProvider(Path baseDirectory, long maxFileSize, long maxTotalSize) {
+        this(baseDirectory, new LocalFileConfig(maxFileSize, maxTotalSize));
+    }
+
+    public LocalFileProvider(Path baseDirectory, LocalFileConfig config) {
         if (baseDirectory == null) {
             throw new IllegalArgumentException("Base directory must not be null");
         }
-        this.maxFileSize = maxFileSize;
-        this.maxTotalSize = maxTotalSize;
+        this.maxFileSize = config.maxFileSize();
+        this.maxTotalSize = config.maxTotalSize();
+        this.ignoredDirectories = normalizeSet(config.ignoredDirectories());
+        this.sourceExtensions = normalizeSet(config.sourceExtensions());
+        this.sensitiveFilePatterns = normalizeSet(config.sensitiveFilePatterns());
+        this.sensitiveExtensions = normalizeSet(config.sensitiveExtensions());
         this.baseDirectory = baseDirectory.toAbsolutePath().normalize();
         try {
             this.realBaseDirectory = this.baseDirectory.toRealPath();
@@ -153,7 +105,7 @@ public class LocalFileProvider {
         List<LocalFile> files = new ArrayList<>();
 
         try {
-            List<Path> candidates = collectCandidatePaths();
+            List<CandidateFile> candidates = collectCandidateFiles();
             ProcessingResult result = processCandidates(candidates, (relativePath, content, size) ->
                 files.add(new LocalFile(relativePath, content, size)));
             logger.info("Collected {} source files ({} bytes) from: {}",
@@ -174,7 +126,7 @@ public class LocalFileProvider {
         }
 
         try {
-            List<Path> candidates = collectCandidatePaths();
+            List<CandidateFile> candidates = collectCandidateFiles();
             int reviewCapacity = estimateReviewContentCapacity(candidates);
             StringBuilder reviewContentBuilder = new StringBuilder(reviewCapacity);
             StringBuilder fileListBuilder = new StringBuilder();
@@ -223,13 +175,17 @@ public class LocalFileProvider {
     private record ProcessingResult(long totalSize, int fileCount) {
     }
 
-    private ProcessingResult processCandidates(List<Path> candidates, FileProcessor processor) {
+    private record CandidateFile(Path path, long size) {
+    }
+
+    private ProcessingResult processCandidates(List<CandidateFile> candidates, FileProcessor processor) {
         long totalSize = 0;
         int fileCount = 0;
 
-        for (Path path : candidates) {
+        for (CandidateFile candidate : candidates) {
             try {
-                long size = Files.size(path);
+                Path path = candidate.path();
+                long size = candidate.size();
                 if (size > maxFileSize) {
                     logger.debug("Skipping large file ({} bytes): {}", size, path);
                     continue;
@@ -246,7 +202,7 @@ public class LocalFileProvider {
                 totalSize += size;
                 fileCount++;
             } catch (IOException e) {
-                logger.debug("Failed to read file {}: {}", path, e.getMessage());
+                logger.debug("Failed to read file {}: {}", candidate.path(), e.getMessage());
             }
         }
 
@@ -288,20 +244,16 @@ public class LocalFileProvider {
 
         for (LocalFile file : files) {
             sb.append("  - ").append(file.relativePath())
-              .append(" (").append(file.sizeBytes()).append(" bytes)\n");
+                .append(" (").append(file.sizeBytes()).append(" bytes)\n");
         }
 
         return sb.toString();
     }
 
-    private int estimateReviewContentCapacity(List<Path> candidates) {
+    private int estimateReviewContentCapacity(List<CandidateFile> candidates) {
         long estimatedSize = 0;
-        for (Path candidate : candidates) {
-            try {
-                estimatedSize += Files.size(candidate) + 64L;
-            } catch (IOException _) {
-                estimatedSize += 64L;
-            }
+        for (CandidateFile candidate : candidates) {
+            estimatedSize += candidate.size() + 64L;
             if (estimatedSize >= maxTotalSize) {
                 break;
             }
@@ -320,13 +272,13 @@ public class LocalFileProvider {
         sb.append("```\n\n");
     }
 
-    private List<Path> collectCandidatePaths() throws IOException {
-        List<Path> candidates = new ArrayList<>();
+    private List<CandidateFile> collectCandidateFiles() throws IOException {
+        List<CandidateFile> candidates = new ArrayList<>();
         Files.walkFileTree(baseDirectory, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 if (!dir.equals(baseDirectory)
-                    && IGNORED_DIRECTORIES.contains(dir.getFileName().toString())) {
+                    && ignoredDirectories.contains(dir.getFileName().toString().toLowerCase(Locale.ROOT))) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 return FileVisitResult.CONTINUE;
@@ -338,12 +290,12 @@ public class LocalFileProvider {
                     && isWithinBaseDirectory(file, attrs)
                     && isSourceFile(file)
                     && isNotSensitiveFile(file)) {
-                    candidates.add(file);
+                    candidates.add(new CandidateFile(file, attrs.size()));
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
-        candidates.sort(Comparator.naturalOrder());
+        candidates.sort(Comparator.comparing(CandidateFile::path));
         return candidates;
     }
 
@@ -352,7 +304,7 @@ public class LocalFileProvider {
 
         // Include specific filenames without extensions
         if (fileName.equals("makefile") || fileName.equals("dockerfile")
-                || fileName.equals("rakefile") || fileName.equals("gemfile")) {
+            || fileName.equals("rakefile") || fileName.equals("gemfile")) {
             return true;
         }
 
@@ -361,24 +313,21 @@ public class LocalFileProvider {
             return false;
         }
         String ext = fileName.substring(dotIndex + 1);
-        return SOURCE_EXTENSIONS.contains(ext);
+        return sourceExtensions.contains(ext);
     }
 
     /// Checks if the file's real path is within the base directory.
     /// Prevents symlink-based path traversal attacks.
     /// Uses fast-path normalized check first; falls back to toRealPath() only
     /// when the path is a symlink.
-    private boolean isWithinBaseDirectory(Path path, java.nio.file.attribute.BasicFileAttributes attrs) {
-        // Fast path: normalized absolute path check (no syscall)
+    private boolean isWithinBaseDirectory(Path path, BasicFileAttributes attrs) {
         Path normalized = path.toAbsolutePath().normalize();
         if (!normalized.startsWith(baseDirectory)) {
             return false;
         }
-        // Skip toRealPath() for non-symlink files — no syscall needed
         if (!attrs.isSymbolicLink()) {
             return true;
         }
-        // Slow path: only resolve real path for symlinks
         try {
             Path realPath = path.toRealPath();
             return realPath.startsWith(realBaseDirectory);
@@ -393,18 +342,15 @@ public class LocalFileProvider {
     private boolean isNotSensitiveFile(Path path) {
         String fileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
 
-        // Check extension-based sensitive files
         int dotIndex = fileName.lastIndexOf('.');
         if (dotIndex >= 0) {
             String ext = fileName.substring(dotIndex + 1);
-            if (SENSITIVE_EXTENSIONS.contains(ext)) {
+            if (sensitiveExtensions.contains(ext)) {
                 return false;
             }
         }
 
-        // Use simple for-loop to avoid Stream API object creation overhead
-        // per file in large directory trees
-        for (String pattern : SENSITIVE_FILE_PATTERNS) {
+        for (String pattern : sensitiveFilePatterns) {
             if (fileName.contains(pattern)) {
                 return false;
             }
@@ -435,5 +381,15 @@ public class LocalFileProvider {
             case "md" -> "markdown";
             default -> ext;
         };
+    }
+
+    private static Set<String> normalizeSet(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Set.of();
+        }
+        return values.stream()
+            .filter(value -> value != null && !value.isBlank())
+            .map(value -> value.toLowerCase(Locale.ROOT))
+            .collect(Collectors.toUnmodifiableSet());
     }
 }

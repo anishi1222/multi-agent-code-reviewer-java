@@ -29,7 +29,17 @@ public final class CliPathResolver {
             return Optional.empty();
         }
 
-        return Optional.of(explicitPath);
+        try {
+            Path realPath = explicitPath.toRealPath();
+            String realFileName = realPath.getFileName().toString();
+            boolean realNameAllowed = Arrays.stream(allowedNames).anyMatch(realFileName::equals);
+            if (!realNameAllowed) {
+                return Optional.empty();
+            }
+            return Optional.of(realPath);
+        } catch (Exception _) {
+            return Optional.empty();
+        }
     }
 
     public static Optional<Path> findExecutableInPath(String... candidateNames) {

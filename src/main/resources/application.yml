@@ -3,6 +3,10 @@ micronaut:
     name: multi-agent-reviewer
 
 reviewer:
+  agents:
+    directories:
+      - ./agents
+      - ./.github/agents
   execution:
     parallelism: 4
     review-passes: 3

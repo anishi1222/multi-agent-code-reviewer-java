@@ -147,6 +147,14 @@ class ReviewTargetTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid repository format");
         }
+
+        @Test
+        @DisplayName("owner/.. のようなドットセグメントを含むリポジトリ名は拒否される")
+        void rejectsDotSegmentTraversal() {
+            assertThatThrownBy(() -> ReviewTarget.gitHub("owner/.."))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("path traversal segment");
+        }
     }
 
     @Nested

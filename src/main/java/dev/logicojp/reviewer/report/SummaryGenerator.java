@@ -32,6 +32,7 @@ public class SummaryGenerator {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final int MAX_CONTENT_PER_AGENT = 50_000;
     private static final int MAX_TOTAL_PROMPT_CONTENT = 200_000;
+    private static final int FALLBACK_EXCERPT_LENGTH = 180;
     
     private final Path outputDirectory;
     private final CopilotClient client;
@@ -144,7 +145,7 @@ public class SummaryGenerator {
             tableRowsBuilder.append(templateService.getFallbackAgentRow(
                 Map.of(
                     "displayName", result.agentConfig().displayName(),
-                    "content", ""
+                    "content", excerpt(result)
                 )));
         }
         
@@ -155,7 +156,7 @@ public class SummaryGenerator {
                 agentSummariesBuilder.append(templateService.getFallbackAgentSuccess(
                     Map.of(
                         "displayName", result.agentConfig().displayName(),
-                        "content", ""
+                        "content", excerpt(result)
                     )));
             } else {
                 agentSummariesBuilder.append(templateService.getFallbackAgentFailure(
@@ -176,14 +177,7 @@ public class SummaryGenerator {
     }
     
     private String buildSummaryPrompt(List<ReviewResult> results, String repository) {
-        // Build results section using templates — estimate capacity to avoid re-allocation
-        long estimatedSize = results.stream()
-            .filter(ReviewResult::isSuccess)
-            .mapToLong(r -> r.content() != null
-                ? Math.min(r.content().length(), MAX_CONTENT_PER_AGENT) + 200L
-                : 200L)
-            .sum();
-        var resultsSection = new StringBuilder((int) Math.min(estimatedSize, 4_000_000));
+        var resultsSection = new StringBuilder(Math.min(results.size() * 8192, 4_000_000));
         int totalContentSize = 0;
         for (ReviewResult result : results) {
             if (result.isSuccess()) {
@@ -217,6 +211,17 @@ public class SummaryGenerator {
             "repository", repository,
             "results", resultsSection.toString());
         return templateService.getSummaryUserPrompt(placeholders);
+    }
+
+    private String excerpt(ReviewResult result) {
+        if (result == null || !result.isSuccess() || result.content() == null || result.content().isBlank()) {
+            return "N/A";
+        }
+        String normalized = result.content().replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= FALLBACK_EXCERPT_LENGTH) {
+            return normalized;
+        }
+        return normalized.substring(0, FALLBACK_EXCERPT_LENGTH) + "...";
     }
     
     private String buildFinalReport(String summaryContent, String repository, 

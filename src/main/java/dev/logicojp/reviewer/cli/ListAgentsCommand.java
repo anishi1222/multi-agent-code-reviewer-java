@@ -39,7 +39,8 @@ public class ListAgentsCommand {
             this::parseArgs,
             this::executeInternal,
             CliUsage::printList,
-            logger
+            logger,
+            output
         );
     }
 

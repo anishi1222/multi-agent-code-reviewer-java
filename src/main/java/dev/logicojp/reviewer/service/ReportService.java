@@ -56,7 +56,7 @@ public class ReportService {
             String repository,
             Path outputDirectory,
             String summaryModel,
-            String reasoningEffort) throws Exception {
+            String reasoningEffort) throws IOException {
         
         logger.info("Generating executive summary using model: {}", summaryModel);
         

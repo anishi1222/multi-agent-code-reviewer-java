@@ -2,11 +2,10 @@ package dev.logicojp.reviewer.service;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.agent.AgentConfigLoader;
+import dev.logicojp.reviewer.config.AgentPathConfig;
 import dev.logicojp.reviewer.config.SkillConfig;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,16 +17,18 @@ import java.util.Map;
 /// Service for loading and managing agent configurations.
 @Singleton
 public class AgentService {
-    
-    private static final Logger logger = LoggerFactory.getLogger(AgentService.class);
 
     private final SkillConfig skillConfig;
     private final TemplateService templateService;
+    private final AgentPathConfig agentPathConfig;
 
     @Inject
-    public AgentService(SkillConfig skillConfig, TemplateService templateService) {
+    public AgentService(SkillConfig skillConfig,
+                        TemplateService templateService,
+                        AgentPathConfig agentPathConfig) {
         this.skillConfig = skillConfig;
         this.templateService = templateService;
+        this.agentPathConfig = agentPathConfig;
     }
     
     /// Builds the list of agent directories to search.
@@ -36,15 +37,11 @@ public class AgentService {
     public List<Path> buildAgentDirectories(List<Path> additionalDirs) {
         List<Path> dirs = new ArrayList<>();
         
-        // Default directories
-        Path defaultAgentsDir = Path.of("./agents");
-        Path githubAgentsDir = Path.of("./.github/agents");
-        
-        if (Files.exists(defaultAgentsDir)) {
-            dirs.add(defaultAgentsDir);
-        }
-        if (Files.exists(githubAgentsDir)) {
-            dirs.add(githubAgentsDir);
+        for (String configuredDir : agentPathConfig.directories()) {
+            Path directory = Path.of(configuredDir);
+            if (Files.exists(directory)) {
+                dirs.add(directory);
+            }
         }
         
         // Additional directories specified via CLI
@@ -54,7 +51,7 @@ public class AgentService {
         
         // If no directories found, add default for error message
         if (dirs.isEmpty()) {
-            dirs.add(defaultAgentsDir);
+            dirs.add(Path.of(agentPathConfig.directories().getFirst()));
         }
         
         return dirs;

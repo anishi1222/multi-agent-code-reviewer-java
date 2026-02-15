@@ -53,6 +53,7 @@ public class ReviewOrchestrator implements AutoCloseable {
     private final Map<String, Object> cachedMcpServers;
     private final long localMaxFileSize;
     private final long localMaxTotalSize;
+    private final LocalFileConfig localFileConfig;
 
     public record OrchestratorConfig(
         String githubToken,
@@ -83,8 +84,9 @@ public class ReviewOrchestrator implements AutoCloseable {
             Thread.ofVirtual().name("idle-timeout-shared", 0).factory());
         this.cachedMcpServers = GithubMcpConfig.buildMcpServers(
             orchestratorConfig.githubToken(), orchestratorConfig.githubMcpConfig());
-        this.localMaxFileSize = orchestratorConfig.localFileConfig().maxFileSize();
-        this.localMaxTotalSize = orchestratorConfig.localFileConfig().maxTotalSize();
+        this.localFileConfig = orchestratorConfig.localFileConfig();
+        this.localMaxFileSize = localFileConfig.maxFileSize();
+        this.localMaxTotalSize = localFileConfig.maxTotalSize();
         
         logger.info("Parallelism set to {}", executionConfig.parallelism());
         if (executionConfig.reviewPasses() > 1) {
@@ -98,12 +100,21 @@ public class ReviewOrchestrator implements AutoCloseable {
     /// Executes a single agent with semaphore control and error handling.
     /// Shared by both virtual thread and structured concurrency execution modes.
     private ReviewResult executeAgentSafely(AgentConfig config, ReviewTarget target,
-                                            ReviewContext context) {
+                                            ReviewContext context,
+                                            long perAgentTimeoutMinutes) {
         try {
             concurrencyLimit.acquire();
             try {
                 var agent = new ReviewAgent(config, context);
-                return agent.review(target);
+                return CompletableFuture.supplyAsync(() -> agent.review(target))
+                    .orTimeout(perAgentTimeoutMinutes, TimeUnit.MINUTES)
+                    .exceptionally(ex -> ReviewResult.builder()
+                        .agentConfig(config)
+                        .repository(target.displayName())
+                        .success(false)
+                        .errorMessage("Review timed out or failed: " + ex.getMessage())
+                        .build())
+                    .join();
             } finally {
                 concurrencyLimit.release();
             }
@@ -158,7 +169,7 @@ public class ReviewOrchestrator implements AutoCloseable {
         }
 
         logger.info("Pre-computing source content for local directory: {}", directory);
-        var fileProvider = new LocalFileProvider(directory, localMaxFileSize, localMaxTotalSize);
+        var fileProvider = new LocalFileProvider(directory, localFileConfig);
         var collection = fileProvider.collectAndGenerate();
         logger.info("Collected {} source files from local directory", collection.fileCount());
         logger.debug("Directory summary:\n{}", collection.directorySummary());
@@ -188,9 +199,8 @@ public class ReviewOrchestrator implements AutoCloseable {
                         logger.info("Agent {}: starting pass {}/{}",
                             config.name(), passNumber, reviewPasses);
                     }
-                    return executeAgentSafely(config, target, context);
+                    return executeAgentSafely(config, target, context, perAgentTimeoutMinutes);
                 }, executor)
-                    .orTimeout(perAgentTimeoutMinutes, TimeUnit.MINUTES)
                     .exceptionally(ex -> {
                         logger.error("Agent {} (pass {}) failed with timeout or error: {}",
                             config.name(), passNumber, ex.getMessage(), ex);
@@ -252,7 +262,7 @@ public class ReviewOrchestrator implements AutoCloseable {
                             logger.info("Agent {}: starting pass {}/{} (structured)",
                                 config.name(), passNumber, reviewPasses);
                         }
-                        return executeAgentSafely(config, target, sharedContext);
+                        return executeAgentSafely(config, target, sharedContext, perAgentTimeoutMinutes);
                     }));
                 }
             }
