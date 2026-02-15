@@ -37,7 +37,10 @@ public class CopilotService {
 
     private final Object lock = new Object();
     private CopilotClient client;
-    private boolean initialized = false;
+    // Volatile ensures visibility across threads even without synchronization.
+    // All writes are inside synchronized(lock), but volatile prevents future regressions
+    // if an unsynchronized fast-path read is ever added.
+    private volatile boolean initialized = false;
     
     /// Initializes the Copilot client, wrapping checked exceptions as RuntimeException.
     /// Convenience method for callers that cannot handle checked exceptions.
@@ -122,8 +125,8 @@ public class CopilotService {
                 .anyMatch(fileName::equals);
             if (!validName) {
                 throw new CopilotCliException("CLI path " + explicitPath
-                    + " does not match expected Copilot CLI binary names ("
-                    + String.join(", ", CLI_CANDIDATES) + "). "
+                    + " does not match expected Copilot CLI binary names (
+                    + String.join(", ", CLI_CANDIDATES) + "). 
                     + "Only 'github-copilot' or 'copilot' binaries are allowed.");
             }
             return explicitPath.toString();
@@ -136,8 +139,7 @@ public class CopilotService {
     private String resolveCliPathFromSystemPath() {
         String pathEnv = System.getenv(PATH_ENV);
         if (pathEnv == null || pathEnv.isBlank()) {
-            throw new CopilotCliException("PATH is not set. Install GitHub Copilot CLI and/or set "
-                + CLI_PATH_ENV + " to its executable path.");
+            throw new CopilotCliException("PATH is not set. Install GitHub Copilot CLI and/or set "+CLI_PATH_ENV + " to its executable path.");
         }
 
         List<Path> candidates = new ArrayList<>();
@@ -157,8 +159,7 @@ public class CopilotService {
             }
         }
 
-        throw new CopilotCliException("GitHub Copilot CLI not found in PATH. Install it and ensure "
-            + "`github-copilot` or `copilot` is available, or set " + CLI_PATH_ENV + ".");
+        throw new CopilotCliException("GitHub Copilot CLI not found in PATH. Install it and ensure "+"github-copilot' or 'copilot' is available, or set " + CLI_PATH_ENV + ".");
     }
 
     private void verifyCliHealthy(String cliPath, boolean tokenProvided) throws InterruptedException {
@@ -203,8 +204,7 @@ public class CopilotService {
             if (!finished) {
                 process.destroyForcibly();
                 drainFuture.cancel(true);
-                throw new CopilotCliException(timeoutMessage + timeoutSeconds + "s. "
-                    + remediationMessage);
+                throw new CopilotCliException(timeoutMessage + timeoutSeconds + "s. " + remediationMessage);
             }
             drainFuture.join();
             if (process.exitValue() != 0) {
@@ -241,15 +241,15 @@ public class CopilotService {
     }
 
     private String buildClientTimeoutMessage() {
-        return "Copilot client start timed out after " + resolveStartTimeoutSeconds() + "s. "
-            + "Ensure GitHub Copilot CLI is installed and authenticated, "
-            + "or set " + START_TIMEOUT_ENV + " to a higher value.";
+        return "Copilot client start timed out after " + resolveStartTimeoutSeconds() + "s. " +
+            "Ensure GitHub Copilot CLI is installed and authenticated, " +
+            "or set " + START_TIMEOUT_ENV + " to a higher value.";
     }
 
     private String buildProtocolTimeoutMessage() {
-        return "Copilot CLI ping timed out. Ensure GitHub Copilot CLI is installed "
-            + "and authenticated (for example, run `github-copilot auth login`), "
-            + "or set " + CLI_PATH_ENV + " to the correct executable.";
+        return "Copilot CLI ping timed out. Ensure GitHub Copilot CLI is installed " +
+            "and authenticated (for example, run `github-copilot auth login`), " +
+            "or set " + CLI_PATH_ENV + " to the correct executable.";
     }
     
     /// Gets the Copilot client. Must call initialize() first.
