@@ -18,6 +18,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 - **Executive Summary Generation**: Management-facing report aggregating all review results
 - **GraalVM Support**: Native binary generation via Native Image
 - **Reasoning Model Support**: Automatic reasoning effort configuration for Claude Opus, o3, o4-mini, etc.
+- **Multi-Pass Review**: Each agent performs multiple review passes and merges results for improved coverage
 - **Content Sanitization**: Automatic removal of LLM preamble text and chain-of-thought leakage from review output
 - **Default Model Externalization**: Configure the default model in `application.yml` (changeable without rebuild)
 
@@ -315,6 +316,7 @@ Customize application behavior via `application.yml`.
 reviewer:
   execution:
     parallelism: 4              # Default parallel execution count
+    review-passes: 2            # Number of review passes per agent (multi-pass review)
     orchestrator-timeout-minutes: 45  # Orchestrator timeout (minutes)
     agent-timeout-minutes: 20   # Agent timeout (minutes)
     idle-timeout-minutes: 5     # Idle timeout (minutes) — auto-terminate when no events
@@ -396,6 +398,17 @@ Models are resolved in the following priority order:
 1. **Individual model settings** (`review-model`, `report-model`, `summary-model`) take highest priority
 2. **Default model** (`default-model`) — fallback when no individual setting is specified
 3. **Hardcoded constant** (`ModelConfig.DEFAULT_MODEL`) — final fallback when nothing is configured in YAML
+
+### Multi-Pass Review
+
+Each agent can perform multiple review passes, merging the results to catch issues that a single pass might miss.
+
+- **`review-passes`** controls the number of review passes per agent (default: `1`)
+- All passes are submitted concurrently to the Virtual Thread pool, with `parallelism` controlling the maximum concurrent tasks
+- Example: 4 agents × 2 passes = 8 tasks queued in parallel; with `parallelism=4`, up to 4 run concurrently
+- Results from each pass are merged into a single report with pass markers (`## Review Pass 1 / N`)
+- If some passes fail, results from the successful passes are still used
+- The executive summary is generated from the merged, multi-pass results
 
 ### Retry Behavior
 
@@ -642,6 +655,8 @@ flowchart TB
         ReviewOrchestrator --> BestPractices[Best Practices]
 
         Security & CodeQuality & Performance & BestPractices --> ContentSanitizer
+        ContentSanitizer --> ReviewResultMerger["ReviewResultMerger
+        Multi-Pass Result Merge"]
 
         ReviewCommand --> ReportService
         ReportService --> ReportGenerator
@@ -803,6 +818,7 @@ multi-agent-reviewer/
     │   ├── ContentSanitizer.java        # LLM preamble / CoT removal
     │   ├── FindingsExtractor.java       # Findings extraction
     │   ├── ReviewResult.java            # Result model
+    │   ├── ReviewResultMerger.java      # Multi-pass result merger
     │   ├── ReportGenerator.java         # Individual report generation
     │   └── SummaryGenerator.java        # Summary generation
     ├── service/
