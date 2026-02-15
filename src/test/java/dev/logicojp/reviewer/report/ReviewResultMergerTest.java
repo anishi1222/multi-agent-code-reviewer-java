@@ -205,5 +205,68 @@ class ReviewResultMergerTest {
             String content = merged.getFirst().content();
             assertThat(content).contains("指摘事項なし");
         }
+
+        @Test
+        @DisplayName("同一箇所かつ表現ゆれの指摘は重複排除される")
+        void nearDuplicateFindingsAreDeduplicated() {
+            var agent = createAgent("quality");
+
+            var pass1 = successResult(agent, finding(
+                "1",
+                "ReviewCommand クラスの責務過多",
+                "High",
+                "CLI引数解析とレビュー実行ロジックが同一クラスに混在している",
+                "保守性低下",
+                "src/main/java/dev/logicojp/reviewer/cli/ReviewCommand.java"
+            ));
+
+            var pass2 = successResult(agent, finding(
+                "2",
+                "ReviewCommand の過剰な責務",
+                "High",
+                "CLI解析・実行・表示処理が1クラスに集約されている",
+                "変更影響範囲の拡大",
+                "src/main/java/dev/logicojp/reviewer/cli/ReviewCommand.java"
+            ));
+
+            List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(List.of(pass1, pass2));
+
+            assertThat(merged).hasSize(1);
+            String content = merged.getFirst().content();
+            assertThat(content).contains("### 1. ReviewCommand クラスの責務過多");
+            assertThat(content).contains("検出パス: 1, 2");
+            assertThat(content).doesNotContain("### 2. ReviewCommand の過剰な責務");
+        }
+
+        @Test
+        @DisplayName("同名でも該当箇所が異なる指摘は重複排除しない")
+        void similarTitleDifferentLocationIsNotDeduplicated() {
+            var agent = createAgent("quality");
+
+            var pass1 = successResult(agent, finding(
+                "1",
+                "設定値のハードコーディング",
+                "Medium",
+                "設定値がコード内に固定されている",
+                "柔軟性低下",
+                "src/main/java/dev/logicojp/reviewer/service/AgentService.java"
+            ));
+
+            var pass2 = successResult(agent, finding(
+                "2",
+                "設定値のハードコーディング",
+                "Medium",
+                "設定値がコードに埋め込まれている",
+                "保守性低下",
+                "src/main/java/dev/logicojp/reviewer/target/LocalFileProvider.java"
+            ));
+
+            List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(List.of(pass1, pass2));
+
+            assertThat(merged).hasSize(1);
+            String content = merged.getFirst().content();
+            assertThat(content).contains("### 1. 設定値のハードコーディング");
+            assertThat(content).contains("### 2. 設定値のハードコーディング");
+        }
     }
 }
