@@ -20,13 +20,8 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 /// Executes a code review using the Copilot SDK with a specific agent configuration.
 public class ReviewAgent {
@@ -37,6 +32,8 @@ public class ReviewAgent {
     /// Used as an in-session retry — much faster than a full retry since MCP context is already loaded.
     private static final String FOLLOWUP_PROMPT =
         "Please provide the complete review results in the specified output format.";
+    private static final String LOCAL_SOURCE_HEADER_PROMPT = PromptTexts.LOCAL_SOURCE_HEADER;
+    private static final String LOCAL_REVIEW_RESULT_PROMPT = PromptTexts.LOCAL_RESULT_REQUEST;
     
     private final AgentConfig config;
     private final ReviewContext ctx;
@@ -215,22 +212,23 @@ public class ReviewAgent {
         if (localSourceContent != null) {
             initialPrompt = new StringBuilder(instruction.length() + 64)
                 .append(instruction)
-                .append("\n\n以下は対象ディレクトリのソースコードです。読み込んだらレビューを開始してください。")
+                .append("\n\n")
+                .append(LOCAL_SOURCE_HEADER_PROMPT)
                 .toString();
         }
 
         String content;
         if (localSourceContent != null) {
-            String combinedPrompt = new StringBuilder(
-                initialPrompt.length() + localSourceContent.length() + 8)
-                .append(initialPrompt)
-                .append("\n\n")
-                .append(localSourceContent)
-                .toString();
-            sendWithActivityTimeout(session, combinedPrompt, idleTimeoutMs, maxTimeoutMs);
-            content = sendWithActivityTimeout(session,
-                "ソースコードを読み込んだ内容に基づいて、指定された出力形式でレビュー結果を返してください。",
-                idleTimeoutMs, maxTimeoutMs);
+            // Avoid per-agent giant string concatenation by sending source content separately.
+            sendWithActivityTimeout(session, initialPrompt, idleTimeoutMs, maxTimeoutMs);
+            String sourceResponse = sendWithActivityTimeout(session, localSourceContent, idleTimeoutMs, maxTimeoutMs);
+            if (sourceResponse != null && !sourceResponse.isBlank()) {
+                content = sourceResponse;
+            } else {
+                content = sendWithActivityTimeout(session,
+                    LOCAL_REVIEW_RESULT_PROMPT,
+                    idleTimeoutMs, maxTimeoutMs);
+            }
         } else {
             content = sendWithActivityTimeout(session, initialPrompt, idleTimeoutMs, maxTimeoutMs);
         }
@@ -283,119 +281,6 @@ public class ReviewAgent {
         } finally {
             scheduledTask.cancel(false);
             subscriptions.closeAll();
-        }
-    }
-
-    /// Collects content from Copilot session events.
-    /// Tracks both the last event content (preferred) and accumulated content (fallback).
-    /// Accumulation is capped at {@code MAX_ACCUMULATED_SIZE} to prevent OOM.
-    static class ContentCollector {
-        private static final int MAX_ACCUMULATED_SIZE = 4 * 1024 * 1024; // 4MB
-
-        private final CompletableFuture<String> future = new CompletableFuture<>();
-        private final ConcurrentLinkedQueue<String> accumulatedParts = new ConcurrentLinkedQueue<>();
-        private final AtomicInteger accumulatedSize = new AtomicInteger(0);
-        private final AtomicReference<String> lastContent = new AtomicReference<>(null);
-        private final AtomicLong lastActivityTime = new AtomicLong(System.currentTimeMillis());
-        private final AtomicInteger toolCallCount = new AtomicInteger(0);
-        private final AtomicInteger messageCount = new AtomicInteger(0);
-        private final String agentName;
-
-        ContentCollector(String agentName) {
-            this.agentName = agentName;
-        }
-
-        void onActivity() {
-            lastActivityTime.set(System.currentTimeMillis());
-        }
-
-        void onMessage(String content, int toolCalls) {
-            messageCount.incrementAndGet();
-            if (content != null && !content.isBlank()) {
-                lastContent.set(content);
-                int newSize = accumulatedSize.addAndGet(content.length());
-                if (newSize <= MAX_ACCUMULATED_SIZE) {
-                    accumulatedParts.add(content);
-                } else {
-                    accumulatedSize.addAndGet(-content.length());
-                }
-            }
-            if (toolCalls > 0) {
-                toolCallCount.addAndGet(toolCalls);
-            }
-        }
-
-        void onIdle() {
-            if (!future.isDone()) {
-                String last = lastContent.get();
-                if (last != null && !last.isBlank()) {
-                    future.complete(last);
-                } else {
-                    String accumulated = joinAccumulated();
-                    future.complete(accumulated.isBlank() ? null : accumulated);
-                }
-            }
-        }
-
-        void onError(String message) {
-            if (!future.isDone()) {
-                future.completeExceptionally(new RuntimeException("Session error: " + message));
-            }
-        }
-
-        void onIdleTimeout(long elapsed, long idleTimeoutMs) {
-            if (future.isDone()) return;
-            logger.warn("Agent {}: idle timeout — no events for {} ms ({} messages, {} tool calls)",
-                agentName, elapsed, messageCount.get(), toolCallCount.get());
-            String content = joinAccumulated();
-            if (!content.isBlank()) {
-                future.complete(content);
-            } else {
-                future.completeExceptionally(new TimeoutException(
-                    "No activity for " + elapsed + "ms (idle timeout: " + idleTimeoutMs + "ms)"));
-            }
-        }
-
-        long getElapsedSinceLastActivity() {
-            return System.currentTimeMillis() - lastActivityTime.get();
-        }
-
-        String getAccumulatedContent() {
-            return joinAccumulated();
-        }
-
-        private String joinAccumulated() {
-            if (accumulatedParts.isEmpty()) {
-                return "";
-            }
-            StringBuilder sb = new StringBuilder(accumulatedSize.get());
-            for (String part : accumulatedParts) {
-                sb.append(part);
-            }
-            return sb.toString();
-        }
-
-        String awaitResult(long maxTimeoutMs) throws Exception {
-            String result = future.get(maxTimeoutMs, TimeUnit.MILLISECONDS);
-            logger.info("Agent {}: completed ({} chars, {} messages, {} tool calls)",
-                agentName,
-                result != null ? result.length() : 0,
-                messageCount.get(), toolCallCount.get());
-            return result;
-        }
-    }
-
-    /// Holds all event subscriptions and provides bulk close.
-    private record EventSubscriptions(
-        AutoCloseable allEvents,
-        AutoCloseable messages,
-        AutoCloseable idle,
-        AutoCloseable error
-    ) {
-        void closeAll() {
-            for (AutoCloseable sub : new AutoCloseable[]{allEvents, messages, idle, error}) {
-                try { sub.close(); } catch (Exception _) {}
-            }
         }
     }
 

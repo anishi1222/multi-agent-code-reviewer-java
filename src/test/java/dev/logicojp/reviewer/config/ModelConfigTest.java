@@ -134,36 +134,6 @@ class ModelConfigTest {
     }
 
     @Nested
-    @DisplayName("getEffectiveReviewModel")
-    class GetEffectiveReviewModel {
-
-        @Test
-        @DisplayName("agentModelが指定されている場合はそれを返す")
-        void returnsAgentModelWhenProvided() {
-            ModelConfig config = new ModelConfig();
-            String agentModel = "agent-specific-model";
-
-            assertThat(config.getEffectiveReviewModel(agentModel)).isEqualTo(agentModel);
-        }
-
-        @Test
-        @DisplayName("agentModelがnullの場合はreviewModelを返す")
-        void returnsReviewModelWhenAgentModelIsNull() {
-            ModelConfig config = new ModelConfig("my-review-model", "report", "summary");
-
-            assertThat(config.getEffectiveReviewModel(null)).isEqualTo("my-review-model");
-        }
-
-        @Test
-        @DisplayName("agentModelが空文字列の場合はreviewModelを返す")
-        void returnsReviewModelWhenAgentModelIsEmpty() {
-            ModelConfig config = new ModelConfig("my-review-model", "report", "summary");
-
-            assertThat(config.getEffectiveReviewModel("")).isEqualTo("my-review-model");
-        }
-    }
-
-    @Nested
     @DisplayName("Builder")
     class BuilderTests {
 

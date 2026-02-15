@@ -406,7 +406,8 @@ Each agent can perform multiple review passes, merging the results to catch issu
 - **`review-passes`** controls the number of review passes per agent (default: `1`)
 - All passes are submitted concurrently to the Virtual Thread pool, with `parallelism` controlling the maximum concurrent tasks
 - Example: 4 agents × 2 passes = 8 tasks queued in parallel; with `parallelism=4`, up to 4 run concurrently
-- Results from each pass are merged into a single report with pass markers (`## Review Pass 1 / N`)
+- Duplicate findings within the same agent are aggregated into a single deduplicated report
+- Aggregated output can include pass-detection information to preserve traceability for repeated findings
 - If some passes fail, results from the successful passes are still used
 - The executive summary is generated from the merged, multi-pass results
 

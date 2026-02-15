@@ -436,6 +436,171 @@
       ]
     },
     {
+      "type": "com.github.copilot.sdk.events.SessionCompactionCompleteEvent",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setData",
+          "parameterTypes": [
+            "com.github.copilot.sdk.events.SessionCompactionCompleteEvent$SessionCompactionCompleteData"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.github.copilot.sdk.events.SessionCompactionCompleteEvent$CompactionTokensUsed",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setCachedInput",
+          "parameterTypes": [
+            "double"
+          ]
+        },
+        {
+          "name": "setInput",
+          "parameterTypes": [
+            "double"
+          ]
+        },
+        {
+          "name": "setOutput",
+          "parameterTypes": [
+            "double"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.github.copilot.sdk.events.SessionCompactionCompleteEvent$SessionCompactionCompleteData",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setCheckpointNumber",
+          "parameterTypes": [
+            "java.lang.Double"
+          ]
+        },
+        {
+          "name": "setCheckpointPath",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setCompactionTokensUsed",
+          "parameterTypes": [
+            "com.github.copilot.sdk.events.SessionCompactionCompleteEvent$CompactionTokensUsed"
+          ]
+        },
+        {
+          "name": "setPreCompactionMessagesLength",
+          "parameterTypes": [
+            "java.lang.Double"
+          ]
+        },
+        {
+          "name": "setPreCompactionTokens",
+          "parameterTypes": [
+            "java.lang.Double"
+          ]
+        },
+        {
+          "name": "setRequestId",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setSuccess",
+          "parameterTypes": [
+            "boolean"
+          ]
+        },
+        {
+          "name": "setSummaryContent",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.github.copilot.sdk.events.SessionCompactionStartEvent",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setData",
+          "parameterTypes": [
+            "com.github.copilot.sdk.events.SessionCompactionStartEvent$SessionCompactionStartData"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.github.copilot.sdk.events.SessionCompactionStartEvent$SessionCompactionStartData",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.github.copilot.sdk.events.SessionErrorEvent",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setData",
+          "parameterTypes": [
+            "com.github.copilot.sdk.events.SessionErrorEvent$SessionErrorData"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.github.copilot.sdk.events.SessionErrorEvent$SessionErrorData",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setErrorType",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setMessage",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setStack",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.github.copilot.sdk.events.SessionIdleEvent",
       "methods": [
         {

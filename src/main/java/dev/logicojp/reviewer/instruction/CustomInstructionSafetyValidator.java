@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.instruction;
 
 import java.text.Normalizer;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
 /// Validates custom instruction content for basic prompt-injection safeguards.
@@ -19,8 +20,16 @@ public final class CustomInstructionSafetyValidator {
         Pattern.compile("(follow\\s+only|prioritize\\s+only)\\s+(the\\s+)?(next|following)\\s+instructions?", Pattern.CASE_INSENSITIVE),
         Pattern.compile("(以下|上記|これまで|前|以前)\\s*の?\\s*指示\\s*を\\s*無視"),
         Pattern.compile("(ルール|方針|制約)\\s*を\\s*(忘れて|無視して)"),
-        Pattern.compile("システム\\s*プロンプト\\s*(を)?\\s*(上書き|無視|無効化)")
+        Pattern.compile("システム\\s*プロンプト\\s*(を)?\\s*(上書き|無視|無効化)"),
+        Pattern.compile("(모든|이전)\\s*지시\\s*(를)?\\s*무시", Pattern.CASE_INSENSITIVE),
+        Pattern.compile("(忽略|无视)\\s*(所有)?\\s*(之前|以上)\\s*的?\\s*指[示令]")
     );
+    private static final Pattern SUSPICIOUS_COMBINED_PATTERN = Pattern.compile(
+        SUSPICIOUS_PATTERNS.stream().map(Pattern::pattern).collect(Collectors.joining("|")),
+        Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern CONTROL_CHARS_PATTERN = Pattern.compile("[\\p{Cf}\\p{Cc}]");
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
     public record ValidationResult(boolean safe, String reason) {}
 
@@ -38,18 +47,16 @@ public final class CustomInstructionSafetyValidator {
         }
 
         String normalized = normalize(content);
-        for (Pattern pattern : SUSPICIOUS_PATTERNS) {
-            if (pattern.matcher(normalized).find()) {
-                return new ValidationResult(false, "potential prompt-injection pattern");
-            }
+        if (SUSPICIOUS_COMBINED_PATTERN.matcher(normalized).find()) {
+            return new ValidationResult(false, "potential prompt-injection pattern");
         }
 
         return new ValidationResult(true, "ok");
     }
 
     private static String normalize(String content) {
-        return Normalizer.normalize(content, Normalizer.Form.NFKC)
-            .replaceAll("[\\p{Cf}\\p{Cc}]", "")
-            .replaceAll("\\s+", " ");
+        String normalized = Normalizer.normalize(content, Normalizer.Form.NFKC);
+        String withoutControlChars = CONTROL_CHARS_PATTERN.matcher(normalized).replaceAll("");
+        return WHITESPACE_PATTERN.matcher(withoutControlChars).replaceAll(" ");
     }
 }

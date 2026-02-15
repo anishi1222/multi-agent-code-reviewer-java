@@ -2,18 +2,15 @@ package dev.logicojp.reviewer.service;
 
 import com.github.copilot.sdk.CopilotClient;
 import com.github.copilot.sdk.json.CopilotClientOptions;
+import dev.logicojp.reviewer.util.CliPathResolver;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -36,8 +33,8 @@ public class CopilotService {
     private static final long DEFAULT_CLI_AUTHCHECK_SECONDS = 15;
 
     private final Object lock = new Object();
-    private CopilotClient client;
-    private boolean initialized = false;
+    private volatile CopilotClient client;
+    private volatile boolean initialized = false;
     
     /// Initializes the Copilot client, wrapping checked exceptions as RuntimeException.
     /// Convenience method for callers that cannot handle checked exceptions.
@@ -54,45 +51,49 @@ public class CopilotService {
 
     /// Initializes the Copilot client.
     public void initialize(String githubToken) throws ExecutionException, InterruptedException {
+        if (initialized) {
+            return;
+        }
         synchronized (lock) {
-            if (!initialized) {
-                logger.info("Initializing Copilot client...");
-                CopilotClientOptions options = new CopilotClientOptions();
-                String cliPath = resolveCliPath();
-                if (cliPath != null && !cliPath.isBlank()) {
-                    options.setCliPath(cliPath);
-                }
-                boolean useToken = githubToken != null && !githubToken.isBlank() && !githubToken.equals("${GITHUB_TOKEN}");
-                verifyCliHealthy(cliPath, useToken);
-                if (useToken) {
-                    options.setGithubToken(githubToken);
-                    options.setUseLoggedInUser(Boolean.FALSE);
-                } else {
-                    options.setUseLoggedInUser(Boolean.TRUE);
-                }
-                client = new CopilotClient(options);
-                try {
-                    long timeoutSeconds = resolveStartTimeoutSeconds();
-                    if (timeoutSeconds > 0) {
-                        client.start().get(timeoutSeconds, TimeUnit.SECONDS);
-                    } else {
-                        client.start().get();
-                    }
-                } catch (ExecutionException e) {
-                    Throwable cause = e.getCause();
-                    if (cause instanceof TimeoutException) {
-                        throw new ExecutionException(buildProtocolTimeoutMessage(), cause);
-                    }
-                    if (cause != null) {
-                        throw new ExecutionException("Copilot client start failed: " + cause.getMessage(), cause);
-                    }
-                    throw e;
-                } catch (TimeoutException e) {
-                    throw new ExecutionException(buildClientTimeoutMessage(), e);
-                }
-                initialized = true;
-                logger.info("Copilot client initialized");
+            if (initialized) {
+                return;
             }
+            logger.info("Initializing Copilot client...");
+            CopilotClientOptions options = new CopilotClientOptions();
+            String cliPath = resolveCliPath();
+            if (cliPath != null && !cliPath.isBlank()) {
+                options.setCliPath(cliPath);
+            }
+            boolean useToken = githubToken != null && !githubToken.isBlank() && !githubToken.equals("${GITHUB_TOKEN}");
+            verifyCliHealthy(cliPath, useToken);
+            if (useToken) {
+                options.setGithubToken(githubToken);
+                options.setUseLoggedInUser(Boolean.FALSE);
+            } else {
+                options.setUseLoggedInUser(Boolean.TRUE);
+            }
+            client = new CopilotClient(options);
+            try {
+                long timeoutSeconds = resolveStartTimeoutSeconds();
+                if (timeoutSeconds > 0) {
+                    client.start().get(timeoutSeconds, TimeUnit.SECONDS);
+                } else {
+                    client.start().get();
+                }
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof TimeoutException) {
+                    throw new ExecutionException(buildProtocolTimeoutMessage(), cause);
+                }
+                if (cause != null) {
+                    throw new ExecutionException("Copilot client start failed: " + cause.getMessage(), cause);
+                }
+                throw e;
+            } catch (TimeoutException e) {
+                throw new ExecutionException(buildClientTimeoutMessage(), e);
+            }
+            initialized = true;
+            logger.info("Copilot client initialized");
         }
     }
 
@@ -114,47 +115,24 @@ public class CopilotService {
         if (explicit == null || explicit.isBlank()) {
             return null;
         }
-        Path explicitPath = Path.of(explicit.trim()).toAbsolutePath().normalize();
-        if (Files.isExecutable(explicitPath)) {
-            // Validate that the binary name matches expected Copilot CLI candidates exactly
-            String fileName = explicitPath.getFileName().toString();
-            boolean validName = Arrays.stream(CLI_CANDIDATES)
-                .anyMatch(fileName::equals);
-            if (!validName) {
-                throw new CopilotCliException("CLI path " + explicitPath
-                    + " does not match expected Copilot CLI binary names ("
-                    + String.join(", ", CLI_CANDIDATES) + "). "
-                    + "Only 'github-copilot' or 'copilot' binaries are allowed.");
-            }
-            return explicitPath.toString();
+        var explicitPath = CliPathResolver.resolveExplicitExecutable(explicit, CLI_CANDIDATES);
+        if (explicitPath.isPresent()) {
+            return explicitPath.get().toString();
         }
-        throw new CopilotCliException("Copilot CLI not found at " + explicitPath
+        Path explicitPathValue = Path.of(explicit.trim()).toAbsolutePath().normalize();
+        throw new CopilotCliException("Copilot CLI not found at " + explicitPathValue
             + ". Verify " + CLI_PATH_ENV + " or install GitHub Copilot CLI.");
     }
 
     /// Resolves CLI path by scanning the system PATH directories.
     private String resolveCliPathFromSystemPath() {
-        String pathEnv = System.getenv(PATH_ENV);
-        if (pathEnv == null || pathEnv.isBlank()) {
+        if (System.getenv(PATH_ENV) == null || System.getenv(PATH_ENV).isBlank()) {
             throw new CopilotCliException("PATH is not set. Install GitHub Copilot CLI and/or set "
                 + CLI_PATH_ENV + " to its executable path.");
         }
-
-        List<Path> candidates = new ArrayList<>();
-        for (String entry : pathEnv.split(File.pathSeparator)) {
-            if (entry == null || entry.isBlank()) {
-                continue;
-            }
-            Path base = Path.of(entry.trim());
-            for (String name : CLI_CANDIDATES) {
-                candidates.add(base.resolve(name));
-            }
-        }
-
-        for (Path candidate : candidates) {
-            if (Files.isExecutable(candidate)) {
-                return candidate.toAbsolutePath().toString();
-            }
+        var candidate = CliPathResolver.findExecutableInPath(CLI_CANDIDATES);
+        if (candidate.isPresent()) {
+            return candidate.get().toString();
         }
 
         throw new CopilotCliException("GitHub Copilot CLI not found in PATH. Install it and ensure "
@@ -256,12 +234,11 @@ public class CopilotService {
     /// @return The initialized CopilotClient
     /// @throws IllegalStateException if not initialized
     public CopilotClient getClient() {
-        synchronized (lock) {
-            if (!initialized || client == null) {
-                throw new IllegalStateException("CopilotService not initialized. Call initialize() first.");
-            }
-            return client;
+        CopilotClient localClient = client;
+        if (!initialized || localClient == null) {
+            throw new IllegalStateException("CopilotService not initialized. Call initialize() first.");
         }
+        return localClient;
     }
     
     /// Checks if the service is initialized.

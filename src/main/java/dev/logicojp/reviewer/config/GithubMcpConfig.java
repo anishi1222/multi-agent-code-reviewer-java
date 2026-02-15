@@ -3,6 +3,7 @@ package dev.logicojp.reviewer.config;
 import io.micronaut.context.annotation.ConfigurationProperties;
 import io.micronaut.core.annotation.Nullable;
 
+import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,12 +22,24 @@ public record GithubMcpConfig(
     public GithubMcpConfig {
         type = (type == null || type.isBlank()) ? "http" : type;
         url = (url == null || url.isBlank()) ? "https://api.githubcopilot.com/mcp/" : url;
+        validateUrl(url);
         tools = (tools == null || tools.isEmpty()) ? List.of("*") : List.copyOf(tools);
         headers = (headers == null) ? Map.of() : Map.copyOf(headers);
         authHeaderName = (authHeaderName == null || authHeaderName.isBlank())
             ? "Authorization" : authHeaderName;
         authHeaderTemplate = (authHeaderTemplate == null || authHeaderTemplate.isBlank())
             ? "Bearer {token}" : authHeaderTemplate;
+    }
+
+    private static void validateUrl(String url) {
+        URI parsed = URI.create(url);
+        String scheme = parsed.getScheme();
+        if (scheme == null || !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalArgumentException("GitHub MCP URL must use HTTPS: " + url);
+        }
+        if (parsed.getHost() == null || parsed.getHost().isBlank()) {
+            throw new IllegalArgumentException("GitHub MCP URL must include host: " + url);
+        }
     }
 
     /// Type-safe intermediate representation of MCP server configuration.

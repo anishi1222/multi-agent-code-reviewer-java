@@ -31,6 +31,7 @@ public class SummaryGenerator {
     private static final Logger logger = LoggerFactory.getLogger(SummaryGenerator.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final int MAX_CONTENT_PER_AGENT = 50_000;
+    private static final int MAX_TOTAL_PROMPT_CONTENT = 200_000;
     
     private final Path outputDirectory;
     private final CopilotClient client;
@@ -183,13 +184,20 @@ public class SummaryGenerator {
                 : 200L)
             .sum();
         var resultsSection = new StringBuilder((int) Math.min(estimatedSize, 4_000_000));
+        int totalContentSize = 0;
         for (ReviewResult result : results) {
             if (result.isSuccess()) {
                 String content = result.content() != null ? result.content() : "";
-                if (content.length() > MAX_CONTENT_PER_AGENT) {
-                    content = content.substring(0, MAX_CONTENT_PER_AGENT)
+                int remaining = MAX_TOTAL_PROMPT_CONTENT - totalContentSize;
+                if (remaining <= 0) {
+                    break;
+                }
+                int maxAllowed = Math.min(MAX_CONTENT_PER_AGENT, remaining);
+                if (content.length() > maxAllowed) {
+                    content = content.substring(0, maxAllowed)
                         + "\n\n... (truncated for summary)";
                 }
+                totalContentSize += content.length();
                 resultsSection.append(templateService.getSummaryResultEntry(
                     Map.of(
                         "displayName", result.agentConfig().displayName(),
@@ -247,8 +255,6 @@ public class SummaryGenerator {
     }
     
     private void ensureOutputDirectory() throws IOException {
-        if (!Files.exists(outputDirectory)) {
-            Files.createDirectories(outputDirectory);
-        }
+        ReportFileUtils.ensureOutputDirectory(outputDirectory);
     }
 }

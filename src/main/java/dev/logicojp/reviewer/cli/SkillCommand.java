@@ -36,6 +36,7 @@ public class SkillCommand {
     private final SkillService skillService;
     private final ExecutionConfig executionConfig;
     private final GitHubTokenResolver tokenResolver;
+    private final CliOutput output;
 
     /// Parsed CLI options for the skill command.
     record ParsedOptions(
@@ -53,13 +54,15 @@ public class SkillCommand {
         CopilotService copilotService,
         SkillService skillService,
         ExecutionConfig executionConfig,
-        GitHubTokenResolver tokenResolver
+        GitHubTokenResolver tokenResolver,
+        CliOutput output
     ) {
         this.agentService = agentService;
         this.copilotService = copilotService;
         this.skillService = skillService;
         this.executionConfig = executionConfig;
         this.tokenResolver = tokenResolver;
+        this.output = output;
     }
 
     public int execute(String[] args) {
@@ -102,10 +105,10 @@ public class SkillCommand {
     }
 
     /// Applies a single CLI option to the skill parse state.
-    private static int applySkillOption(SkillParseState state, String arg, String[] args, int i) {
+    private int applySkillOption(SkillParseState state, String arg, String[] args, int i) {
         return switch (arg) {
             case "-h", "--help" -> {
-                CliUsage.printSkill(System.out);
+                CliUsage.printSkill(output.out());
                 state.helpRequested = true;
                 yield i;
             }
@@ -164,17 +167,17 @@ public class SkillCommand {
         }
         copilotService.initializeOrThrow(resolvedToken);
         try {
-            System.out.println("Executing skill: " + options.skillId());
-            System.out.println("Parameters: " + parameters.keySet());
+            output.println("Executing skill: " + options.skillId());
+            output.println("Parameters: " + parameters.keySet());
             SkillResult result = skillService.executeSkill(
                     options.skillId(), parameters, resolvedToken, options.model())
                 .get(executionConfig.skillTimeoutMinutes(), TimeUnit.MINUTES);
             if (result.isSuccess()) {
-                System.out.println("=== Skill Result ===\n");
-                System.out.println(result.content());
+                output.println("=== Skill Result ===\n");
+                output.println(result.content());
                 return ExitCodes.OK;
             } else {
-                System.err.println("Skill execution failed: " + result.errorMessage());
+                output.errorln("Skill execution failed: " + result.errorMessage());
                 return ExitCodes.SOFTWARE;
             }
         } catch (ExecutionException | TimeoutException e) {
@@ -188,22 +191,22 @@ public class SkillCommand {
     }
 
     private void listAvailableSkills() {
-        System.out.println("Available Skills:\n");
+        output.println("Available Skills:\n");
         for (SkillDefinition skill : skillService.getRegistry().getAll()) {
-            System.out.println("  " + skill.id());
-            System.out.println("    Name: " + skill.name());
-            System.out.println("    Description: " + skill.description());
+            output.println("  " + skill.id());
+            output.println("    Name: " + skill.name());
+            output.println("    Description: " + skill.description());
             if (!skill.parameters().isEmpty()) {
-                System.out.println("    Parameters:");
+                output.println("    Parameters:");
                 for (var param : skill.parameters()) {
                     String required = param.required() ? " (required)" : "";
-                    System.out.println("      - " + param.name() + ": " + param.description() + required);
+                    output.println("      - " + param.name() + ": " + param.description() + required);
                 }
             }
-            System.out.println();
+            output.println("");
         }
         if (skillService.getRegistry().getAll().isEmpty()) {
-            System.out.println("  No skills found.");
+            output.println("  No skills found.");
         }
     }
 

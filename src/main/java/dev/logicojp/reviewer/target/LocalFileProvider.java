@@ -144,7 +144,7 @@ public class LocalFileProvider {
     /// to avoid traversing ignored directories (e.g. node_modules, .git, target),
     /// which can contain hundreds of thousands of files.
     /// @return List of collected source files
-    public List<LocalFile> collectFiles() {
+    List<LocalFile> collectFiles() {
         if (!Files.isDirectory(baseDirectory)) {
             logger.warn("Base directory does not exist or is not a directory: {}", baseDirectory);
             return List.of();
@@ -175,17 +175,11 @@ public class LocalFileProvider {
 
         try {
             List<Path> candidates = collectCandidatePaths();
-            StringBuilder reviewContentBuilder = new StringBuilder((int) Math.min(64 * 1024, maxTotalSize + 4096));
+            int reviewCapacity = estimateReviewContentCapacity(candidates);
+            StringBuilder reviewContentBuilder = new StringBuilder(reviewCapacity);
             StringBuilder fileListBuilder = new StringBuilder();
             ProcessingResult result = processCandidates(candidates, (relativePath, content, size) -> {
-                String lang = detectLanguage(relativePath);
-                reviewContentBuilder.append("### ").append(relativePath).append("\n\n");
-                reviewContentBuilder.append("```").append(lang).append("\n");
-                reviewContentBuilder.append(content);
-                if (!content.endsWith("\n")) {
-                    reviewContentBuilder.append("\n");
-                }
-                reviewContentBuilder.append("```\n\n");
+                appendFileBlock(reviewContentBuilder, relativePath, content);
 
                 fileListBuilder.append("  - ")
                     .append(relativePath)
@@ -263,7 +257,7 @@ public class LocalFileProvider {
     /// Each file is wrapped in a fenced code block with language annotation.
     /// @param files The collected files
     /// @return Formatted review content string
-    public String generateReviewContent(List<LocalFile> files) {
+    String generateReviewContent(List<LocalFile> files) {
         if (files == null || files.isEmpty()) {
             return "(no source files found)";
         }
@@ -271,14 +265,7 @@ public class LocalFileProvider {
         long estimatedSize = files.stream().mapToLong(LocalFile::sizeBytes).sum();
         var sb = new StringBuilder((int) Math.min(estimatedSize + files.size() * 30L, maxTotalSize + 4096));
         for (LocalFile file : files) {
-            String lang = detectLanguage(file.relativePath());
-            sb.append("### ").append(file.relativePath()).append("\n\n");
-            sb.append("```").append(lang).append("\n");
-            sb.append(file.content());
-            if (!file.content().endsWith("\n")) {
-                sb.append("\n");
-            }
-            sb.append("```\n\n");
+            appendFileBlock(sb, file.relativePath(), file.content());
         }
         return sb.toString();
     }
@@ -286,7 +273,7 @@ public class LocalFileProvider {
     /// Generates a summary of the directory structure and collected files.
     /// @param files The collected files
     /// @return Directory summary string
-    public String generateDirectorySummary(List<LocalFile> files) {
+    String generateDirectorySummary(List<LocalFile> files) {
         if (files == null || files.isEmpty()) {
             return "No source files found in: " + baseDirectory;
         }
@@ -305,6 +292,32 @@ public class LocalFileProvider {
         }
 
         return sb.toString();
+    }
+
+    private int estimateReviewContentCapacity(List<Path> candidates) {
+        long estimatedSize = 0;
+        for (Path candidate : candidates) {
+            try {
+                estimatedSize += Files.size(candidate) + 64L;
+            } catch (IOException _) {
+                estimatedSize += 64L;
+            }
+            if (estimatedSize >= maxTotalSize) {
+                break;
+            }
+        }
+        return (int) Math.min(estimatedSize + 1024L, maxTotalSize + 4096);
+    }
+
+    private void appendFileBlock(StringBuilder sb, String relativePath, String content) {
+        String lang = detectLanguage(relativePath);
+        sb.append("### ").append(relativePath).append("\n\n");
+        sb.append("```").append(lang).append("\n");
+        sb.append(content);
+        if (!content.endsWith("\n")) {
+            sb.append("\n");
+        }
+        sb.append("```\n\n");
     }
 
     private List<Path> collectCandidatePaths() throws IOException {

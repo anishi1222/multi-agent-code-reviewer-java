@@ -13,6 +13,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("ReviewResultMerger")
 class ReviewResultMergerTest {
 
+    private static String finding(String number, String title, String priority, String summary, String impact, String location) {
+        return """
+            ### %s. %s
+
+            | 項目 | 内容 |
+            |------|------|
+            | **Priority** | %s |
+            | **指摘の概要** | %s |
+            | **修正しない場合の影響** | %s |
+            | **該当箇所** | %s |
+
+            **推奨対応**
+
+            具体的な修正内容
+
+            **効果**
+
+            改善効果
+            """.formatted(number, title, priority, summary, impact, location);
+    }
+
     private static AgentConfig createAgent(String name) {
         return new AgentConfig(name, name + " Review", "model",
             "system", "instruction", null,
@@ -84,8 +105,8 @@ class ReviewResultMergerTest {
         @DisplayName("同一エージェントの複数成功結果がマージされる")
         void multipleSuccessResultsAreMerged() {
             var agent = createAgent("security");
-            var result1 = successResult(agent, "Finding A");
-            var result2 = successResult(agent, "Finding B");
+            var result1 = successResult(agent, finding("1", "SQLインジェクション", "High", "プレースホルダ未使用", "情報漏洩", "src/A.java L10"));
+            var result2 = successResult(agent, finding("1", "SQLインジェクション", "High", "プレースホルダ未使用", "情報漏洩", "src/A.java L10"));
 
             List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(List.of(result1, result2));
 
@@ -93,37 +114,36 @@ class ReviewResultMergerTest {
             ReviewResult mergedResult = merged.getFirst();
             assertThat(mergedResult.isSuccess()).isTrue();
             assertThat(mergedResult.agentConfig().name()).isEqualTo("security");
-            assertThat(mergedResult.content()).contains("レビューパス 1 / 2");
-            assertThat(mergedResult.content()).contains("レビューパス 2 / 2");
-            assertThat(mergedResult.content()).contains("Finding A");
-            assertThat(mergedResult.content()).contains("Finding B");
+            assertThat(mergedResult.content()).contains("### 1. SQLインジェクション");
+            assertThat(mergedResult.content()).contains("検出パス: 1, 2");
+            assertThat(mergedResult.content()).doesNotContain("### 2.");
         }
 
         @Test
         @DisplayName("3パスの結果が正しくマージされる")
         void threePassResultsAreMerged() {
             var agent = createAgent("quality");
-            var result1 = successResult(agent, "Pass 1 content");
-            var result2 = successResult(agent, "Pass 2 content");
-            var result3 = successResult(agent, "Pass 3 content");
+            var result1 = successResult(agent, finding("1", "nullチェック不足", "Medium", "NPEリスク", "実行時例外", "src/B.java L20"));
+            var result2 = successResult(agent, finding("2", "命名規則違反", "Low", "可読性低下", "保守性悪化", "src/C.java L30"));
+            var result3 = successResult(agent, finding("3", "nullチェック不足", "Medium", "NPEリスク", "実行時例外", "src/B.java L20"));
 
             List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(
                 List.of(result1, result2, result3));
 
             assertThat(merged).hasSize(1);
             ReviewResult mergedResult = merged.getFirst();
-            assertThat(mergedResult.content()).contains("レビューパス 1 / 3");
-            assertThat(mergedResult.content()).contains("レビューパス 2 / 3");
-            assertThat(mergedResult.content()).contains("レビューパス 3 / 3");
+            assertThat(mergedResult.content()).contains("### 1. nullチェック不足");
+            assertThat(mergedResult.content()).contains("### 2. 命名規則違反");
+            assertThat(mergedResult.content()).contains("検出パス: 1, 3");
         }
 
         @Test
         @DisplayName("成功と失敗が混在する場合は成功のみマージし注記を追加する")
         void mixedSuccessAndFailureResultsMergeSuccessfulOnly() {
             var agent = createAgent("security");
-            var success1 = successResult(agent, "Finding A");
+            var success1 = successResult(agent, finding("1", "トークン露出", "High", "ログ出力に含まれる", "漏洩", "src/S.java L10"));
             var failure = failureResult(agent, "Timeout");
-            var success2 = successResult(agent, "Finding B");
+            var success2 = successResult(agent, finding("1", "トークン露出", "High", "ログ出力に含まれる", "漏洩", "src/S.java L10"));
 
             List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(
                 List.of(success1, failure, success2));
@@ -131,8 +151,7 @@ class ReviewResultMergerTest {
             assertThat(merged).hasSize(1);
             ReviewResult mergedResult = merged.getFirst();
             assertThat(mergedResult.isSuccess()).isTrue();
-            assertThat(mergedResult.content()).contains("Finding A");
-            assertThat(mergedResult.content()).contains("Finding B");
+            assertThat(mergedResult.content()).contains("### 1. トークン露出");
             assertThat(mergedResult.content()).contains("1 パスが失敗しました");
         }
 
@@ -157,10 +176,10 @@ class ReviewResultMergerTest {
         void multipleAgentsMultiPassGroupedCorrectly() {
             var agent1 = createAgent("security");
             var agent2 = createAgent("performance");
-            var sec1 = successResult(agent1, "Sec finding 1");
-            var perf1 = successResult(agent2, "Perf finding 1");
-            var sec2 = successResult(agent1, "Sec finding 2");
-            var perf2 = successResult(agent2, "Perf finding 2");
+            var sec1 = successResult(agent1, finding("1", "認証不備", "High", "権限チェック不足", "不正アクセス", "src/Auth.java L40"));
+            var perf1 = successResult(agent2, finding("1", "N+1", "High", "ループ内クエリ", "遅延", "src/Repo.java L18"));
+            var sec2 = successResult(agent1, finding("1", "認証不備", "High", "権限チェック不足", "不正アクセス", "src/Auth.java L40"));
+            var perf2 = successResult(agent2, finding("2", "キャッシュ不足", "Medium", "再計算が多い", "CPU増加", "src/Calc.java L55"));
 
             // Results interleaved as they might arrive from parallel execution
             List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(
@@ -168,24 +187,23 @@ class ReviewResultMergerTest {
 
             assertThat(merged).hasSize(2);
             assertThat(merged.get(0).agentConfig().name()).isEqualTo("security");
-            assertThat(merged.get(0).content()).contains("Sec finding 1");
-            assertThat(merged.get(0).content()).contains("Sec finding 2");
+            assertThat(merged.get(0).content()).contains("### 1. 認証不備");
             assertThat(merged.get(1).agentConfig().name()).isEqualTo("performance");
-            assertThat(merged.get(1).content()).contains("Perf finding 1");
-            assertThat(merged.get(1).content()).contains("Perf finding 2");
+            assertThat(merged.get(1).content()).contains("### 1. N+1");
+            assertThat(merged.get(1).content()).contains("### 2. キャッシュ不足");
         }
 
         @Test
-        @DisplayName("パス間にセパレータ（---）が挿入される")
-        void separatorInsertedBetweenPasses() {
+        @DisplayName("指摘がないパスのみの場合は指摘事項なしを返す")
+        void noFindingPassesReturnsNoFindings() {
             var agent = createAgent("security");
-            var result1 = successResult(agent, "Finding A");
-            var result2 = successResult(agent, "Finding B");
+            var result1 = successResult(agent, "指摘事項なし");
+            var result2 = successResult(agent, "指摘事項なし");
 
             List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(List.of(result1, result2));
 
             String content = merged.getFirst().content();
-            assertThat(content).contains("---");
+            assertThat(content).contains("指摘事項なし");
         }
     }
 }
