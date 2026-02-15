@@ -99,9 +99,7 @@ public class ReportGenerator {
     }
     
     private void ensureOutputDirectory() throws IOException {
-        if (!Files.exists(outputDirectory)) {
-            Files.createDirectories(outputDirectory);
-            logger.info("Created output directory: {}", outputDirectory);
-        }
+        ReportFileUtils.ensureOutputDirectory(outputDirectory);
+        logger.debug("Ensured output directory exists: {}", outputDirectory);
     }
 }

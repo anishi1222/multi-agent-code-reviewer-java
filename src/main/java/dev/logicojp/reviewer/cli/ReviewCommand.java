@@ -51,6 +51,8 @@ public class ReviewCommand {
 
     private final CustomInstructionLoader instructionLoader;
 
+    private final CliOutput output;
+
     /// Target selection — sealed interface for type-safe exclusive choice.
     sealed interface TargetSelection {
         record Repository(String repository) implements TargetSelection {}
@@ -91,7 +93,8 @@ public class ReviewCommand {
         ModelConfig defaultModelConfig,
         ExecutionConfig executionConfig,
         GitHubTokenResolver tokenResolver,
-        CustomInstructionLoader instructionLoader
+        CustomInstructionLoader instructionLoader,
+        CliOutput output
     ) {
         this.agentService = agentService;
         this.copilotService = copilotService;
@@ -101,6 +104,7 @@ public class ReviewCommand {
         this.executionConfig = executionConfig;
         this.tokenResolver = tokenResolver;
         this.instructionLoader = instructionLoader;
+        this.output = output;
     }
 
     public int execute(String[] args) {
@@ -173,7 +177,7 @@ public class ReviewCommand {
     /// Returns the (possibly advanced) argument index.
     private int applyOption(ParseState state, String arg, String[] args, int i) {
         if ("-h".equals(arg) || "--help".equals(arg)) {
-            CliUsage.printRun(System.out);
+            CliUsage.printRun(output.out());
             state.helpRequested = true;
             return i;
         }
@@ -302,9 +306,9 @@ public class ReviewCommand {
         Map<String, AgentConfig> agentConfigs = loadAgentConfigs(options, agentDirs);
 
         if (agentConfigs.isEmpty()) {
-            System.err.println("Error: No agents found. Check the agents directories:");
+            output.errorln("Error: No agents found. Check the agents directories:");
             for (Path dir : agentDirs) {
-                System.err.println("  - " + dir);
+                output.errorln("  - " + dir);
             }
             return ExitCodes.SOFTWARE;
         }
@@ -392,12 +396,12 @@ public class ReviewCommand {
 
     /// Executes reviews, generates reports and summary.
     private int executeReviewsAndReport(ReviewExecutionContext context) {
-        System.out.println("Starting reviews...");
+        output.println("Starting reviews...");
         List<ReviewResult> results = reviewService.executeReviews(
             context.agentConfigs(), context.target(), context.resolvedToken(), context.options().parallelism(),
             context.customInstructions(), context.modelConfig().reasoningEffort());
 
-        System.out.println("\nGenerating reports...");
+        output.println("\nGenerating reports...");
         List<Path> reports;
         try {
             reports = reportService.generateReports(results, context.outputDirectory());
@@ -405,19 +409,19 @@ public class ReviewCommand {
             throw new UncheckedIOException("Report generation failed", e);
         }
         for (Path report : reports) {
-            System.out.println("  ✓ " + report.getFileName());
+            output.println("  ✓ " + report.getFileName());
         }
 
         if (!context.options().noSummary()) {
-            System.out.println("\nGenerating executive summary...");
+            output.println("\nGenerating executive summary...");
             try {
                 Path summaryPath = reportService.generateSummary(
                     results, context.target().displayName(), context.outputDirectory(),
                     context.modelConfig().summaryModel(), context.modelConfig().reasoningEffort());
-                System.out.println("  ✓ " + summaryPath.getFileName());
+                output.println("  ✓ " + summaryPath.getFileName());
             } catch (Exception e) {
                 logger.error("Summary generation failed: {}", e.getMessage(), e);
-                System.err.println("Warning: Summary generation failed: " + e.getMessage());
+                output.errorln("Warning: Summary generation failed: " + e.getMessage());
             }
         }
 
@@ -495,11 +499,11 @@ public class ReviewCommand {
         }
 
         if (!options.trustTarget()) {
-            System.out.println("ℹ  Target instructions skipped (use --trust to load from review target).");
+            output.println("ℹ  Target instructions skipped (use --trust to load from review target).");
             return;
         }
 
-        System.out.println("⚠  --trust enabled: loading custom instructions from the review target.");
+        output.println("⚠  --trust enabled: loading custom instructions from the review target.");
         CustomInstructionLoader targetLoader = options.noPrompts()
             ? new CustomInstructionLoader(null, false)
             : instructionLoader;
@@ -516,9 +520,9 @@ public class ReviewCommand {
             CustomInstructionSafetyValidator.validate(instruction);
         if (result.safe()) {
             instructions.add(instruction);
-            System.out.println(loadedPrefix + instruction.sourcePath());
+            output.println(loadedPrefix + instruction.sourcePath());
         } else {
-            System.err.println("⚠  Skipped unsafe instruction: "
+            output.errorln("⚠  Skipped unsafe instruction: "
                 + instruction.sourcePath() + " (" + result.reason() + ")");
         }
     }
@@ -527,38 +531,38 @@ public class ReviewCommand {
                              List<Path> agentDirs, ModelConfig modelConfig,
                              ReviewTarget target, Path outputDirectory,
                              String reviewModel) {
-        System.out.println("╔════════════════════════════════════════════════════════════╗");
-        System.out.println("║           Multi-Agent Code Reviewer                       ║");
-        System.out.println("╚════════════════════════════════════════════════════════════╝");
-        System.out.println();
-        System.out.println("Target: " + target.displayName() +
+        output.println("╔════════════════════════════════════════════════════════════╗");
+        output.println("║           Multi-Agent Code Reviewer                       ║");
+        output.println("╚════════════════════════════════════════════════════════════╝");
+        output.println("");
+        output.println("Target: " + target.displayName() +
             (target.isLocal() ? " (local)" : " (GitHub)"));
-        System.out.println("Agents: " + agentConfigs.keySet());
-        System.out.println("Output: " + outputDirectory.toAbsolutePath());
-        System.out.println();
-        System.out.println("Agent directories:");
+        output.println("Agents: " + agentConfigs.keySet());
+        output.println("Output: " + outputDirectory.toAbsolutePath());
+        output.println("");
+        output.println("Agent directories:");
         for (Path dir : agentDirs) {
-            System.out.println("  - " + dir + (Files.exists(dir) ? "" : " (not found)"));
+            output.println("  - " + dir + (Files.exists(dir) ? "" : " (not found)"));
         }
-        System.out.println();
-        System.out.println("Models:");
-        System.out.println("  Review: " + (reviewModel != null ? reviewModel : "(agent default)"));
-        System.out.println("  Summary: " + modelConfig.summaryModel());
+        output.println("");
+        output.println("Models:");
+        output.println("  Review: " + (reviewModel != null ? reviewModel : "(agent default)"));
+        output.println("  Summary: " + modelConfig.summaryModel());
         if (executionConfig.reviewPasses() > 1) {
-            System.out.println("Review passes: " + executionConfig.reviewPasses() + " per agent");
+            output.println("Review passes: " + executionConfig.reviewPasses() + " per agent");
         }
-        System.out.println();
+        output.println("");
     }
 
     private void printCompletionSummary(List<ReviewResult> results, Path outputDirectory) {
         long successCount = results.stream().filter(ReviewResult::isSuccess).count();
-        System.out.println();
-        System.out.println("════════════════════════════════════════════════════════════");
-        System.out.println("Review completed!");
-        System.out.println("  Total agents: " + results.size());
-        System.out.println("  Successful: " + successCount);
-        System.out.println("  Failed: " + (results.size() - successCount));
-        System.out.println("  Reports: " + outputDirectory.toAbsolutePath());
-        System.out.println("════════════════════════════════════════════════════════════");
+        output.println("");
+        output.println("════════════════════════════════════════════════════════════");
+        output.println("Review completed!");
+        output.println("  Total agents: " + results.size());
+        output.println("  Successful: " + successCount);
+        output.println("  Failed: " + (results.size() - successCount));
+        output.println("  Reports: " + outputDirectory.toAbsolutePath());
+        output.println("════════════════════════════════════════════════════════════");
     }
 }

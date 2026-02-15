@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("GithubMcpConfig")
@@ -26,6 +27,20 @@ class GithubMcpConfigTest {
             assertThat(config.headers()).isEmpty();
             assertThat(config.authHeaderName()).isEqualTo("Authorization");
             assertThat(config.authHeaderTemplate()).isEqualTo("Bearer {token}");
+        }
+    }
+
+    @Nested
+    @DisplayName("URL validation")
+    class UrlValidation {
+
+        @Test
+        @DisplayName("http URL は拒否される")
+        void rejectsNonHttpsUrl() {
+            assertThatThrownBy(() -> new GithubMcpConfig(
+                "http", "http://api.example.com/mcp/", List.of("*"), Map.of(), "Authorization", "Bearer {token}"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must use HTTPS");
         }
     }
 

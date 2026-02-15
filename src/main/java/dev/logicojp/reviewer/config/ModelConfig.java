@@ -94,16 +94,6 @@ public record ModelConfig(
             || REASONING_PREFIX_PATTERNS.stream().anyMatch(lower::startsWith);
     }
 
-    /// Gets the effective model for review, considering agent override.
-    /// @param agentModel The model specified in the agent config (may be null)
-    /// @return The model to use for this agent's review
-    public String getEffectiveReviewModel(String agentModel) {
-        if (agentModel != null && !agentModel.isEmpty()) {
-            return agentModel;
-        }
-        return reviewModel;
-    }
-
     @Override
     public String toString() {
         return "ModelConfig{review='%s', report='%s', summary='%s', reasoningEffort='%s', default='%s'}"

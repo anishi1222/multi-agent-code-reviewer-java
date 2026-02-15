@@ -6,14 +6,10 @@ import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -104,34 +100,20 @@ public final class GitHubTokenResolver {
     private String resolveGhCliPath() {
         String explicit = System.getenv(GH_CLI_PATH_ENV);
         if (explicit != null && !explicit.isBlank()) {
-            Path explicitPath = Path.of(explicit.trim()).toAbsolutePath().normalize();
-            if (Files.isExecutable(explicitPath)
-                && "gh".equals(explicitPath.getFileName().toString())) {
-                return explicitPath.toString();
+            var explicitPath = CliPathResolver.resolveExplicitExecutable(explicit, "gh");
+            if (explicitPath.isPresent()) {
+                return explicitPath.get().toString();
             }
-            logger.warn("Invalid {} value: {}", GH_CLI_PATH_ENV, explicitPath);
+            Path explicitPathValue = Path.of(explicit.trim()).toAbsolutePath().normalize();
+            logger.warn("Invalid {} value: {}", GH_CLI_PATH_ENV, explicitPathValue);
             return null;
         }
 
-        String pathEnv = System.getenv(PATH_ENV);
-        if (pathEnv == null || pathEnv.isBlank()) {
+        if (System.getenv(PATH_ENV) == null || System.getenv(PATH_ENV).isBlank()) {
             return null;
         }
-
-        List<Path> candidates = new ArrayList<>();
-        for (String entry : pathEnv.split(File.pathSeparator)) {
-            if (entry == null || entry.isBlank()) {
-                continue;
-            }
-            candidates.add(Path.of(entry.trim()).resolve("gh"));
-        }
-
-        for (Path candidate : candidates) {
-            if (Files.isExecutable(candidate)) {
-                return candidate.toAbsolutePath().normalize().toString();
-            }
-        }
-
-        return null;
+        return CliPathResolver.findExecutableInPath("gh")
+            .map(path -> path.toAbsolutePath().normalize().toString())
+            .orElse(null);
     }
 }

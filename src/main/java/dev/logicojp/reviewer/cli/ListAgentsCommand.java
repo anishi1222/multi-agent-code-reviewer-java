@@ -22,13 +22,15 @@ public class ListAgentsCommand {
     private static final Logger logger = LoggerFactory.getLogger(ListAgentsCommand.class);
 
     private final AgentService agentService;
+    private final CliOutput output;
 
     /// Parsed CLI options for the list command.
     record ParsedOptions(List<Path> additionalAgentDirs) {}
 
     @Inject
-    public ListAgentsCommand(AgentService agentService) {
+    public ListAgentsCommand(AgentService agentService, CliOutput output) {
         this.agentService = agentService;
+        this.output = output;
     }
 
     public int execute(String[] args) {
@@ -49,7 +51,7 @@ public class ListAgentsCommand {
             String arg = args[i];
             switch (arg) {
                 case "-h", "--help" -> {
-                    CliUsage.printList(System.out);
+                    CliUsage.printList(output.out());
                     return Optional.empty();
                 }
                 case "--agents-dir" -> {
@@ -81,20 +83,20 @@ public class ListAgentsCommand {
             throw new UncheckedIOException("Failed to list agents", e);
         }
 
-        System.out.println("Agent directories:");
+        output.println("Agent directories:");
         for (Path dir : agentDirs) {
-            System.out.println("  - " + dir + (Files.exists(dir) ? "" : " (not found)"));
+            output.println("  - " + dir + (Files.exists(dir) ? "" : " (not found)"));
         }
-        System.out.println();
+        output.println("");
 
         if (availableAgents.isEmpty()) {
-            System.out.println("No agents found.");
+            output.println("No agents found.");
             return ExitCodes.OK;
         }
 
-        System.out.println("Available agents:");
+        output.println("Available agents:");
         for (String agent : availableAgents) {
-            System.out.println("  - " + agent);
+            output.println("  - " + agent);
         }
         return ExitCodes.OK;
     }

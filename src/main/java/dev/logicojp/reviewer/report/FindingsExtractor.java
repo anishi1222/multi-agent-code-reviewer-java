@@ -86,7 +86,7 @@ public final class FindingsExtractor {
         List<String> priorities = new ArrayList<>();
 
         // Single pass over lines to reduce full-content regex scans.
-        for (String line : content.lines().toList()) {
+        for (String line : content.split("\\R")) {
             Matcher headingMatcher = FINDING_HEADING_PATTERN.matcher(line);
             if (headingMatcher.find()) {
                 titles.add(headingMatcher.group(1).trim());

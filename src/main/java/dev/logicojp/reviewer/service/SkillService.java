@@ -109,7 +109,10 @@ public class SkillService {
     }
 
     private SkillExecutor createExecutor(String githubToken, String model) {
-        var key = new ExecutorCacheKey(githubToken, model);
+        var key = new ExecutorCacheKey(
+            githubToken != null ? githubToken.hashCode() : 0,
+            model
+        );
         return executorCache.computeIfAbsent(key, ignored -> new SkillExecutor(
             copilotService.getClient(),
             githubToken,
@@ -122,7 +125,11 @@ public class SkillService {
         ));
     }
 
-    private record ExecutorCacheKey(String githubToken, String model) {
+    private record ExecutorCacheKey(int tokenHash, String model) {
+        @Override
+        public String toString() {
+            return "ExecutorCacheKey{tokenHash=***, model='%s'}".formatted(model);
+        }
     }
 
     @PreDestroy

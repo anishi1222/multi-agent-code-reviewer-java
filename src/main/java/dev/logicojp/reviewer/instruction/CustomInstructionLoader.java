@@ -1,7 +1,6 @@
 package dev.logicojp.reviewer.instruction;
 
 import dev.logicojp.reviewer.target.ReviewTarget;
-import dev.logicojp.reviewer.util.FrontmatterParser;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -227,18 +226,18 @@ public class CustomInstructionLoader {
     /// @param rawContent The raw file content
     /// @return ParsedInstruction with separated content and metadata
     static ParsedInstruction parseFrontmatter(String rawContent) {
-        FrontmatterParser.Parsed parsed = FrontmatterParser.parse(rawContent);
+        var parsed = InstructionFrontmatter.parse(rawContent);
 
         if (!parsed.hasFrontmatter()) {
             return new ParsedInstruction(rawContent, null, null);
         }
 
-        String content = parsed.body().trim();
+        String content = InstructionFrontmatter.bodyOrRaw(parsed, rawContent);
         String applyTo = parsed.get("applyTo");
         String description = parsed.get("description");
 
         return new ParsedInstruction(
-            content.isEmpty() ? rawContent : content,
+            content,
             applyTo,
             description
         );

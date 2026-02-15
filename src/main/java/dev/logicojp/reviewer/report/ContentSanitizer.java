@@ -1,6 +1,5 @@
 package dev.logicojp.reviewer.report;
 
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /// Sanitizes review content returned by LLM models.
@@ -54,16 +53,10 @@ public final class ContentSanitizer {
         String result = content;
 
         // Remove CoT / thinking blocks in one pass
-        Matcher cotMatcher = COT_BLOCK_PATTERN.matcher(result);
-        if (cotMatcher.find()) {
-            result = cotMatcher.reset().replaceAll("");
-        }
+        result = COT_BLOCK_PATTERN.matcher(result).replaceAll("");
 
         // Collapse excessive blank lines
-        Matcher blankMatcher = EXCESSIVE_BLANK_LINES.matcher(result);
-        if (blankMatcher.find()) {
-            result = blankMatcher.reset().replaceAll("\n\n");
-        }
+        result = EXCESSIVE_BLANK_LINES.matcher(result).replaceAll("\n\n");
 
         return result.strip();
     }

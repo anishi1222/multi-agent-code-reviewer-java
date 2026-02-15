@@ -20,7 +20,7 @@ public final class AgentPromptBuilder {
 
         if (!config.focusAreas().isEmpty()) {
             sb.append("## Focus Areas\n\n");
-            sb.append("以下の観点 **のみ** に基づいてレビューしてください。これ以外の観点での指摘は行わないでください。\n\n");
+            sb.append(PromptTexts.FOCUS_AREAS_GUIDANCE).append("\n\n");
             for (String area : config.focusAreas()) {
                 sb.append("- ").append(area).append("\n");
             }
@@ -53,7 +53,7 @@ public final class AgentPromptBuilder {
     /// @return The formatted instruction with embedded source code
     public static String buildLocalInstruction(AgentConfig config, String targetName, String sourceContent) {
         return buildLocalInstructionBase(config, targetName)
-            + "\n\n以下は対象ディレクトリのソースコードです:\n\n"
+            + "\n\n" + PromptTexts.LOCAL_SOURCE_HEADER + "\n\n"
             + sourceContent
             + "\n";
     }

@@ -1,6 +1,5 @@
 package dev.logicojp.reviewer.instruction;
 
-import dev.logicojp.reviewer.util.FrontmatterParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,18 +103,18 @@ public class PromptLoader {
     /// @param rawContent The raw file content
     /// @return ParsedPrompt with separated content and metadata
     static ParsedPrompt parseFrontmatter(String rawContent) {
-        FrontmatterParser.Parsed parsed = FrontmatterParser.parse(rawContent);
+        var parsed = InstructionFrontmatter.parse(rawContent);
 
         if (!parsed.hasFrontmatter()) {
             return new ParsedPrompt(rawContent, null, null);
         }
 
-        String content = parsed.body().trim();
+        String content = InstructionFrontmatter.bodyOrRaw(parsed, rawContent);
         String description = parsed.get("description");
         String agent = parsed.get("agent");
 
         return new ParsedPrompt(
-            content.isEmpty() ? rawContent : content,
+            content,
             description,
             agent
         );
