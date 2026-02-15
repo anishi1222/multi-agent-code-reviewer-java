@@ -67,3 +67,56 @@
 
 ### 参照
 - 詳細対応表: `reports/anishi1222/multi-agent-code-reviewer/remediation_checklist_2026-02-15.md`
+
+## 2026-02-15 (v0.03)
+
+### 概要
+- マルチパスレビュー機能を追加し、各エージェントが複数回レビューを実施して結果をマージする仕組みを導入しました。
+- 全レビュー指摘（High / Medium / Low）に対する追加修正とテストカバレッジ強化を実施しました。
+- CI ワークフローの依存関係修正、設定のデフォルト値追加など安定性を向上しました。
+
+### 主な変更
+
+#### 新機能: マルチパスレビュー
+- 各エージェントが `review-passes` 回（デフォルト: 1）レビューを実施し、結果を `ReviewResultMerger` で統合。
+- 全パスを Virtual Thread プールに同時投入し、`Semaphore(parallelism)` で同時実行数を制御。
+- マージは文字列連結のみ（追加 AI 呼び出しなし）。
+- `application.yml` の `reviewer.execution.review-passes` で設定可能。
+
+#### セキュリティ強化
+- `ReviewTarget` のパスバリデーション強化。
+- `CliPathResolver` に CLI パスの安全性チェックを追加。
+- `CustomInstructionSafetyValidator` のプロンプトインジェクション検出を拡充・正規化。
+- `GithubMcpConfig` の MCP ヘッダマスキング動作改善。
+
+#### パフォーマンス・安定性
+- `ReviewAgent` のリトライ動作とタイムアウトハンドリング改善。
+- `ReviewOrchestrator` の起動時クリーンアップとサマリーフォールバック品質向上。
+- `ReviewResultMerger` にエージェント単位の重複排除機能を追加。
+- `LocalFileProvider` のファイル収集ロジックをリファクタリングし効率化。
+- `CopilotService` のリトライとエラーハンドリング改善。
+
+#### 設定・構成
+- `AgentPathConfig` を新設し、エージェントパス設定を外部化。
+- `LocalFileConfig` にデフォルト値と `@Nullable` アノテーション追加。
+- `application.yml` に `reviewer.local-files` のデフォルト設定追加。
+
+#### テスト
+- `ReviewResultMergerTest`（9 ケース）を新規追加。
+- `AgentPathConfigTest`、`LocalFileConfigTest`、`ReviewTargetTest`、`LocalFileProviderTest`、`CommandExecutorTest`、`CliPathResolverTest` を追加・拡充。
+- テスト総数: 453（0 failures, 0 errors）。
+
+#### ドキュメント
+- README（日英）にマルチパスレビュー機能の説明、設定例、アーキテクチャ図を追加。
+
+### マージ済み PR
+- [#16](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/16): fix: add default reviewer.local-files settings
+- [#17](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/17): fix: update build-native-image job dependencies
+- [#18](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/18): fix: remediate 2026-02-15 report findings (all severities)
+- [#19](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/19): feat: マルチパスレビュー機能の追加
+- [#20](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/20): docs: README にマルチパスレビュー機能の説明を追加
+- [#21](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/21): fix: all review findings and strengthen coverage
+
+### 検証
+- `mvn test`: 453 run, 0 failures, 0 errors
+- CI: Build and Test / Native Image Build / Supply Chain Guard / Dependency Review すべて成功

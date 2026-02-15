@@ -67,3 +67,56 @@
 
 ### Reference
 - Detailed checklist: `reports/anishi1222/multi-agent-code-reviewer/remediation_checklist_2026-02-15.md`
+
+## 2026-02-15 (v0.03)
+
+### Summary
+- Added multi-pass review capability allowing each agent to perform multiple review passes and merge results into a single report.
+- Applied additional fixes for all review findings (High / Medium / Low) and strengthened test coverage.
+- Improved CI workflow dependencies and added default configuration values for stability.
+
+### Highlights
+
+#### New Feature: Multi-Pass Review
+- Each agent now performs `review-passes` iterations (default: 1), with results merged by `ReviewResultMerger`.
+- All passes are submitted concurrently to a Virtual Thread pool, governed by `Semaphore(parallelism)` for concurrency control.
+- Merge is string-concatenation only (no additional AI calls).
+- Configurable via `reviewer.execution.review-passes` in `application.yml`.
+
+#### Security Hardening
+- Strengthened path validation in `ReviewTarget`.
+- Added CLI path safety checks in `CliPathResolver`.
+- Expanded prompt-injection detection and normalization in `CustomInstructionSafetyValidator`.
+- Improved MCP header masking behavior in `GithubMcpConfig`.
+
+#### Performance & Stability
+- Improved retry behavior and timeout handling in `ReviewAgent`.
+- Enhanced startup cleanup and summary fallback quality in `ReviewOrchestrator`.
+- Added per-agent duplicate finding elimination in `ReviewResultMerger`.
+- Refactored local file collection logic in `LocalFileProvider` for efficiency.
+- Improved retry and error handling in `CopilotService`.
+
+#### Configuration
+- Added `AgentPathConfig` to externalize agent path settings.
+- Added default values and `@Nullable` annotations to `LocalFileConfig`.
+- Added default `reviewer.local-files` settings in `application.yml`.
+
+#### Testing
+- Added `ReviewResultMergerTest` (9 test cases).
+- Added/expanded `AgentPathConfigTest`, `LocalFileConfigTest`, `ReviewTargetTest`, `LocalFileProviderTest`, `CommandExecutorTest`, `CliPathResolverTest`.
+- Total tests: 453 (0 failures, 0 errors).
+
+#### Documentation
+- Updated README (EN/JA) with multi-pass review feature description, configuration examples, and architecture diagram.
+
+### Merged PRs
+- [#16](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/16): fix: add default reviewer.local-files settings
+- [#17](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/17): fix: update build-native-image job dependencies
+- [#18](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/18): fix: remediate 2026-02-15 report findings (all severities)
+- [#19](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/19): feat: multi-pass review
+- [#20](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/20): docs: add multi-pass review to README
+- [#21](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/21): fix: all review findings and strengthen coverage
+
+### Validation
+- `mvn test`: 453 run, 0 failures, 0 errors
+- CI: Build and Test / Native Image Build / Supply Chain Guard / Dependency Review all passed
