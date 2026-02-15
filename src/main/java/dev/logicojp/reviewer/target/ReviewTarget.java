@@ -36,6 +36,10 @@ public sealed interface ReviewTarget permits ReviewTarget.LocalTarget, ReviewTar
             throw new IllegalArgumentException(
                 "Invalid repository format: " + repository + ". Expected 'owner/repo' format.");
         }
+        String[] segments = repository.split("/", 2);
+        if (segments.length != 2 || isTraversalSegment(segments[0]) || isTraversalSegment(segments[1])) {
+            throw new IllegalArgumentException("Repository name contains path traversal segment: " + repository);
+        }
         return new GitHubTarget(repository);
     }
 
@@ -80,11 +84,21 @@ public sealed interface ReviewTarget permits ReviewTarget.LocalTarget, ReviewTar
     /// @throws IllegalArgumentException if the repository name contains path traversal characters
     default Path repositorySubPath() {
         return switch (this) {
-            case GitHubTarget(String repository) -> Path.of(repository);
+            case GitHubTarget(String repository) -> {
+                Path subPath = Path.of(repository).normalize();
+                if (subPath.isAbsolute() || subPath.startsWith("..")) {
+                    throw new IllegalArgumentException("Repository name contains path traversal: " + repository);
+                }
+                yield subPath;
+            }
             case LocalTarget(Path directory) -> {
                 Path fileName = directory.getFileName();
                 yield fileName != null ? Path.of(fileName.toString()) : Path.of(directory.toString());
             }
         };
+    }
+
+    private static boolean isTraversalSegment(String segment) {
+        return ".".equals(segment) || "..".equals(segment);
     }
 }

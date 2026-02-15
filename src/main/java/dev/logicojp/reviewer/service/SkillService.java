@@ -15,6 +15,10 @@ import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -110,7 +114,7 @@ public class SkillService {
 
     private SkillExecutor createExecutor(String githubToken, String model) {
         var key = new ExecutorCacheKey(
-            githubToken != null ? githubToken.hashCode() : 0,
+            secureHash(githubToken),
             model
         );
         return executorCache.computeIfAbsent(key, ignored -> new SkillExecutor(
@@ -125,10 +129,23 @@ public class SkillService {
         ));
     }
 
-    private record ExecutorCacheKey(int tokenHash, String model) {
+    private static String secureHash(String token) {
+        if (token == null || token.isBlank()) {
+            return "";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hashed);
+        } catch (NoSuchAlgorithmException _) {
+            return Integer.toString(token.hashCode());
+        }
+    }
+
+    private record ExecutorCacheKey(String tokenDigest, String model) {
         @Override
         public String toString() {
-            return "ExecutorCacheKey{tokenHash=***, model='%s'}".formatted(model);
+            return "ExecutorCacheKey{tokenDigest=***, model='%s'}".formatted(model);
         }
     }
 

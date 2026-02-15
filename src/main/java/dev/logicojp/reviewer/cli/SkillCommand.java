@@ -71,7 +71,8 @@ public class SkillCommand {
             this::parseArgs,
             this::executeInternal,
             CliUsage::printSkill,
-            logger
+            logger,
+            output
         );
     }
 

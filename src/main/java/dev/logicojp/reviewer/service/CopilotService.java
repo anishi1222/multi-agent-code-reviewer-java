@@ -72,15 +72,16 @@ public class CopilotService {
             } else {
                 options.setUseLoggedInUser(Boolean.TRUE);
             }
-            client = new CopilotClient(options);
+            CopilotClient createdClient = new CopilotClient(options);
             try {
                 long timeoutSeconds = resolveStartTimeoutSeconds();
                 if (timeoutSeconds > 0) {
-                    client.start().get(timeoutSeconds, TimeUnit.SECONDS);
+                    createdClient.start().get(timeoutSeconds, TimeUnit.SECONDS);
                 } else {
-                    client.start().get();
+                    createdClient.start().get();
                 }
             } catch (ExecutionException e) {
+                closeQuietly(createdClient);
                 Throwable cause = e.getCause();
                 if (cause instanceof TimeoutException) {
                     throw new ExecutionException(buildProtocolTimeoutMessage(), cause);
@@ -90,8 +91,10 @@ public class CopilotService {
                 }
                 throw e;
             } catch (TimeoutException e) {
+                closeQuietly(createdClient);
                 throw new ExecutionException(buildClientTimeoutMessage(), e);
             }
+            client = createdClient;
             initialized = true;
             logger.info("Copilot client initialized");
         }
@@ -126,7 +129,8 @@ public class CopilotService {
 
     /// Resolves CLI path by scanning the system PATH directories.
     private String resolveCliPathFromSystemPath() {
-        if (System.getenv(PATH_ENV) == null || System.getenv(PATH_ENV).isBlank()) {
+        String pathEnv = System.getenv(PATH_ENV);
+        if (pathEnv == null || pathEnv.isBlank()) {
             throw new CopilotCliException("PATH is not set. Install GitHub Copilot CLI and/or set "
                 + CLI_PATH_ENV + " to its executable path.");
         }
@@ -228,6 +232,14 @@ public class CopilotService {
         return "Copilot CLI ping timed out. Ensure GitHub Copilot CLI is installed "
             + "and authenticated (for example, run `github-copilot auth login`), "
             + "or set " + CLI_PATH_ENV + " to the correct executable.";
+    }
+
+    private void closeQuietly(CopilotClient copilotClient) {
+        try {
+            copilotClient.close();
+        } catch (Exception e) {
+            logger.debug("Failed to close Copilot client after startup failure: {}", e.getMessage());
+        }
     }
     
     /// Gets the Copilot client. Must call initialize() first.

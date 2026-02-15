@@ -1,5 +1,8 @@
 package dev.logicojp.reviewer.instruction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.text.Normalizer;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -7,6 +10,8 @@ import java.util.regex.Pattern;
 
 /// Validates custom instruction content for basic prompt-injection safeguards.
 public final class CustomInstructionSafetyValidator {
+
+    private static final Logger logger = LoggerFactory.getLogger(CustomInstructionSafetyValidator.class);
 
     private static final int MAX_INSTRUCTION_SIZE = 32 * 1024;
     private static final List<Pattern> SUSPICIOUS_PATTERNS = List.of(
@@ -52,6 +57,21 @@ public final class CustomInstructionSafetyValidator {
         }
 
         return new ValidationResult(true, "ok");
+    }
+
+    public static List<CustomInstruction> filterSafe(List<CustomInstruction> instructions, String logPrefix) {
+        if (instructions == null || instructions.isEmpty()) {
+            return List.of();
+        }
+        return instructions.stream()
+            .filter(instruction -> {
+                ValidationResult validation = validate(instruction);
+                if (!validation.safe()) {
+                    logger.warn("{} {}: {}", logPrefix, instruction.sourcePath(), validation.reason());
+                }
+                return validation.safe();
+            })
+            .toList();
     }
 
     private static String normalize(String content) {

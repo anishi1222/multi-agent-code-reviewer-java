@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Optional;
 
@@ -70,6 +72,28 @@ class CommandExecutorTest {
                 logger
             );
             assertThat(result).isEqualTo(ExitCodes.SOFTWARE);
+        }
+
+        @Test
+        @DisplayName("CliOutputを指定した場合はそのerrorストリームへ出力される")
+        void writesErrorsToProvidedCliOutput() {
+            ByteArrayOutputStream errBuffer = new ByteArrayOutputStream();
+            CliOutput cliOutput = new CliOutput(new PrintStream(OutputStream.nullOutputStream()), new PrintStream(errBuffer));
+
+            int result = CommandExecutor.execute(
+                new String[]{"bad"},
+                _ -> {
+                    throw new CliValidationException("bad option", true);
+                },
+                _ -> ExitCodes.OK,
+                _ -> {
+                },
+                logger,
+                cliOutput
+            );
+
+            assertThat(result).isEqualTo(ExitCodes.USAGE);
+            assertThat(errBuffer.toString()).contains("bad option");
         }
     }
 }

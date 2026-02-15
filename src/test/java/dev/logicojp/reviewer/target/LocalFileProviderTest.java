@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.target;
 
+import dev.logicojp.reviewer.config.LocalFileConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -99,6 +100,27 @@ class LocalFileProviderTest {
             List<LocalFileProvider.LocalFile> files = provider.collectFiles();
             assertThat(files).hasSize(1);
             assertThat(files.getFirst().relativePath()).contains("src/main/App.java");
+        }
+
+        @Test
+        @DisplayName("設定で許可した拡張子のみを収集する")
+        void collectsOnlyConfiguredExtensions() throws IOException {
+            Files.writeString(tempDir.resolve("readme.txt"), "ok");
+            Files.writeString(tempDir.resolve("Main.java"), "class Main {}");
+
+            LocalFileConfig config = new LocalFileConfig(
+                1024,
+                4096,
+                List.of(".git"),
+                List.of("txt"),
+                List.of(".env"),
+                List.of("pem")
+            );
+            LocalFileProvider provider = new LocalFileProvider(tempDir, config);
+            List<LocalFileProvider.LocalFile> files = provider.collectFiles();
+
+            assertThat(files).hasSize(1);
+            assertThat(files.getFirst().relativePath()).isEqualTo("readme.txt");
         }
     }
 

@@ -13,6 +13,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,6 +30,7 @@ public final class ReviewResultMerger {
     private static final Pattern TABLE_ROW_TEMPLATE = Pattern.compile(
         "(?m)^\\|\\s*\\*\\*%s\\*\\*\\s*\\|\\s*(.*?)\\s*\\|\\s*$");
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+    private static final Map<String, Pattern> TABLE_VALUE_PATTERNS = new ConcurrentHashMap<>();
 
     private ReviewResultMerger() {
         // utility class
@@ -201,7 +203,10 @@ public final class ReviewResultMerger {
     }
 
     private static String extractTableValue(String body, String key) {
-        Pattern pattern = Pattern.compile(TABLE_ROW_TEMPLATE.pattern().formatted(Pattern.quote(key)));
+        Pattern pattern = TABLE_VALUE_PATTERNS.computeIfAbsent(
+            key,
+            k -> Pattern.compile(TABLE_ROW_TEMPLATE.pattern().formatted(Pattern.quote(k)))
+        );
         Matcher matcher = pattern.matcher(body);
         return matcher.find() ? matcher.group(1).trim() : "";
     }
