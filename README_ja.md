@@ -125,7 +125,7 @@ java --enable-preview -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--all` | - | 全エージェント実行 | false |
 | `--output` | `-o` | 出力ベースディレクトリ | `./reports` |
 | `--agents-dir` | - | 追加のエージェント定義ディレクトリ | - |
-| `--token` | - | GitHub トークン（`-` でstdin入力） | `$GITHUB_TOKEN` |
+| `--token` | - | GitHub トークン入力（`-` のみ許可、直接値指定は拒否） | `$GITHUB_TOKEN` |
 | `--parallelism` | - | 並列実行数 | 4 |
 | `--no-summary` | - | サマリー生成をスキップ | false |
 | `--model` | - | 全ステージのデフォルトモデル | - |
@@ -314,9 +314,13 @@ agent: 'agent'
 
 ```yaml
 reviewer:
+  agents:
+    directories:                      # エージェント定義の検索ディレクトリ
+      - ./agents
+      - ./.github/agents
   execution:
     parallelism: 4              # デフォルトの並列実行数
-    review-passes: 2            # エージェントごとのレビュー回数（マルチパスレビュー）
+    review-passes: 3            # エージェントごとのレビュー回数（マルチパスレビュー）
     orchestrator-timeout-minutes: 45  # オーケストレータタイムアウト（分）
     agent-timeout-minutes: 20   # エージェントタイムアウト（分）
     idle-timeout-minutes: 5     # アイドルタイムアウト（分）— イベントなしで自動終了
@@ -324,6 +328,12 @@ reviewer:
     summary-timeout-minutes: 20 # サマリータイムアウト（分）
     gh-auth-timeout-seconds: 30 # GitHub認証タイムアウト（秒）
     max-retries: 2              # レビュー失敗時の最大リトライ回数
+  feature-flags:
+    structured-concurrency: false       # Structured Concurrency の有効化
+    structured-concurrency-skills: false # スキル実行のみ Structured Concurrency を有効化
+  local-files:
+    max-file-size: 262144               # ローカルファイル最大サイズ（256KB）
+    max-total-size: 2097152             # ローカルファイル合計最大サイズ（2MB）
   templates:
     directory: templates              # テンプレートディレクトリ
     output-constraints: output-constraints.md  # 出力制約テンプレート
@@ -537,7 +547,7 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 |-----------|--------|------|-----------|
 | `--list` | - | 利用可能なスキル一覧を表示 | - |
 | `--param` | `-p` | パラメータ（key=value形式） | - |
-| `--token` | - | GitHub トークン（`-` でstdin入力） | `$GITHUB_TOKEN` |
+| `--token` | - | GitHub トークン入力（`-` のみ許可、直接値指定は拒否） | `$GITHUB_TOKEN` |
 | `--model` | - | 使用するLLMモデル | default-model |
 | `--agents-dir` | - | エージェント定義ディレクトリ | - |
 
@@ -718,6 +728,7 @@ flowchart TB
 
 ```
 templates/
+├── agent-focus-areas-guidance.md   # エージェントフォーカスエリアガイダンス
 ├── summary-system.md              # サマリー生成システムプロンプト
 ├── summary-prompt.md              # サマリー生成ユーザープロンプト
 ├── summary-result-entry.md        # サマリー結果エントリ（成功時）
@@ -732,6 +743,8 @@ templates/
 ├── fallback-agent-success.md      # フォールバック成功詳細
 ├── fallback-agent-failure.md      # フォールバック失敗詳細
 ├── local-review-content.md        # ローカルレビューコンテンツ
+├── local-review-result-request.md # ローカルレビュー結果リクエスト
+├── local-source-header.md         # ローカルソースヘッダー
 ├── custom-instruction-section.md  # カスタムインストラクションセクション
 └── review-custom-instruction.md   # レビュー用カスタムインストラクション
 ```
@@ -744,20 +757,16 @@ templates/
 reviewer:
   templates:
     directory: templates                    # テンプレートディレクトリ
-    summary-system-prompt: summary-system.md
-    summary-user-prompt: summary-prompt.md
     default-output-format: default-output-format.md
     output-constraints: output-constraints.md  # 出力制約（CoT抑制・言語指定）
     report: report.md
-    executive-summary: executive-summary.md
-    fallback-summary: fallback-summary.md
     local-review-content: local-review-content.md
-    summary-result-entry: summary-result-entry.md
-    summary-result-error-entry: summary-result-error-entry.md
-    fallback-agent-row: fallback-agent-row.md
-    fallback-agent-success: fallback-agent-success.md
-    fallback-agent-failure: fallback-agent-failure.md
-    report-link-entry: report-link-entry.md
+    summary:
+      system-prompt: summary-system.md       # サマリーシステムプロンプト
+      user-prompt: summary-prompt.md         # サマリーユーザープロンプト
+      executive-summary: executive-summary.md # エグゼクティブサマリー
+    fallback:
+      summary: fallback-summary.md           # フォールバックサマリー
 ```
 
 ### プレースホルダー
@@ -787,62 +796,130 @@ multi-agent-reviewer/
 │   └── ...
 └── src/main/java/dev/logicojp/reviewer/
     ├── ReviewApp.java                   # CLIエントリポイント
-    ├── ReviewCommand.java               # reviewサブコマンド
-    ├── ListAgentsCommand.java           # listサブコマンド
-    ├── SkillCommand.java                # skillサブコマンド
     ├── agent/
     │   ├── AgentConfig.java             # 設定モデル
     │   ├── AgentConfigLoader.java       # 設定読込
+    │   ├── AgentConfigValidator.java    # 設定バリデーション
     │   ├── AgentMarkdownParser.java     # .agent.md パーサー
+    │   ├── AgentPromptBuilder.java      # エージェントプロンプト構築
+    │   ├── ContentCollector.java        # レビューコンテンツ収集
+    │   ├── EventSubscriptions.java      # イベントサブスクリプション
+    │   ├── IdleTimeoutScheduler.java    # アイドルタイムアウトスケジューラ
+    │   ├── PromptTexts.java             # プロンプトテキスト定数
     │   ├── ReviewAgent.java             # レビューエージェント
-    │   └── ReviewContext.java           # 共有レビューコンテキスト
+    │   ├── ReviewContext.java           # 共有レビューコンテキスト
+    │   ├── ReviewMessageFlow.java       # レビューメッセージフロー
+    │   ├── ReviewResultFactory.java     # レビュー結果ファクトリ
+    │   ├── ReviewRetryExecutor.java     # レビューリトライ実行
+    │   ├── ReviewSessionConfigFactory.java # セッション設定ファクトリ
+    │   ├── ReviewSessionEvents.java     # セッションイベント管理
+    │   ├── ReviewSessionMessageSender.java # セッションメッセージ送信
+    │   ├── ReviewSystemPromptFormatter.java # システムプロンプト整形
+    │   └── ReviewTargetInstructionResolver.java # ターゲットインストラクション解決
     ├── cli/
+    │   ├── CliOutput.java               # CLI出力ユーティリティ
     │   ├── CliParsing.java              # CLIオプション解析
     │   ├── CliUsage.java                # ヘルプ・使い方表示
     │   ├── CliValidationException.java  # CLI入力バリデーション例外
-    │   └── ExitCodes.java               # 終了コード定数
+    │   ├── CommandExecutor.java         # コマンド実行基盤
+    │   ├── ExitCodes.java               # 終了コード定数
+    │   ├── ListAgentsCommand.java       # listサブコマンド
+    │   ├── ReviewAgentConfigResolver.java # エージェント設定解決
+    │   ├── ReviewCommand.java           # reviewサブコマンド
+    │   ├── ReviewCustomInstructionResolver.java # カスタムインストラクション解決
+    │   ├── ReviewExecutionCoordinator.java # レビュー実行調整
+    │   ├── ReviewModelConfigResolver.java # モデル設定解決
+    │   ├── ReviewOptionsParser.java     # レビューオプション解析
+    │   ├── ReviewOutputFormatter.java   # レビュー出力整形
+    │   ├── ReviewPreparationService.java # レビュー準備サービス
+    │   ├── ReviewRunExecutor.java       # レビュー実行
+    │   ├── ReviewRunRequestFactory.java # レビュー実行リクエストファクトリ
+    │   ├── ReviewTargetResolver.java    # レビューターゲット解決
+    │   ├── SkillCommand.java            # skillサブコマンド
+    │   ├── SkillExecutionCoordinator.java # スキル実行調整
+    │   ├── SkillExecutionPreparation.java # スキル実行準備
+    │   ├── SkillOptionsParser.java      # スキルオプション解析
+    │   └── SkillOutputFormatter.java    # スキル出力整形
     ├── config/
-    │   ├── ModelConfig.java             # LLMモデル設定
+    │   ├── AgentPathConfig.java         # エージェントパス設定
     │   ├── ExecutionConfig.java         # 実行設定
     │   ├── GithubMcpConfig.java         # GitHub MCP設定
+    │   ├── LocalFileConfig.java         # ローカルファイル設定
+    │   ├── ModelConfig.java             # LLMモデル設定
     │   ├── SkillConfig.java             # スキル設定
     │   └── TemplateConfig.java          # テンプレート設定
     ├── instruction/
     │   ├── CustomInstruction.java       # カスタムインストラクションモデル
     │   ├── CustomInstructionLoader.java # インストラクション読込
+    │   ├── CustomInstructionSafetyValidator.java # インストラクション安全性検証
+    │   ├── InstructionFrontmatter.java  # インストラクションフロントマター
     │   ├── InstructionSource.java       # ソース種別
-    │   └── PromptLoader.java            # プロンプトファイル読込
+    │   ├── PromptLoader.java            # プロンプトファイル読込
+    │   └── ScopedInstructionLoader.java # スコープ付きインストラクション読込
     ├── orchestrator/
+    │   ├── AgentReviewExecutor.java     # エージェントレビュー実行
+    │   ├── LocalSourcePrecomputer.java  # ローカルソース事前計算
+    │   ├── ReviewContextFactory.java    # レビューコンテキストファクトリ
+    │   ├── ReviewExecutionModeRunner.java # 実行モード選択
     │   ├── ReviewOrchestrator.java      # 並列実行制御
-    │   └── ReviewOrchestratorFactory.java # オーケストレータファクトリ
+    │   ├── ReviewOrchestratorFactory.java # オーケストレータファクトリ
+    │   └── ReviewResultPipeline.java    # 結果パイプライン
     ├── report/
+    │   ├── AggregatedFinding.java       # 集約された指摘
+    │   ├── ContentSanitizationPipeline.java # サニタイズパイプライン
+    │   ├── ContentSanitizationRule.java # サニタイズルール
     │   ├── ContentSanitizer.java        # LLM前置き文/CoT除去
+    │   ├── FallbackSummaryBuilder.java  # フォールバックサマリー構築
     │   ├── FindingsExtractor.java       # 指摘事項抽出
+    │   ├── FindingsParser.java          # 指摘事項パーサー
+    │   ├── FindingsSummaryFormatter.java # 指摘サマリー整形
+    │   ├── ReportContentFormatter.java  # レポートコンテンツ整形
+    │   ├── ReportFileUtils.java         # レポートファイルユーティリティ
+    │   ├── ReportGenerator.java         # 個別レポート生成
+    │   ├── ReportGeneratorFactory.java  # レポートジェネレータファクトリ
+    │   ├── ReviewFindingParser.java     # レビュー指摘パーサー
+    │   ├── ReviewFindingSimilarity.java # 重複指摘類似度判定
+    │   ├── ReviewMergedContentFormatter.java # マージコンテンツ整形
     │   ├── ReviewResult.java            # 結果モデル
     │   ├── ReviewResultMerger.java      # マルチパス結果マージ
-    │   ├── ReportGenerator.java         # 個別レポート生成
-    │   └── SummaryGenerator.java        # サマリー生成
+    │   ├── SummaryFinalReportFormatter.java # サマリー最終整形
+    │   ├── SummaryGenerator.java        # サマリー生成
+    │   └── SummaryPromptBuilder.java    # サマリープロンプト構築
     ├── service/
     │   ├── AgentService.java            # エージェント管理
+    │   ├── CopilotClientStarter.java    # Copilotクライアント起動
+    │   ├── CopilotCliException.java     # Copilot CLI例外
+    │   ├── CopilotCliHealthChecker.java # Copilot CLIヘルスチェック
+    │   ├── CopilotCliPathResolver.java  # Copilot CLIパス解決
     │   ├── CopilotService.java          # Copilot SDK連携
+    │   ├── CopilotStartupErrorFormatter.java # 起動エラー整形
+    │   ├── CopilotTimeoutResolver.java  # タイムアウト解決
     │   ├── ReportService.java           # レポート生成
     │   ├── ReviewService.java           # レビュー実行
     │   ├── SkillService.java            # スキル管理
     │   └── TemplateService.java         # テンプレート読込
     ├── skill/
     │   ├── SkillDefinition.java         # スキル定義モデル
+    │   ├── SkillExecutor.java           # スキル実行
     │   ├── SkillMarkdownParser.java     # スキルMarkdownパーサー
     │   ├── SkillParameter.java          # スキルパラメータモデル
     │   ├── SkillRegistry.java           # スキルレジストリ
-    │   ├── SkillExecutor.java           # スキル実行
     │   └── SkillResult.java             # スキル結果モデル
     ├── target/
-    │   ├── ReviewTarget.java            # レビュー対象（sealed interface）
-    │   └── LocalFileProvider.java       # ローカルファイル収集
+    │   ├── LocalFileCandidate.java      # ローカルファイル候補
+    │   ├── LocalFileCandidateCollector.java # ファイル候補収集
+    │   ├── LocalFileCandidateProcessor.java # ファイル候補処理
+    │   ├── LocalFileContentFormatter.java # ファイルコンテンツ整形
+    │   ├── LocalFileProvider.java       # ローカルファイル収集
+    │   ├── LocalFileSelectionConfig.java # ファイル選択設定
+    │   └── ReviewTarget.java            # レビュー対象（sealed interface）
     └── util/
+        ├── CliPathResolver.java         # CLIパス解決
+        ├── ExecutorUtils.java           # エグゼキュータユーティリティ
         ├── FeatureFlags.java            # 機能フラグ解決
         ├── FrontmatterParser.java       # YAMLフロントマターパーサー
-        └── GitHubTokenResolver.java     # GitHubトークン解決
+        ├── GitHubTokenResolver.java     # GitHubトークン解決
+        └── StructuredConcurrencyUtils.java # Structured Concurrency ユーティリティ
 ```
 
 ## ライセンス

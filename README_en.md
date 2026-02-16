@@ -125,7 +125,7 @@ java --enable-preview -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 | `--all` | - | Run all agents | false |
 | `--output` | `-o` | Output base directory | `./reports` |
 | `--agents-dir` | - | Additional agent definition directory | - |
-| `--token` | - | GitHub token (`-` for stdin) | `$GITHUB_TOKEN` |
+| `--token` | - | GitHub token input (`-` for stdin only; direct value is rejected) | `$GITHUB_TOKEN` |
 | `--parallelism` | - | Number of parallel executions | 4 |
 | `--no-summary` | - | Skip summary generation | false |
 | `--model` | - | Default model for all stages | - |
@@ -314,9 +314,13 @@ Customize application behavior via `application.yml`.
 
 ```yaml
 reviewer:
+  agents:
+    directories:                      # Agent definition search directories
+      - ./agents
+      - ./.github/agents
   execution:
     parallelism: 4              # Default parallel execution count
-    review-passes: 2            # Number of review passes per agent (multi-pass review)
+    review-passes: 3            # Number of review passes per agent (multi-pass review)
     orchestrator-timeout-minutes: 45  # Orchestrator timeout (minutes)
     agent-timeout-minutes: 20   # Agent timeout (minutes)
     idle-timeout-minutes: 5     # Idle timeout (minutes) — auto-terminate when no events
@@ -324,6 +328,12 @@ reviewer:
     summary-timeout-minutes: 20 # Summary timeout (minutes)
     gh-auth-timeout-seconds: 30 # GitHub auth timeout (seconds)
     max-retries: 2              # Max retry count on review failure
+  feature-flags:
+    structured-concurrency: false       # Enable Structured Concurrency
+    structured-concurrency-skills: false # Enable Structured Concurrency for skills only
+  local-files:
+    max-file-size: 262144               # Max local file size (256KB)
+    max-total-size: 2097152             # Max total local file size (2MB)
   templates:
     directory: templates              # Template directory
     output-constraints: output-constraints.md  # Output constraints (CoT suppression, language)
@@ -537,7 +547,7 @@ java -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar \
 |--------|-------|-------------|---------|
 | `--list` | - | List available skills | - |
 | `--param` | `-p` | Parameter (key=value format) | - |
-| `--token` | - | GitHub token (`-` for stdin) | `$GITHUB_TOKEN` |
+| `--token` | - | GitHub token input (`-` for stdin only; direct value is rejected) | `$GITHUB_TOKEN` |
 | `--model` | - | LLM model to use | default-model |
 | `--agents-dir` | - | Agent definitions directory | - |
 
@@ -718,6 +728,7 @@ By default, templates in the `templates/` directory are used.
 
 ```
 templates/
+├── agent-focus-areas-guidance.md   # Agent focus areas guidance
 ├── summary-system.md              # Summary generation system prompt
 ├── summary-prompt.md              # Summary generation user prompt
 ├── summary-result-entry.md        # Summary result entry (success)
@@ -732,6 +743,8 @@ templates/
 ├── fallback-agent-success.md      # Fallback success detail
 ├── fallback-agent-failure.md      # Fallback failure detail
 ├── local-review-content.md        # Local review content
+├── local-review-result-request.md # Local review result request
+├── local-source-header.md         # Local source header
 ├── custom-instruction-section.md  # Custom instruction section
 └── review-custom-instruction.md   # Review custom instruction
 ```
@@ -744,20 +757,16 @@ You can customize template paths in `application.yml`:
 reviewer:
   templates:
     directory: templates                    # Template directory
-    summary-system-prompt: summary-system.md
-    summary-user-prompt: summary-prompt.md
     default-output-format: default-output-format.md
     output-constraints: output-constraints.md  # Output constraints (CoT suppression, language)
     report: report.md
-    executive-summary: executive-summary.md
-    fallback-summary: fallback-summary.md
     local-review-content: local-review-content.md
-    summary-result-entry: summary-result-entry.md
-    summary-result-error-entry: summary-result-error-entry.md
-    fallback-agent-row: fallback-agent-row.md
-    fallback-agent-success: fallback-agent-success.md
-    fallback-agent-failure: fallback-agent-failure.md
-    report-link-entry: report-link-entry.md
+    summary:
+      system-prompt: summary-system.md       # Summary system prompt
+      user-prompt: summary-prompt.md         # Summary user prompt
+      executive-summary: executive-summary.md # Executive summary
+    fallback:
+      summary: fallback-summary.md           # Fallback summary
 ```
 
 ### Placeholders
@@ -787,62 +796,130 @@ multi-agent-reviewer/
 │   └── ...
 └── src/main/java/dev/logicojp/reviewer/
     ├── ReviewApp.java                   # CLI entry point
-    ├── ReviewCommand.java               # review subcommand
-    ├── ListAgentsCommand.java           # list subcommand
-    ├── SkillCommand.java                # skill subcommand
     ├── agent/
     │   ├── AgentConfig.java             # Config model
     │   ├── AgentConfigLoader.java       # Config loader
+    │   ├── AgentConfigValidator.java    # Config validation
     │   ├── AgentMarkdownParser.java     # .agent.md parser
+    │   ├── AgentPromptBuilder.java      # Agent prompt builder
+    │   ├── ContentCollector.java        # Review content collector
+    │   ├── EventSubscriptions.java      # Event subscriptions
+    │   ├── IdleTimeoutScheduler.java    # Idle timeout scheduler
+    │   ├── PromptTexts.java             # Prompt text constants
     │   ├── ReviewAgent.java             # Review agent
-    │   └── ReviewContext.java           # Shared review context
+    │   ├── ReviewContext.java           # Shared review context
+    │   ├── ReviewMessageFlow.java       # Review message flow
+    │   ├── ReviewResultFactory.java     # Review result factory
+    │   ├── ReviewRetryExecutor.java     # Review retry executor
+    │   ├── ReviewSessionConfigFactory.java # Session config factory
+    │   ├── ReviewSessionEvents.java     # Session event management
+    │   ├── ReviewSessionMessageSender.java # Session message sender
+    │   ├── ReviewSystemPromptFormatter.java # System prompt formatter
+    │   └── ReviewTargetInstructionResolver.java # Target instruction resolver
     ├── cli/
+    │   ├── CliOutput.java               # CLI output utilities
     │   ├── CliParsing.java              # CLI option parsing
     │   ├── CliUsage.java                # Help / usage display
     │   ├── CliValidationException.java  # CLI input validation exception
-    │   └── ExitCodes.java               # Exit code constants
+    │   ├── CommandExecutor.java         # Command execution framework
+    │   ├── ExitCodes.java               # Exit code constants
+    │   ├── ListAgentsCommand.java       # list subcommand
+    │   ├── ReviewAgentConfigResolver.java # Agent config resolver
+    │   ├── ReviewCommand.java           # review subcommand
+    │   ├── ReviewCustomInstructionResolver.java # Custom instruction resolver
+    │   ├── ReviewExecutionCoordinator.java # Review execution coordinator
+    │   ├── ReviewModelConfigResolver.java # Model config resolver
+    │   ├── ReviewOptionsParser.java     # Review options parser
+    │   ├── ReviewOutputFormatter.java   # Review output formatter
+    │   ├── ReviewPreparationService.java # Review preparation service
+    │   ├── ReviewRunExecutor.java       # Review run executor
+    │   ├── ReviewRunRequestFactory.java # Review run request factory
+    │   ├── ReviewTargetResolver.java    # Review target resolver
+    │   ├── SkillCommand.java            # skill subcommand
+    │   ├── SkillExecutionCoordinator.java # Skill execution coordinator
+    │   ├── SkillExecutionPreparation.java # Skill execution preparation
+    │   ├── SkillOptionsParser.java      # Skill options parser
+    │   └── SkillOutputFormatter.java    # Skill output formatter
     ├── config/
-    │   ├── ModelConfig.java             # LLM model config
+    │   ├── AgentPathConfig.java         # Agent path config
     │   ├── ExecutionConfig.java         # Execution config
     │   ├── GithubMcpConfig.java         # GitHub MCP config
+    │   ├── LocalFileConfig.java         # Local file config
+    │   ├── ModelConfig.java             # LLM model config
     │   ├── SkillConfig.java             # Skill config
     │   └── TemplateConfig.java          # Template config
     ├── instruction/
     │   ├── CustomInstruction.java       # Custom instruction model
     │   ├── CustomInstructionLoader.java # Instruction loader
+    │   ├── CustomInstructionSafetyValidator.java # Instruction safety validator
+    │   ├── InstructionFrontmatter.java  # Instruction frontmatter
     │   ├── InstructionSource.java       # Source type
-    │   └── PromptLoader.java            # Prompt file loader
+    │   ├── PromptLoader.java            # Prompt file loader
+    │   └── ScopedInstructionLoader.java # Scoped instruction loader
     ├── orchestrator/
+    │   ├── AgentReviewExecutor.java     # Agent review executor
+    │   ├── LocalSourcePrecomputer.java  # Local source precomputer
+    │   ├── ReviewContextFactory.java    # Review context factory
+    │   ├── ReviewExecutionModeRunner.java # Execution mode runner
     │   ├── ReviewOrchestrator.java      # Parallel execution control
-    │   └── ReviewOrchestratorFactory.java # Orchestrator factory
+    │   ├── ReviewOrchestratorFactory.java # Orchestrator factory
+    │   └── ReviewResultPipeline.java    # Result pipeline
     ├── report/
+    │   ├── AggregatedFinding.java       # Aggregated finding
+    │   ├── ContentSanitizationPipeline.java # Sanitization pipeline
+    │   ├── ContentSanitizationRule.java # Sanitization rule
     │   ├── ContentSanitizer.java        # LLM preamble / CoT removal
+    │   ├── FallbackSummaryBuilder.java  # Fallback summary builder
     │   ├── FindingsExtractor.java       # Findings extraction
+    │   ├── FindingsParser.java          # Findings parser
+    │   ├── FindingsSummaryFormatter.java # Findings summary formatter
+    │   ├── ReportContentFormatter.java  # Report content formatter
+    │   ├── ReportFileUtils.java         # Report file utilities
+    │   ├── ReportGenerator.java         # Individual report generation
+    │   ├── ReportGeneratorFactory.java  # Report generator factory
+    │   ├── ReviewFindingParser.java     # Review finding parser
+    │   ├── ReviewFindingSimilarity.java # Duplicate finding similarity
+    │   ├── ReviewMergedContentFormatter.java # Merged content formatter
     │   ├── ReviewResult.java            # Result model
     │   ├── ReviewResultMerger.java      # Multi-pass result merger
-    │   ├── ReportGenerator.java         # Individual report generation
-    │   └── SummaryGenerator.java        # Summary generation
+    │   ├── SummaryFinalReportFormatter.java # Summary final formatter
+    │   ├── SummaryGenerator.java        # Summary generation
+    │   └── SummaryPromptBuilder.java    # Summary prompt builder
     ├── service/
     │   ├── AgentService.java            # Agent management
+    │   ├── CopilotClientStarter.java    # Copilot client starter
+    │   ├── CopilotCliException.java     # Copilot CLI exception
+    │   ├── CopilotCliHealthChecker.java # Copilot CLI health checker
+    │   ├── CopilotCliPathResolver.java  # Copilot CLI path resolver
     │   ├── CopilotService.java          # Copilot SDK integration
+    │   ├── CopilotStartupErrorFormatter.java # Startup error formatter
+    │   ├── CopilotTimeoutResolver.java  # Timeout resolver
     │   ├── ReportService.java           # Report generation
     │   ├── ReviewService.java           # Review execution
     │   ├── SkillService.java            # Skill management
     │   └── TemplateService.java         # Template loading
     ├── skill/
     │   ├── SkillDefinition.java         # Skill definition model
+    │   ├── SkillExecutor.java           # Skill executor
     │   ├── SkillMarkdownParser.java     # Skill markdown parser
     │   ├── SkillParameter.java          # Skill parameter model
     │   ├── SkillRegistry.java           # Skill registry
-    │   ├── SkillExecutor.java           # Skill executor
     │   └── SkillResult.java             # Skill result model
     ├── target/
-    │   ├── ReviewTarget.java            # Review target (sealed interface)
-    │   └── LocalFileProvider.java       # Local file collector
+    │   ├── LocalFileCandidate.java      # Local file candidate
+    │   ├── LocalFileCandidateCollector.java # File candidate collector
+    │   ├── LocalFileCandidateProcessor.java # File candidate processor
+    │   ├── LocalFileContentFormatter.java # File content formatter
+    │   ├── LocalFileProvider.java       # Local file collector
+    │   ├── LocalFileSelectionConfig.java # File selection config
+    │   └── ReviewTarget.java            # Review target (sealed interface)
     └── util/
+        ├── CliPathResolver.java         # CLI path resolver
+        ├── ExecutorUtils.java           # Executor utilities
         ├── FeatureFlags.java            # Feature flag resolution
         ├── FrontmatterParser.java       # YAML frontmatter parser
-        └── GitHubTokenResolver.java     # GitHub token resolution
+        ├── GitHubTokenResolver.java     # GitHub token resolution
+        └── StructuredConcurrencyUtils.java # Structured Concurrency utilities
 ```
 
 ## License
