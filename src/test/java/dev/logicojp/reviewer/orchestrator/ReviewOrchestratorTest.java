@@ -1,0 +1,72 @@
+package dev.logicojp.reviewer.orchestrator;
+
+import com.github.copilot.sdk.CopilotClient;
+import com.github.copilot.sdk.json.CopilotClientOptions;
+import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.config.ExecutionConfig;
+import dev.logicojp.reviewer.config.GithubMcpConfig;
+import dev.logicojp.reviewer.config.LocalFileConfig;
+import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.target.ReviewTarget;
+import dev.logicojp.reviewer.util.FeatureFlags;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayName("ReviewOrchestrator")
+class ReviewOrchestratorTest {
+
+    @Test
+    @DisplayName("注入ファクトリ経由でエージェントレビューを実行できる")
+    void executesReviewsUsingInjectedFactories() {
+        CopilotClient client = new CopilotClient(new CopilotClientOptions());
+        var orchestratorConfig = new ReviewOrchestrator.OrchestratorConfig(
+            null,
+            new GithubMcpConfig(null, null, null, null, null, null),
+            new LocalFileConfig(),
+            new FeatureFlags(false, false),
+            new ExecutionConfig(2, 1, 2, 1, 1, 1, 1, 1, 0),
+            List.of(),
+            "high",
+            null
+        );
+
+        AgentConfig agentConfig = new AgentConfig(
+            "security", "Security", "model", "system", "instruction", null, List.of(), List.of()
+        );
+
+        try (ReviewOrchestrator orchestrator = new ReviewOrchestrator(
+            client,
+            orchestratorConfig,
+            (config, context) -> target -> ReviewResult.builder()
+                .agentConfig(config)
+                .repository(target.displayName())
+                .content("ok")
+                .success(true)
+                .timestamp(LocalDateTime.now())
+                .build(),
+            (directory, localConfig) -> () -> new dev.logicojp.reviewer.target.LocalFileProvider.CollectionResult(
+                "source",
+                "summary",
+                1,
+                10
+            )
+        )) {
+            var results = orchestrator.executeReviews(
+                Map.of("security", agentConfig),
+                ReviewTarget.gitHub("owner/repo")
+            );
+
+            assertThat(results).hasSize(1);
+            assertThat(results.getFirst().isSuccess()).isTrue();
+            assertThat(results.getFirst().content()).isEqualTo("ok");
+        } finally {
+            client.close();
+        }
+    }
+}

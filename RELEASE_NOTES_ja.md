@@ -1,5 +1,30 @@
 # リリースノート
 
+## 2026-02-16
+
+### 概要
+- 大規模クラス分割の継続対応として、CLI、ローカルファイル収集、orchestrator、report パイプライン、Copilot 起動処理の責務分離を完了しました。
+- 既存挙動を維持したまま、コマンド/サービスの責務密度を下げ、テスト容易性を向上しました。
+- 直近の `CopilotClientStarter` 抽出後も回帰がないことを確認しました。
+
+### 主な変更
+- CLI リファクタ:
+  - `ReviewCommand` を解析/解決/準備/リクエスト生成/実行調停に分離。
+  - `SkillCommand` を解析/準備/実行/出力整形に分離。
+  - `--token` の直接値指定を拒否し、stdin/env ベース運用に統一。
+- ローカルソース収集リファクタ:
+  - `LocalFileProvider` を候補収集・候補処理・内容整形・設定正規化へ分離。
+- Orchestrator/Report リファクタ:
+  - orchestrator 側に実行モード・結果パイプライン・コンテキスト生成・事前収集の専用コンポーネントを追加。
+  - report/summary 内部を parser/formatter/builder 系ヘルパーへ分割。
+- Copilot 起動リファクタ:
+  - `CopilotService` から CLI パス解決、ヘルスチェック、タイムアウト解決、起動エラーフォーマット、起動実行を分離。
+  - `CopilotClientStarter` を追加し、起動時の timeout/cause 変換と安全な close を独立化。
+
+### 検証
+- フォーカステスト: 101 run, 0 failures, 0 errors
+- 全体テスト: 760 run, 0 failures, 0 errors
+
 ## 2026-02-14
 
 ### 概要

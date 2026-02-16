@@ -23,7 +23,7 @@ public final class CliParsing {
     public static boolean hasHelpFlag(String[] args) {
         String[] safeArgs = Objects.requireNonNullElse(args, new String[0]);
         for (String arg : safeArgs) {
-            if ("-h".equals(arg) || "--help".equals(arg)) {
+            if (isHelpOption(arg)) {
                 return true;
             }
         }
@@ -35,20 +35,17 @@ public final class CliParsing {
         if (inline != null) {
             return new OptionValue(inline, index);
         }
-        if (index + 1 >= args.length || args[index + 1].startsWith("-")) {
-            throw new CliValidationException("Option requires a value: " + optionName, true);
+        if (isMissingOptionValue(args, index)) {
+            throw missingOptionValue(optionName);
         }
         return new OptionValue(args[index + 1], index + 1);
     }
 
     public static MultiValue readMultiValues(String arg, String[] args, int index, String optionName) {
         List<String> values = new ArrayList<>();
-        String inline = inlineValue(arg);
-        if (inline != null) {
-            values.add(inline);
-        }
+        addInlineValue(arg, values);
         int newIndex = index;
-        while (newIndex + 1 < args.length && !args[newIndex + 1].startsWith("-")) {
+        while (hasNextNonOptionArg(args, newIndex)) {
             values.add(args[++newIndex]);
         }
         if (values.isEmpty()) {
@@ -69,6 +66,10 @@ public final class CliParsing {
             setter.accept(value);
         }
         return values.newIndex();
+    }
+
+    public static int readTokenInto(String[] args, int i, String optName, Consumer<String> setter) {
+        return readInto(args, i, optName, value -> setter.accept(readTokenWithWarning(value)));
     }
 
     public static List<String> splitComma(String value) {
@@ -93,6 +94,21 @@ public final class CliParsing {
         return null;
     }
 
+    private static boolean isHelpOption(String arg) {
+        return "-h".equals(arg) || "--help".equals(arg);
+    }
+
+    private static void addInlineValue(String arg, List<String> values) {
+        String inline = inlineValue(arg);
+        if (inline != null) {
+            values.add(inline);
+        }
+    }
+
+    private static boolean hasNextNonOptionArg(String[] args, int index) {
+        return index + 1 < args.length && !args[index + 1].startsWith("-");
+    }
+
     /// Reads a token value with a security check.
     /// Rejects direct token values passed via command line to prevent
     /// exposure in process listings and shell history.
@@ -100,9 +116,7 @@ public final class CliParsing {
     /// {@link CliValidationException} is thrown.
     public static String readTokenWithWarning(String value) {
         if (!"-".equals(value)) {
-            throw new CliValidationException(
-                "Direct token passing via command line is not supported for security reasons. "
-                    + "Use '--token -' (stdin) or set GITHUB_TOKEN environment variable.", true);
+            throw directTokenPassingNotSupported();
         }
         return readToken(value);
     }
@@ -124,10 +138,28 @@ public final class CliParsing {
                 }
                 return new String(System.in.readNBytes(MAX_STDIN_TOKEN_BYTES), StandardCharsets.UTF_8).trim();
             } catch (IOException e) {
-                throw new CliValidationException("Failed to read token from stdin: " + e.getMessage(), false);
+                throw tokenReadFailure(e);
             }
         }
         return value;
+    }
+
+    private static boolean isMissingOptionValue(String[] args, int index) {
+        return index + 1 >= args.length || args[index + 1].startsWith("-");
+    }
+
+    private static CliValidationException missingOptionValue(String optionName) {
+        return new CliValidationException("Option requires a value: " + optionName, true);
+    }
+
+    private static CliValidationException directTokenPassingNotSupported() {
+        return new CliValidationException(
+            "Direct token passing via command line is not supported for security reasons. "
+                + "Use '--token -' (stdin) or set GITHUB_TOKEN environment variable.", true);
+    }
+
+    private static CliValidationException tokenReadFailure(IOException e) {
+        return new CliValidationException("Failed to read token from stdin: " + e.getMessage(), false);
     }
 }
 

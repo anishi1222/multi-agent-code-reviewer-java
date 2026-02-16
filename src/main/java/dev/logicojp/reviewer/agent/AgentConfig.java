@@ -31,17 +31,89 @@ public record AgentConfig(
     }
 
     public AgentConfig withModel(String overrideModel) {
-        return new AgentConfig(
-            this.name, this.displayName, overrideModel, this.systemPrompt,
-            this.instruction, this.outputFormat, this.focusAreas, this.skills
-        );
+        return Builder.from(this)
+            .model(overrideModel)
+            .build();
     }
 
     public AgentConfig withSkills(List<SkillDefinition> newSkills) {
-        return new AgentConfig(
-            this.name, this.displayName, this.model, this.systemPrompt,
-            this.instruction, this.outputFormat, this.focusAreas, newSkills
-        );
+        return Builder.from(this)
+            .skills(newSkills)
+            .build();
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private String name;
+        private String displayName;
+        private String model;
+        private String systemPrompt;
+        private String instruction;
+        private String outputFormat;
+        private List<String> focusAreas;
+        private List<SkillDefinition> skills;
+
+        private Builder() {
+        }
+
+        public static Builder from(AgentConfig source) {
+            return new Builder()
+                .name(source.name)
+                .displayName(source.displayName)
+                .model(source.model)
+                .systemPrompt(source.systemPrompt)
+                .instruction(source.instruction)
+                .outputFormat(source.outputFormat)
+                .focusAreas(source.focusAreas)
+                .skills(source.skills);
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder displayName(String displayName) {
+            this.displayName = displayName;
+            return this;
+        }
+
+        public Builder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public Builder systemPrompt(String systemPrompt) {
+            this.systemPrompt = systemPrompt;
+            return this;
+        }
+
+        public Builder instruction(String instruction) {
+            this.instruction = instruction;
+            return this;
+        }
+
+        public Builder outputFormat(String outputFormat) {
+            this.outputFormat = outputFormat;
+            return this;
+        }
+
+        public Builder focusAreas(List<String> focusAreas) {
+            this.focusAreas = focusAreas;
+            return this;
+        }
+
+        public Builder skills(List<SkillDefinition> skills) {
+            this.skills = skills;
+            return this;
+        }
+
+        public AgentConfig build() {
+            return new AgentConfig(name, displayName, model, systemPrompt, instruction, outputFormat, focusAreas, skills);
+        }
     }
 
     /// Validates required fields. Delegates to {@link AgentConfigValidator}.

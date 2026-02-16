@@ -41,18 +41,7 @@ class ContentCollector {
 
     void onMessage(String content, int toolCalls) {
         messageCount.incrementAndGet();
-        if (content != null && !content.isBlank()) {
-            lastContent.set(content);
-            synchronized (accumulatedLock) {
-                int nextSize = accumulatedSize.get() + content.length();
-                if (nextSize <= MAX_ACCUMULATED_SIZE) {
-                    accumulatedBuilder.append(content);
-                    accumulatedSize.set(nextSize);
-                    joinedCache = null;
-                    joinedCacheSize = 0;
-                }
-            }
-        }
+        appendMessageContent(content);
         if (toolCalls > 0) {
             toolCallCount.addAndGet(toolCalls);
         }
@@ -60,14 +49,38 @@ class ContentCollector {
 
     void onIdle() {
         if (!future.isDone()) {
-            String last = lastContent.get();
-            if (last != null && !last.isBlank()) {
-                future.complete(last);
-            } else {
-                String accumulated = joinAccumulated();
-                future.complete(accumulated.isBlank() ? null : accumulated);
+            completeFromLatestContent();
+        }
+    }
+
+    private void appendMessageContent(String content) {
+        if (content == null || content.isBlank()) {
+            return;
+        }
+        lastContent.set(content);
+        synchronized (accumulatedLock) {
+            int nextSize = accumulatedSize.get() + content.length();
+            if (nextSize <= MAX_ACCUMULATED_SIZE) {
+                accumulatedBuilder.append(content);
+                accumulatedSize.set(nextSize);
+                invalidateJoinedCache();
             }
         }
+    }
+
+    private void completeFromLatestContent() {
+        String last = lastContent.get();
+        if (last != null && !last.isBlank()) {
+            future.complete(last);
+            return;
+        }
+        String accumulated = joinAccumulated();
+        future.complete(accumulated.isBlank() ? null : accumulated);
+    }
+
+    private void invalidateJoinedCache() {
+        joinedCache = null;
+        joinedCacheSize = 0;
     }
 
     void onError(String message) {

@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.report;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 /// Sanitizes review content returned by LLM models.
@@ -9,6 +10,11 @@ import java.util.regex.Pattern;
 /// - Model preamble / filler text before the actual review content
 /// - Excessive whitespace
 public final class ContentSanitizer {
+
+    @FunctionalInterface
+    interface SanitizationStrategy {
+        String apply(String content);
+    }
 
     private ContentSanitizer() {
         // Utility class — not instantiable
@@ -41,23 +47,26 @@ public final class ContentSanitizer {
         "\\n{3,}"
     );
 
+    private static final ContentSanitizationPipeline PIPELINE = new ContentSanitizationPipeline(
+        List.of(
+            new ContentSanitizationRule(COT_BLOCK_PATTERN, ""),
+            new ContentSanitizationRule(EXCESSIVE_BLANK_LINES, "\n\n")
+        )
+    );
+
     /// Sanitizes the given review content.
     ///
     /// @param content Raw content from the LLM
     /// @return Sanitized content suitable for reports, or null if input is null
     public static String sanitize(String content) {
+        return sanitize(content, PIPELINE::apply);
+    }
+
+    static String sanitize(String content, SanitizationStrategy strategy) {
         if (content == null) {
             return null;
         }
 
-        String result = content;
-
-        // Remove CoT / thinking blocks in one pass
-        result = COT_BLOCK_PATTERN.matcher(result).replaceAll("");
-
-        // Collapse excessive blank lines
-        result = EXCESSIVE_BLANK_LINES.matcher(result).replaceAll("\n\n");
-
-        return result.strip();
+        return strategy.apply(content).strip();
     }
 }

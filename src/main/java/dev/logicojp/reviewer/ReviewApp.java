@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer;
 
 import dev.logicojp.reviewer.cli.CliParsing;
+import dev.logicojp.reviewer.cli.CliOutput;
 import dev.logicojp.reviewer.cli.CliUsage;
 import dev.logicojp.reviewer.cli.ExitCodes;
 import dev.logicojp.reviewer.cli.ListAgentsCommand;
@@ -27,14 +28,17 @@ public class ReviewApp {
     private final ReviewCommand reviewCommand;
     private final ListAgentsCommand listAgentsCommand;
     private final SkillCommand skillCommand;
+    private final CliOutput output;
 
     @Inject
     public ReviewApp(ReviewCommand reviewCommand,
                      ListAgentsCommand listAgentsCommand,
-                     SkillCommand skillCommand) {
+                     SkillCommand skillCommand,
+                     CliOutput output) {
         this.reviewCommand = reviewCommand;
         this.listAgentsCommand = listAgentsCommand;
         this.skillCommand = skillCommand;
+        this.output = output;
     }
 
     public static void main(String[] args) {
@@ -47,10 +51,69 @@ public class ReviewApp {
 
     public int execute(String[] args) {
         if (args == null || args.length == 0) {
-            CliUsage.printGeneral(System.out);
+            CliUsage.printGeneral(output);
             return ExitCodes.USAGE;
         }
 
+        GlobalOptions globalOptions = parseGlobalOptions(args);
+        boolean verbose = globalOptions.verbose();
+        boolean versionRequested = globalOptions.versionRequested();
+        List<String> remaining = globalOptions.remainingArgs();
+
+        if (verbose) {
+            enableVerboseLogging();
+        }
+
+        if (versionRequested) {
+            String version = getClass().getPackage().getImplementationVersion();
+            output.println("Multi-Agent Reviewer " + (version != null ? version : "dev"));
+            return ExitCodes.OK;
+        }
+
+        String[] filteredArgs = remaining.toArray(String[]::new);
+        if (filteredArgs.length == 0) {
+            CliUsage.printGeneral(output);
+            return ExitCodes.USAGE;
+        }
+
+        // Treat --help / -h as general help only when no subcommand is provided.
+        boolean hasHelpFlag = CliParsing.hasHelpFlag(filteredArgs);
+        boolean hasSubcommand = Arrays.stream(filteredArgs)
+            .anyMatch(SUBCOMMANDS::contains);
+        if (hasHelpFlag && !hasSubcommand) {
+            CliUsage.printGeneral(output);
+            return ExitCodes.OK;
+        }
+
+        int startIndex = 0;
+        if ("review".equals(filteredArgs[0])) {
+            if (filteredArgs.length == 1) {
+                CliUsage.printGeneral(output);
+                return ExitCodes.USAGE;
+            }
+            startIndex = 1;
+        }
+
+        String command = filteredArgs[startIndex];
+        String[] commandArgs = Arrays.copyOfRange(filteredArgs, startIndex + 1, filteredArgs.length);
+
+        return executeCommand(command, commandArgs);
+    }
+
+    private int executeCommand(String command, String[] commandArgs) {
+        return switch (command) {
+            case "run" -> reviewCommand.execute(commandArgs);
+            case "list" -> listAgentsCommand.execute(commandArgs);
+            case "skill" -> skillCommand.execute(commandArgs);
+            default -> {
+                output.errorln("Unknown command: " + command);
+                CliUsage.printGeneralError(output);
+                yield ExitCodes.USAGE;
+            }
+        };
+    }
+
+    private GlobalOptions parseGlobalOptions(String[] args) {
         boolean verbose = false;
         boolean versionRequested = false;
         List<String> remaining = new ArrayList<>();
@@ -61,54 +124,10 @@ public class ReviewApp {
                 default -> remaining.add(arg);
             }
         }
+        return new GlobalOptions(verbose, versionRequested, List.copyOf(remaining));
+    }
 
-        if (verbose) {
-            enableVerboseLogging();
-        }
-
-        if (versionRequested) {
-            String version = getClass().getPackage().getImplementationVersion();
-            System.out.println("Multi-Agent Reviewer " + (version != null ? version : "dev"));
-            return ExitCodes.OK;
-        }
-
-        String[] filteredArgs = remaining.toArray(String[]::new);
-        if (filteredArgs.length == 0) {
-            CliUsage.printGeneral(System.out);
-            return ExitCodes.USAGE;
-        }
-
-        // Treat --help / -h as general help only when no subcommand is provided.
-        boolean hasHelpFlag = CliParsing.hasHelpFlag(filteredArgs);
-        boolean hasSubcommand = Arrays.stream(filteredArgs)
-            .anyMatch(SUBCOMMANDS::contains);
-        if (hasHelpFlag && !hasSubcommand) {
-            CliUsage.printGeneral(System.out);
-            return ExitCodes.OK;
-        }
-
-        int startIndex = 0;
-        if ("review".equals(filteredArgs[0])) {
-            if (filteredArgs.length == 1) {
-                CliUsage.printGeneral(System.out);
-                return ExitCodes.USAGE;
-            }
-            startIndex = 1;
-        }
-
-        String command = filteredArgs[startIndex];
-        String[] commandArgs = Arrays.copyOfRange(filteredArgs, startIndex + 1, filteredArgs.length);
-
-        return switch (command) {
-            case "run" -> reviewCommand.execute(commandArgs);
-            case "list" -> listAgentsCommand.execute(commandArgs);
-            case "skill" -> skillCommand.execute(commandArgs);
-            default -> {
-                System.err.println("Unknown command: " + command);
-                CliUsage.printGeneral(System.err);
-                yield ExitCodes.USAGE;
-            }
-        };
+    private record GlobalOptions(boolean verbose, boolean versionRequested, List<String> remainingArgs) {
     }
 
     /// Enables debug-level logging at runtime.
@@ -123,7 +142,7 @@ public class ReviewApp {
             context.getLogger("dev.logicojp")
                 .setLevel(Level.DEBUG);
         } catch (ClassCastException e) {
-            System.err.println("Failed to enable verbose logging (Logback not available): " + e.getMessage());
+            output.errorln("Failed to enable verbose logging (Logback not available): " + e.getMessage());
         }
     }
 }

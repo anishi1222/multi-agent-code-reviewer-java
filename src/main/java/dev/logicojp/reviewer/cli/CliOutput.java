@@ -29,10 +29,14 @@ public class CliOutput {
     }
 
     public void println(String message) {
-        out.println(message);
+        writeLine(out, message);
     }
 
     public void errorln(String message) {
-        err.println(message);
+        writeLine(err, message);
+    }
+
+    private void writeLine(PrintStream stream, String message) {
+        stream.println(message);
     }
 }

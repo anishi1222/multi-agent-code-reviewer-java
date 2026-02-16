@@ -14,6 +14,8 @@ public final class CustomInstructionSafetyValidator {
     private static final Logger logger = LoggerFactory.getLogger(CustomInstructionSafetyValidator.class);
 
     private static final int MAX_INSTRUCTION_SIZE = 32 * 1024;
+    private static final int MAX_UNTRUSTED_INSTRUCTION_SIZE = 8 * 1024;
+    private static final int MAX_INSTRUCTION_LINES = 300;
     private static final List<Pattern> SUSPICIOUS_PATTERNS = List.of(
         Pattern.compile("ignore\\s+(all\\s+)?(previous|prior|above)\\s+instructions?", Pattern.CASE_INSENSITIVE),
         Pattern.compile("disregard\\s+(all\\s+)?(previous|prior|above)", Pattern.CASE_INSENSITIVE),
@@ -35,6 +37,8 @@ public final class CustomInstructionSafetyValidator {
     );
     private static final Pattern CONTROL_CHARS_PATTERN = Pattern.compile("[\\p{Cf}\\p{Cc}]");
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern DELIMITER_INJECTION_PATTERN = Pattern.compile(
+        "---\\s*(BEGIN|END|SYSTEM|OVERRIDE)", Pattern.CASE_INSENSITIVE);
 
     public record ValidationResult(boolean safe, String reason) {}
 
@@ -42,30 +46,47 @@ public final class CustomInstructionSafetyValidator {
     }
 
     public static ValidationResult validate(CustomInstruction instruction) {
+        return validate(instruction, false);
+    }
+
+    public static ValidationResult validate(CustomInstruction instruction, boolean trusted) {
         if (instruction == null || instruction.isEmpty()) {
             return new ValidationResult(true, "empty");
         }
 
         String content = instruction.content();
-        if (content.length() > MAX_INSTRUCTION_SIZE) {
+        int maxSize = trusted ? MAX_INSTRUCTION_SIZE : MAX_UNTRUSTED_INSTRUCTION_SIZE;
+        if (content.length() > maxSize) {
             return new ValidationResult(false, "size limit exceeded");
+        }
+        if (content.lines().count() > MAX_INSTRUCTION_LINES) {
+            return new ValidationResult(false, "line count limit exceeded");
         }
 
         String normalized = normalize(content);
         if (SUSPICIOUS_COMBINED_PATTERN.matcher(normalized).find()) {
             return new ValidationResult(false, "potential prompt-injection pattern");
         }
+        if (DELIMITER_INJECTION_PATTERN.matcher(normalized).find()) {
+            return new ValidationResult(false, "potential delimiter injection pattern");
+        }
 
         return new ValidationResult(true, "ok");
     }
 
     public static List<CustomInstruction> filterSafe(List<CustomInstruction> instructions, String logPrefix) {
+        return filterSafe(instructions, logPrefix, false);
+    }
+
+    public static List<CustomInstruction> filterSafe(List<CustomInstruction> instructions,
+                                                     String logPrefix,
+                                                     boolean trusted) {
         if (instructions == null || instructions.isEmpty()) {
             return List.of();
         }
         return instructions.stream()
             .filter(instruction -> {
-                ValidationResult validation = validate(instruction);
+                ValidationResult validation = validate(instruction, trusted);
                 if (!validation.safe()) {
                     logger.warn("{} {}: {}", logPrefix, instruction.sourcePath(), validation.reason());
                 }

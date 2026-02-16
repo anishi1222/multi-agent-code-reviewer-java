@@ -27,9 +27,9 @@ class ModelConfigTest {
 
         @Test
         @DisplayName("単一モデルコンストラクタは全フィールドに同じモデルを設定する")
-        void singleModelConstructorSetsAllFields() {
+        void builderAllModelsSetsAllFields() {
             String model = "gpt-4o";
-            ModelConfig config = new ModelConfig(model);
+            ModelConfig config = ModelConfig.builder().allModels(model).build();
 
             assertThat(config.reviewModel()).isEqualTo(model);
             assertThat(config.reportModel()).isEqualTo(model);
@@ -39,8 +39,8 @@ class ModelConfigTest {
 
         @Test
         @DisplayName("3引数コンストラクタは各フィールドを個別に設定しデフォルトeffortを使用する")
-        void threeArgConstructorSetsIndividualFields() {
-            ModelConfig config = new ModelConfig("model-a", "model-b", "model-c");
+        void canonicalConstructorSetsIndividualFields() {
+            ModelConfig config = new ModelConfig("model-a", "model-b", "model-c", null, null);
 
             assertThat(config.reviewModel()).isEqualTo("model-a");
             assertThat(config.reportModel()).isEqualTo("model-b");
@@ -50,8 +50,8 @@ class ModelConfigTest {
 
         @Test
         @DisplayName("4引数コンストラクタはreasoningEffortを個別に設定する")
-        void fourArgConstructorSetsReasoningEffort() {
-            ModelConfig config = new ModelConfig("model-a", "model-b", "model-c", "low");
+        void canonicalConstructorSetsReasoningEffort() {
+            ModelConfig config = new ModelConfig("model-a", "model-b", "model-c", "low", null);
 
             assertThat(config.reviewModel()).isEqualTo("model-a");
             assertThat(config.reportModel()).isEqualTo("model-b");
@@ -62,7 +62,7 @@ class ModelConfigTest {
         @Test
         @DisplayName("nullのフィールドはデフォルト値に変換される")
         void nullFieldsAreConvertedToDefaults() {
-            ModelConfig config = new ModelConfig(null, null, null, null);
+            ModelConfig config = new ModelConfig(null, null, null, null, null);
 
             assertThat(config.reviewModel()).isEqualTo(ModelConfig.DEFAULT_MODEL);
             assertThat(config.reportModel()).isEqualTo(ModelConfig.DEFAULT_MODEL);
@@ -73,7 +73,7 @@ class ModelConfigTest {
         @Test
         @DisplayName("空白のみのフィールドはデフォルト値に変換される")
         void blankFieldsAreConvertedToDefaults() {
-            ModelConfig config = new ModelConfig("  ", "\t", "\n", "  ");
+            ModelConfig config = new ModelConfig("  ", "\t", "\n", "  ", null);
 
             assertThat(config.reviewModel()).isEqualTo(ModelConfig.DEFAULT_MODEL);
             assertThat(config.reportModel()).isEqualTo(ModelConfig.DEFAULT_MODEL);
@@ -84,7 +84,7 @@ class ModelConfigTest {
         @Test
         @DisplayName("空文字列のフィールドはデフォルト値に変換される")
         void emptyFieldsAreConvertedToDefaults() {
-            ModelConfig config = new ModelConfig("", "", "", "");
+            ModelConfig config = new ModelConfig("", "", "", "", null);
 
             assertThat(config.reviewModel()).isEqualTo(ModelConfig.DEFAULT_MODEL);
             assertThat(config.reportModel()).isEqualTo(ModelConfig.DEFAULT_MODEL);
@@ -272,7 +272,7 @@ class ModelConfigTest {
         @Test
         @DisplayName("toStringはモデル名とreasoningEffortとdefaultModelを含む")
         void toStringContainsModelNamesAndEffort() {
-            ModelConfig config = new ModelConfig("r-model", "p-model", "s-model", "medium");
+            ModelConfig config = new ModelConfig("r-model", "p-model", "s-model", "medium", null);
 
             String result = config.toString();
 

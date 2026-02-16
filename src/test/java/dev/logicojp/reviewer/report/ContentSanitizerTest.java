@@ -4,6 +4,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("ContentSanitizer")
@@ -126,6 +128,20 @@ class ContentSanitizerTest {
         void preservesCleanContent() {
             String input = "### Finding 1\n\n| Priority | High |";
             assertThat(ContentSanitizer.sanitize(input)).isEqualTo(input);
+        }
+
+        @Test
+        @DisplayName("差し替え戦略を利用してsanitizeできる")
+        void usesInjectedSanitizationStrategy() {
+            var strategyCalled = new AtomicBoolean(false);
+
+            String result = ContentSanitizer.sanitize("input", content -> {
+                strategyCalled.set(true);
+                return "  INJECTED  ";
+            });
+
+            assertThat(strategyCalled).isTrue();
+            assertThat(result).isEqualTo("INJECTED");
         }
     }
 }

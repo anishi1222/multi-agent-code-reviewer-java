@@ -100,38 +100,36 @@ public class AgentConfigLoader {
             
             logger.info("Loading agents from: {}", directory);
 
-            try (Stream<Path> paths = Files.list(directory)) {
-                var files = paths
-                    .filter(this::isAgentFile)
-                    .filter(p -> filter == null || filter.contains(extractAgentName(p)))
-                    .toList();
-
-                for (Path file : files) {
-                    try {
-                        AgentConfig config = markdownParser.parse(file);
-                        if (config != null) {
-                            List<SkillDefinition> agentSkills = collectSkillsForAgent(
-                                config.name(), globalSkills);
-                            if (!agentSkills.isEmpty()) {
-                                config = config.withSkills(agentSkills);
-                                logger.info("Loaded {} skills for agent: {}", agentSkills.size(), config.name());
-                            }
-                            config.validateRequired();
-                            agents.put(config.name(), config);
-                            logger.info("Loaded agent: {} from {}", config.name(), file.getFileName());
-                        }
-                    } catch (Exception e) {
-                        logger.error("Failed to load agent from {}: {}", file, e.getMessage());
+            List<Path> files = listAgentFiles(directory, filter);
+            for (Path file : files) {
+                try {
+                    AgentConfig config = markdownParser.parse(file);
+                    if (config != null) {
+                        config = applySkills(config, globalSkills);
+                        config.validateRequired();
+                        agents.put(config.name(), config);
+                        logger.info("Loaded agent: {} from {}", config.name(), file.getFileName());
                     }
+                } catch (Exception e) {
+                    logger.error("Failed to load agent from {}: {}", file, e.getMessage());
                 }
             }
         }
-        
+
         if (agents.isEmpty()) {
             logger.warn("No agents found in any configured directory");
         }
-        
+
         return agents;
+    }
+
+    private AgentConfig applySkills(AgentConfig config, List<SkillDefinition> globalSkills) {
+        List<SkillDefinition> agentSkills = collectSkillsForAgent(config.name(), globalSkills);
+        if (agentSkills.isEmpty()) {
+            return config;
+        }
+        logger.info("Loaded {} skills for agent: {}", agentSkills.size(), config.name());
+        return config.withSkills(agentSkills);
     }
 
     /// Collects skills for a specific agent from .github/skills/.
@@ -143,13 +141,17 @@ public class AgentConfigLoader {
         List<SkillDefinition> skills = new ArrayList<>();
 
         for (SkillDefinition skill : globalSkills) {
-            String skillAgent = skill.metadata().get("agent");
-            if (skillAgent == null || skillAgent.equals(agentName)) {
+            if (isSkillApplicableToAgent(skill, agentName)) {
                 skills.add(skill);
             }
         }
 
         return skills;
+    }
+
+    private boolean isSkillApplicableToAgent(SkillDefinition skill, String agentName) {
+        String skillAgent = skill.metadata().get("agent");
+        return skillAgent == null || skillAgent.equals(agentName);
     }
 
     /// Loads skills from the configured skills directory following the Agent Skills specification.
@@ -196,15 +198,27 @@ public class AgentConfigLoader {
             if (!Files.exists(directory)) {
                 continue;
             }
-            
-            try (Stream<Path> paths = Files.list(directory)) {
-                paths.filter(this::isAgentFile)
-                    .map(this::extractAgentName)
-                    .forEach(agentNames::add);
+
+            List<Path> files = listAgentFiles(directory);
+            for (Path file : files) {
+                agentNames.add(extractAgentName(file));
             }
         }
         
         return new ArrayList<>(agentNames);
+    }
+
+    private List<Path> listAgentFiles(Path directory) throws IOException {
+        return listAgentFiles(directory, null);
+    }
+
+    private List<Path> listAgentFiles(Path directory, Set<String> filter) throws IOException {
+        try (Stream<Path> paths = Files.list(directory)) {
+            return paths
+                .filter(this::isAgentFile)
+                .filter(path -> filter == null || filter.contains(extractAgentName(path)))
+                .toList();
+        }
     }
     
     private String extractAgentName(Path file) {

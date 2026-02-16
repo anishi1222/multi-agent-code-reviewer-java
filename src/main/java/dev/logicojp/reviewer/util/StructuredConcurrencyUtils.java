@@ -35,7 +35,27 @@ public final class StructuredConcurrencyUtils {
         var timedOut = new AtomicBoolean(false);
 
         // Schedule an interrupt on the owner thread after the timeout
-        Thread timeoutThread = Thread.ofVirtual().name("join-timeout").start(() -> {
+        Thread timeoutThread = startTimeoutThread(ownerThread, timedOut, timeout, unit);
+
+        try {
+            scope.join();
+        } catch (InterruptedException e) {
+            if (timedOut.get()) {
+                // Clear the interrupt flag since we are converting to TimeoutException
+                Thread.interrupted();
+                throw timeoutException(timeout, unit);
+            }
+            throw e;
+        } finally {
+            timeoutThread.interrupt();
+        }
+    }
+
+    private static Thread startTimeoutThread(Thread ownerThread,
+                                             AtomicBoolean timedOut,
+                                             long timeout,
+                                             TimeUnit unit) {
+        return Thread.ofVirtual().name("join-timeout").start(() -> {
             try {
                 Thread.sleep(unit.toMillis(timeout));
                 timedOut.set(true);
@@ -44,19 +64,9 @@ public final class StructuredConcurrencyUtils {
                 // Timeout cancelled — scope.join() completed in time
             }
         });
+    }
 
-        try {
-            scope.join();
-        } catch (InterruptedException e) {
-            if (timedOut.get()) {
-                // Clear the interrupt flag since we are converting to TimeoutException
-                Thread.interrupted();
-                throw new TimeoutException(
-                    "Join timed out after " + timeout + " " + unit.name().toLowerCase());
-            }
-            throw e;
-        } finally {
-            timeoutThread.interrupt();
-        }
+    private static TimeoutException timeoutException(long timeout, TimeUnit unit) {
+        return new TimeoutException("Join timed out after " + timeout + " " + unit.name().toLowerCase());
     }
 }

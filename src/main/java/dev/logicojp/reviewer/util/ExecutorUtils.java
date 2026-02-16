@@ -16,15 +16,29 @@ public final class ExecutorUtils {
     /// @param executor the executor service to shut down (may be {@code null})
     /// @param timeoutSeconds maximum seconds to wait for orderly termination
     public static void shutdownGracefully(ExecutorService executor, long timeoutSeconds) {
-        if (executor == null) return;
+        if (executor == null) {
+            return;
+        }
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(timeoutSeconds, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
+            if (isNotTerminated(executor, timeoutSeconds)) {
+                forceShutdown(executor);
             }
         } catch (InterruptedException _) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
+            handleInterruptedShutdown(executor);
         }
+    }
+
+    private static boolean isNotTerminated(ExecutorService executor, long timeoutSeconds) throws InterruptedException {
+        return !executor.awaitTermination(timeoutSeconds, TimeUnit.SECONDS);
+    }
+
+    private static void forceShutdown(ExecutorService executor) {
+        executor.shutdownNow();
+    }
+
+    private static void handleInterruptedShutdown(ExecutorService executor) {
+        forceShutdown(executor);
+        Thread.currentThread().interrupt();
     }
 }

@@ -26,6 +26,7 @@ public class TemplateService {
     private final TemplateConfig config;
     private final Map<String, String> templateCache = new ConcurrentHashMap<>();
     private static final Pattern TEMPLATE_NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+\\.md");
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");
 
     @Inject
     public TemplateService(TemplateConfig config) {
@@ -53,36 +54,94 @@ public class TemplateService {
 
     /// Loads template content from the filesystem or classpath.
     private String loadTemplateFromSource(String templateName) {
+        if (!isValidTemplateName(templateName)) {
+            return "";
+        }
+
+        Path templatePath = resolveTemplatePath(templateName);
+        if (templatePath == null) {
+            return "";
+        }
+
+        String content = loadTemplateByPath(templateName, templatePath);
+        if (content != null) {
+            return content;
+        }
+
+        warnTemplateNotFound(templateName, templatePath);
+        return "";
+    }
+
+    private String loadTemplateByPath(String templateName, Path templatePath) {
+
+        String fromFile = loadTemplateFromFile(templatePath);
+        if (fromFile != null) {
+            return fromFile;
+        }
+
+        String resourcePath = toResourcePath(templateName);
+        String fromClasspath = loadTemplateFromClasspath(resourcePath);
+        if (fromClasspath != null) {
+            return fromClasspath;
+        }
+
+        return null;
+    }
+
+    private void warnTemplateNotFound(String templateName, Path templatePath) {
+        String resourcePath = toResourcePath(templateName);
+        logger.warn("Template not found: {} (checked {} and classpath:{})",
+            templateName, templatePath, resourcePath);
+    }
+
+    private boolean isValidTemplateName(String templateName) {
         if (templateName == null || templateName.isBlank()) {
             logger.warn("Invalid template name rejected: blank");
-            return "";
+            return false;
         }
-
-        // Validate template name with allowlist to prevent path traversal
         if (!TEMPLATE_NAME_PATTERN.matcher(templateName).matches()) {
             logger.warn("Invalid template name rejected: {}", templateName);
-            return "";
+            return false;
         }
+        return true;
+    }
 
-        Path baseDirectory = Path.of(config.directory()).toAbsolutePath().normalize();
+    private Path resolveTemplatePath(String templateName) {
+        Path baseDirectory = resolveBaseDirectory();
         Path templatePath = baseDirectory.resolve(templateName).normalize();
-        if (!templatePath.startsWith(baseDirectory)) {
+        if (isPathTraversal(templatePath, baseDirectory)) {
             logger.warn("Template path traversal rejected: {}", templateName);
-            return "";
+            return null;
         }
+        return templatePath;
+    }
 
-        // Try external file first
-        if (Files.exists(templatePath)) {
-            try {
-                logger.debug("Loading template from file: {}", templatePath);
-                return Files.readString(templatePath);
-            } catch (IOException e) {
-                logger.warn("Failed to read template file {}: {}", templatePath, e.getMessage());
-            }
+    private Path resolveBaseDirectory() {
+        return Path.of(config.directory()).toAbsolutePath().normalize();
+    }
+
+    private boolean isPathTraversal(Path templatePath, Path baseDirectory) {
+        return !templatePath.startsWith(baseDirectory);
+    }
+
+    private String loadTemplateFromFile(Path templatePath) {
+        if (!Files.exists(templatePath)) {
+            return null;
         }
+        try {
+            logger.debug("Loading template from file: {}", templatePath);
+            return Files.readString(templatePath);
+        } catch (IOException e) {
+            logger.warn("Failed to read template file {}: {}", templatePath, e.getMessage());
+            return null;
+        }
+    }
 
-        // Fall back to classpath resource
-        String resourcePath = config.directory() + "/" + templateName;
+    private String toResourcePath(String templateName) {
+        return config.directory() + "/" + templateName;
+    }
+
+    private String loadTemplateFromClasspath(String resourcePath) {
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
             if (is != null) {
                 logger.debug("Loading template from classpath: {}", resourcePath);
@@ -91,14 +150,8 @@ public class TemplateService {
         } catch (IOException e) {
             logger.warn("Failed to read template from classpath {}: {}", resourcePath, e.getMessage());
         }
-
-        logger.warn("Template not found: {} (checked {} and classpath:{})", 
-            templateName, templatePath, resourcePath);
-        return "";
+        return null;
     }
-
-    /// Pattern matching `{{word}}` placeholders for one-pass replacement.
-    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");
 
     /// Applies placeholder substitutions to a template in a single pass.
     /// Placeholders are in the format {{name}}.

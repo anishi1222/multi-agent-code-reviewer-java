@@ -49,7 +49,22 @@ public class ReviewOrchestratorFactory {
                                      List<CustomInstruction> customInstructions,
                                      String reasoningEffort,
                                      String outputConstraints) {
-        var orchestratorConfig = new ReviewOrchestrator.OrchestratorConfig(
+        var orchestratorConfig = buildOrchestratorConfig(
+            githubToken,
+            executionConfig,
+            customInstructions,
+            reasoningEffort,
+            outputConstraints
+        );
+        return createOrchestrator(orchestratorConfig);
+    }
+
+    private ReviewOrchestrator.OrchestratorConfig buildOrchestratorConfig(String githubToken,
+                                                                           ExecutionConfig executionConfig,
+                                                                           List<CustomInstruction> customInstructions,
+                                                                           String reasoningEffort,
+                                                                           String outputConstraints) {
+        return new ReviewOrchestrator.OrchestratorConfig(
             githubToken,
             githubMcpConfig,
             localFileConfig,
@@ -59,6 +74,9 @@ public class ReviewOrchestratorFactory {
             reasoningEffort,
             outputConstraints
         );
+    }
+
+    private ReviewOrchestrator createOrchestrator(ReviewOrchestrator.OrchestratorConfig orchestratorConfig) {
         return new ReviewOrchestrator(copilotService.getClient(), orchestratorConfig);
     }
 }

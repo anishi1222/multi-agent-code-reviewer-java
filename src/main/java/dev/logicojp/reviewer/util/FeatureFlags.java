@@ -11,11 +11,15 @@ public record FeatureFlags(
 
     /// Returns {@code true} if global Structured Concurrency is enabled.
     public boolean isStructuredConcurrencyEnabled() {
-        return structuredConcurrency;
+        return isEnabled(structuredConcurrency);
     }
 
     /// Returns {@code true} if Structured Concurrency is enabled for skill execution.
     public boolean isStructuredConcurrencyEnabledForSkills() {
-        return structuredConcurrencySkills;
+        return isEnabled(structuredConcurrencySkills);
+    }
+
+    private static boolean isEnabled(boolean value) {
+        return value;
     }
 }

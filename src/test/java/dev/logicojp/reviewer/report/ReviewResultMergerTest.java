@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -100,6 +101,40 @@ class ReviewResultMergerTest {
     @Nested
     @DisplayName("mergeByAgent - マルチパス")
     class MultiPass {
+
+        @Test
+        @DisplayName("差し替えた戦略を利用してマージ処理を実行できる")
+        void usesInjectedStrategies() {
+            var agent = createAgent("security");
+            var result1 = successResult(agent, "raw-content-1");
+            var result2 = successResult(agent, "raw-content-2");
+
+            var extractorCalled = new AtomicBoolean(false);
+            var keyResolverCalled = new AtomicBoolean(false);
+            var formatterCalled = new AtomicBoolean(false);
+
+            List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(
+                List.of(result1, result2),
+                content -> {
+                    extractorCalled.set(true);
+                    return List.of(new ReviewFindingParser.FindingBlock("Injected", "body"));
+                },
+                block -> {
+                    keyResolverCalled.set(true);
+                    return "injected-key";
+                },
+                (findings, total, failed) -> {
+                    formatterCalled.set(true);
+                    return "INJECTED";
+                }
+            );
+
+            assertThat(merged).hasSize(1);
+            assertThat(merged.getFirst().content()).isEqualTo("INJECTED");
+            assertThat(extractorCalled).isTrue();
+            assertThat(keyResolverCalled).isTrue();
+            assertThat(formatterCalled).isTrue();
+        }
 
         @Test
         @DisplayName("同一エージェントの複数成功結果がマージされる")

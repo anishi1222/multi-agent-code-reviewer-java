@@ -13,7 +13,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /// Loads custom instructions from repository or local directory.
 ///
@@ -66,6 +65,7 @@ public class CustomInstructionLoader {
 
     private final List<Path> additionalInstructionPaths;
     private final PromptLoader promptLoader;
+    private final ScopedInstructionLoader scopedInstructionLoader;
     private final boolean loadPrompts;
 
     @Inject
@@ -82,6 +82,7 @@ public class CustomInstructionLoader {
             ? List.copyOf(additionalInstructionPaths) 
             : List.of();
         this.promptLoader = new PromptLoader();
+        this.scopedInstructionLoader = new ScopedInstructionLoader(INSTRUCTIONS_DIRECTORY, INSTRUCTIONS_EXTENSION);
         this.loadPrompts = loadPrompts;
     }
 
@@ -147,42 +148,7 @@ public class CustomInstructionLoader {
     /// Files must have the .instructions.md extension and may contain YAML frontmatter
     /// with applyTo and description fields.
     List<CustomInstruction> loadFromInstructionsDirectory(Path baseDirectory) {
-        Path instructionsDir = baseDirectory.resolve(INSTRUCTIONS_DIRECTORY);
-        if (!Files.isDirectory(instructionsDir)) {
-            return List.of();
-        }
-
-        List<CustomInstruction> instructions = new ArrayList<>();
-        try (Stream<Path> stream = Files.list(instructionsDir)) {
-            stream.filter(Files::isRegularFile)
-                  .filter(p -> p.getFileName().toString().endsWith(INSTRUCTIONS_EXTENSION))
-                  .sorted()
-                  .forEach(path -> {
-                      try {
-                          String rawContent = Files.readString(path, StandardCharsets.UTF_8);
-                          if (rawContent.isBlank()) {
-                              logger.debug("Scoped instruction file is empty: {}", path);
-                              return;
-                          }
-
-                          ParsedInstruction parsed = parseFrontmatter(rawContent);
-                          instructions.add(new CustomInstruction(
-                              path.toString(),
-                              parsed.content().trim(),
-                              InstructionSource.LOCAL_FILE,
-                              parsed.applyTo(),
-                              parsed.description()
-                          ));
-                          logger.info("Loaded scoped instruction from: {} (applyTo: {})", 
-                              path, parsed.applyTo());
-                      } catch (IOException e) {
-                          logger.warn("Failed to read instruction file {}: {}", path, e.getMessage());
-                      }
-                  });
-        } catch (IOException e) {
-            logger.warn("Failed to scan instructions directory {}: {}", instructionsDir, e.getMessage());
-        }
-        return instructions;
+        return scopedInstructionLoader.loadFromInstructionsDirectory(baseDirectory);
     }
 
     /// Loads a single instruction file.

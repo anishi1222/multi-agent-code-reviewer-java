@@ -8,37 +8,48 @@ import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.config.LocalFileConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.report.ReviewResult;
-import dev.logicojp.reviewer.report.ReviewResultMerger;
 import dev.logicojp.reviewer.target.LocalFileProvider;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import dev.logicojp.reviewer.util.ExecutorUtils;
 import dev.logicojp.reviewer.util.FeatureFlags;
-import dev.logicojp.reviewer.util.StructuredConcurrencyUtils;
 import com.github.copilot.sdk.CopilotClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.StructuredTaskScope;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /// Orchestrates parallel execution of multiple review agents.
 public class ReviewOrchestrator implements AutoCloseable {
+
+    @FunctionalInterface
+    interface AgentReviewer {
+        ReviewResult review(ReviewTarget target);
+    }
+
+    @FunctionalInterface
+    interface AgentReviewerFactory {
+        AgentReviewer create(AgentConfig config, ReviewContext context);
+    }
+
+    @FunctionalInterface
+    interface LocalSourceCollector {
+        LocalFileProvider.CollectionResult collectAndGenerate();
+    }
+
+    @FunctionalInterface
+    interface LocalSourceCollectorFactory {
+        LocalSourceCollector create(Path directory, LocalFileConfig localFileConfig);
+    }
     
     private static final Logger logger = LoggerFactory.getLogger(ReviewOrchestrator.class);
-    
-    private final CopilotClient client;
+
     private final ExecutionConfig executionConfig;
     private final Semaphore concurrencyLimit;
     private final List<CustomInstruction> customInstructions;
@@ -47,6 +58,8 @@ public class ReviewOrchestrator implements AutoCloseable {
     private final boolean structuredConcurrencyEnabled;
     /// Initialized in constructor — null when Structured Concurrency mode is active.
     private final ExecutorService executorService;
+    /// Dedicated executor for per-agent review execution to avoid commonPool usage.
+    private final ExecutorService agentExecutionExecutor;
     /// Shared scheduler for idle-timeout handling across all agents.
     private final ScheduledExecutorService sharedScheduler;
     /// Cached MCP server map — built once and shared across all agent contexts.
@@ -54,6 +67,13 @@ public class ReviewOrchestrator implements AutoCloseable {
     private final long localMaxFileSize;
     private final long localMaxTotalSize;
     private final LocalFileConfig localFileConfig;
+    private final AgentReviewerFactory reviewerFactory;
+    private final LocalSourceCollectorFactory localSourceCollectorFactory;
+    private final ReviewResultPipeline reviewResultPipeline;
+    private final ReviewExecutionModeRunner reviewExecutionModeRunner;
+    private final AgentReviewExecutor agentReviewExecutor;
+    private final ReviewContextFactory reviewContextFactory;
+    private final LocalSourcePrecomputer localSourcePrecomputer;
 
     public record OrchestratorConfig(
         String githubToken,
@@ -68,7 +88,24 @@ public class ReviewOrchestrator implements AutoCloseable {
     }
 
     public ReviewOrchestrator(CopilotClient client, OrchestratorConfig orchestratorConfig) {
-        this.client = client;
+        this(
+            client,
+            orchestratorConfig,
+            (config, context) -> {
+                ReviewAgent agent = new ReviewAgent(config, context);
+                return agent::review;
+            },
+            (directory, config) -> {
+                LocalFileProvider provider = new LocalFileProvider(directory, config);
+                return provider::collectAndGenerate;
+            }
+        );
+    }
+
+    ReviewOrchestrator(CopilotClient client,
+                       OrchestratorConfig orchestratorConfig,
+                       AgentReviewerFactory reviewerFactory,
+                       LocalSourceCollectorFactory localSourceCollectorFactory) {
         this.executionConfig = orchestratorConfig.executionConfig();
         // Limit concurrent agent executions via --parallelism
         this.concurrencyLimit = new Semaphore(executionConfig.parallelism());
@@ -80,6 +117,7 @@ public class ReviewOrchestrator implements AutoCloseable {
         this.executorService = this.structuredConcurrencyEnabled
             ? null
             : Executors.newVirtualThreadPerTaskExecutor();
+        this.agentExecutionExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.sharedScheduler = Executors.newSingleThreadScheduledExecutor(
             Thread.ofVirtual().name("idle-timeout-shared", 0).factory());
         this.cachedMcpServers = GithubMcpConfig.buildMcpServers(
@@ -87,6 +125,37 @@ public class ReviewOrchestrator implements AutoCloseable {
         this.localFileConfig = orchestratorConfig.localFileConfig();
         this.localMaxFileSize = localFileConfig.maxFileSize();
         this.localMaxTotalSize = localFileConfig.maxTotalSize();
+        this.reviewerFactory = Objects.requireNonNull(reviewerFactory);
+        this.localSourceCollectorFactory = Objects.requireNonNull(localSourceCollectorFactory);
+        this.reviewResultPipeline = new ReviewResultPipeline(logger);
+        this.agentReviewExecutor = new AgentReviewExecutor(
+            logger,
+            concurrencyLimit,
+            agentExecutionExecutor,
+            this.reviewerFactory
+        );
+        this.reviewExecutionModeRunner = new ReviewExecutionModeRunner(
+            executionConfig,
+            executorService,
+            reviewResultPipeline
+        );
+        this.reviewContextFactory = new ReviewContextFactory(
+            client,
+            executionConfig,
+            customInstructions,
+            reasoningEffort,
+            outputConstraints,
+            cachedMcpServers,
+            localMaxFileSize,
+            localMaxTotalSize,
+            localFileConfig,
+            sharedScheduler
+        );
+        this.localSourcePrecomputer = new LocalSourcePrecomputer(
+            logger,
+            this.localSourceCollectorFactory,
+            localFileConfig
+        );
         
         logger.info("Parallelism set to {}", executionConfig.parallelism());
         if (executionConfig.reviewPasses() > 1) {
@@ -97,49 +166,6 @@ public class ReviewOrchestrator implements AutoCloseable {
         }
     }
     
-    /// Executes a single agent with semaphore control and error handling.
-    /// Shared by both virtual thread and structured concurrency execution modes.
-    private ReviewResult executeAgentSafely(AgentConfig config, ReviewTarget target,
-                                            ReviewContext context,
-                                            long perAgentTimeoutMinutes) {
-        try {
-            concurrencyLimit.acquire();
-            try {
-                var agent = new ReviewAgent(config, context);
-                return CompletableFuture.supplyAsync(() -> agent.review(target))
-                    .orTimeout(perAgentTimeoutMinutes, TimeUnit.MINUTES)
-                    .exceptionally(ex -> ReviewResult.builder()
-                        .agentConfig(config)
-                        .repository(target.displayName())
-                        .success(false)
-                        .errorMessage("Review timed out or failed: " + ex.getMessage())
-                        .build())
-                    .join();
-            } finally {
-                concurrencyLimit.release();
-            }
-        } catch (InterruptedException _) {
-            Thread.currentThread().interrupt();
-            return ReviewResult.builder()
-                .agentConfig(config)
-                .repository(target.displayName())
-                .success(false)
-                .errorMessage("Review interrupted while waiting for concurrency permit")
-                .build();
-        }
-    }
-
-    /// Collects results, filters nulls, and logs completion summary.
-    private List<ReviewResult> collectAndLogResults(List<ReviewResult> results) {
-        List<ReviewResult> filtered = results.stream()
-            .filter(Objects::nonNull)
-            .toList();
-        long successCount = filtered.stream().filter(ReviewResult::isSuccess).count();
-        logger.info("Completed {} reviews (success: {}, failed: {})",
-            filtered.size(), successCount, filtered.size() - successCount);
-        return filtered;
-    }
-
     /// Executes reviews for all provided agents in parallel.
     /// When `reviewPasses > 1`, each agent is reviewed multiple times in parallel
     /// and the results are merged per agent before returning.
@@ -149,198 +175,48 @@ public class ReviewOrchestrator implements AutoCloseable {
     public List<ReviewResult> executeReviews(Map<String, AgentConfig> agents, ReviewTarget target) {
         int reviewPasses = executionConfig.reviewPasses();
         int totalTasks = agents.size() * reviewPasses;
+        logReviewStart(agents.size(), reviewPasses, totalTasks, target);
+
+        String cachedSourceContent = localSourcePrecomputer.preComputeSourceContent(target);
+
+        ReviewContext sharedContext = reviewContextFactory.create(cachedSourceContent);
+
+        return executeByMode(agents, target, sharedContext);
+    }
+
+    private void logReviewStart(int agentCount,
+                                int reviewPasses,
+                                int totalTasks,
+                                ReviewTarget target) {
         logger.info("Starting parallel review for {} agents ({} passes each, {} total tasks) on target: {}",
-            agents.size(), reviewPasses, totalTasks, target.displayName());
-
-        String cachedSourceContent = preComputeSourceContent(target);
-
-        ReviewContext sharedContext = createContext(cachedSourceContent);
-
-        if (structuredConcurrencyEnabled) {
-            return executeReviewsStructured(agents, target, sharedContext);
-        }
-
-        return executeReviewsAsync(agents, target, sharedContext, reviewPasses, totalTasks);
+            agentCount, reviewPasses, totalTasks, target.displayName());
     }
 
-    private String preComputeSourceContent(ReviewTarget target) {
-        if (!(target instanceof ReviewTarget.LocalTarget(Path directory))) {
-            return null;
-        }
-
-        logger.info("Pre-computing source content for local directory: {}", directory);
-        var fileProvider = new LocalFileProvider(directory, localFileConfig);
-        var collection = fileProvider.collectAndGenerate();
-        logger.info("Collected {} source files from local directory", collection.fileCount());
-        logger.debug("Directory summary:\n{}", collection.directorySummary());
-        return collection.reviewContent();
-    }
-
-    private List<ReviewResult> executeReviewsAsync(Map<String, AgentConfig> agents,
-                                                   ReviewTarget target,
-                                                   ReviewContext sharedContext,
-                                                   int reviewPasses,
-                                                   int totalTasks) {
-        List<CompletableFuture<ReviewResult>> futures = new ArrayList<>(totalTasks);
-        long timeoutMinutes = executionConfig.orchestratorTimeoutMinutes();
-        // Per-agent timeout accounts for retries: each attempt gets the full agent timeout
-        long perAgentTimeoutMinutes = executionConfig.agentTimeoutMinutes()
-            * (executionConfig.maxRetries() + 1L);
-
-        ExecutorService executor = executorService;
-        final ReviewContext context = sharedContext;
-        
-        for (var config : agents.values()) {
-            for (int pass = 1; pass <= reviewPasses; pass++) {
-                final int passNumber = pass;
-                CompletableFuture<ReviewResult> future = CompletableFuture
-                .supplyAsync(() -> {
-                    if (reviewPasses > 1) {
-                        logger.info("Agent {}: starting pass {}/{}",
-                            config.name(), passNumber, reviewPasses);
-                    }
-                    return executeAgentSafely(config, target, context, perAgentTimeoutMinutes);
-                }, executor)
-                    .exceptionally(ex -> {
-                        logger.error("Agent {} (pass {}) failed with timeout or error: {}",
-                            config.name(), passNumber, ex.getMessage(), ex);
-                        return ReviewResult.builder()
-                            .agentConfig(config)
-                            .repository(target.displayName())
-                            .success(false)
-                            .errorMessage("Review timed out or failed (pass %d): %s"
-                                .formatted(passNumber, ex.getMessage()))
-                            .build();
-                    });
-                futures.add(future);
-            }
-        }
-        
-        // Wait for all reviews to complete
-        CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-            futures.toArray(new CompletableFuture[0])
-        );
-        
-        try {
-            allFutures.get(timeoutMinutes + 1, TimeUnit.MINUTES);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.error("Review orchestration interrupted: {}", e.getMessage(), e);
-        } catch (ExecutionException | TimeoutException e) {
-            logger.error("Error waiting for reviews to complete: {}", e.getMessage(), e);
-        }
-        
-        // Collect results
-        List<ReviewResult> results = new ArrayList<>(futures.size());
-        for (CompletableFuture<ReviewResult> future : futures) {
-            try {
-                results.add(future.getNow(null));
-            } catch (Exception e) {
-                logger.error("Error collecting review result: {}", e.getMessage(), e);
-            }
-        }
-
-        return mergeIfRequired(collectAndLogResults(results), reviewPasses);
-    }
-
-    private List<ReviewResult> executeReviewsStructured(Map<String, AgentConfig> agents,
-                                                        ReviewTarget target,
-                                                        ReviewContext sharedContext) {
-        int reviewPasses = executionConfig.reviewPasses();
-        long timeoutMinutes = executionConfig.orchestratorTimeoutMinutes();
-        long perAgentTimeoutMinutes = executionConfig.agentTimeoutMinutes()
-            * (executionConfig.maxRetries() + 1L);
-
-        int totalTasks = agents.size() * reviewPasses;
-        List<StructuredTaskScope.Subtask<ReviewResult>> tasks = new ArrayList<>(totalTasks);
-        try (var scope = StructuredTaskScope.<ReviewResult>open()) {
-            for (var config : agents.values()) {
-                for (int pass = 1; pass <= reviewPasses; pass++) {
-                    final int passNumber = pass;
-                    tasks.add(scope.fork(() -> {
-                        if (reviewPasses > 1) {
-                            logger.info("Agent {}: starting pass {}/{} (structured)",
-                                config.name(), passNumber, reviewPasses);
-                        }
-                        return executeAgentSafely(config, target, sharedContext, perAgentTimeoutMinutes);
-                    }));
-                }
-            }
-
-            try {
-                StructuredConcurrencyUtils.joinWithTimeout(scope, timeoutMinutes + 1, TimeUnit.MINUTES);
-            } catch (TimeoutException e) {
-                logger.error("Structured concurrency timed out after {} minutes", timeoutMinutes, e);
-                scope.close();
-            }
-
-            List<ReviewResult> results = new ArrayList<>(tasks.size());
-            for (var task : tasks) {
-                results.add(summarizeTaskResult(task, target, perAgentTimeoutMinutes));
-            }
-
-            return mergeIfRequired(collectAndLogResults(results), reviewPasses);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            logger.error("Structured concurrency interrupted", e);
-            return List.of();
-        }
-    }
-
-    private List<ReviewResult> mergeIfRequired(List<ReviewResult> collected, int reviewPasses) {
-        if (reviewPasses <= 1) {
-            return collected;
-        }
-
-        List<ReviewResult> merged = ReviewResultMerger.mergeByAgent(collected);
-        logger.info("Merged {} pass results into {} agent results", collected.size(), merged.size());
-        return merged;
-    }
-
-    private ReviewResult summarizeTaskResult(StructuredTaskScope.Subtask<ReviewResult> task,
+    private List<ReviewResult> executeByMode(Map<String, AgentConfig> agents,
                                              ReviewTarget target,
-                                             long perAgentTimeoutMinutes) {
-        return switch (task.state()) {
-            case SUCCESS -> task.get();
-            case FAILED -> {
-                Throwable cause = task.exception();
-                yield ReviewResult.builder()
-                    .agentConfig(null)
-                    .repository(target.displayName())
-                    .success(false)
-                    .errorMessage("Review failed: " + (cause != null ? cause.getMessage() : "unknown"))
-                    .build();
-            }
-            case UNAVAILABLE -> ReviewResult.builder()
-                .agentConfig(null)
-                .repository(target.displayName())
-                .success(false)
-                .errorMessage("Review cancelled after " + perAgentTimeoutMinutes + " minutes")
-                .build();
-        };
-    }
-    
-    private ReviewContext createContext(String cachedSourceContent) {
-        return ReviewContext.builder()
-            .client(client)
-            .timeoutMinutes(executionConfig.agentTimeoutMinutes())
-            .idleTimeoutMinutes(executionConfig.idleTimeoutMinutes())
-            .customInstructions(customInstructions)
-            .reasoningEffort(reasoningEffort)
-            .maxRetries(executionConfig.maxRetries())
-            .outputConstraints(outputConstraints)
-            .cachedMcpServers(cachedMcpServers)
-            .cachedSourceContent(cachedSourceContent)
-                .maxFileSize(localMaxFileSize)
-                .maxTotalSize(localMaxTotalSize)
-            .sharedScheduler(sharedScheduler)
-            .build();
+                                             ReviewContext sharedContext) {
+        if (structuredConcurrencyEnabled) {
+            return reviewExecutionModeRunner.executeStructured(
+                agents,
+                target,
+                sharedContext,
+                agentReviewExecutor::executeAgentSafely
+            );
+        }
+
+        return reviewExecutionModeRunner.executeAsync(
+            agents,
+            target,
+            sharedContext,
+            agentReviewExecutor::executeAgentSafely
+        );
     }
 
     /// Closes executor resources.
     @Override
     public void close() {
         ExecutorUtils.shutdownGracefully(executorService, 60);
+        ExecutorUtils.shutdownGracefully(agentExecutionExecutor, 60);
         ExecutorUtils.shutdownGracefully(sharedScheduler, 10);
     }
 }

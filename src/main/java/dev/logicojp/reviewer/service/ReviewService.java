@@ -57,38 +57,44 @@ public class ReviewService {
         
         logger.info("Executing reviews for {} agents on target: {}", 
             agentConfigs.size(), target.displayName());
-        
-        // Load custom instructions from target only when caller passes null.
-        // Explicit empty list means "do not load any instruction".
-        List<CustomInstruction> effectiveInstructions = customInstructions;
-        if (effectiveInstructions == null) {
-            List<CustomInstruction> loadedInstructions = instructionLoader.loadForTarget(target);
-            List<CustomInstruction> safeInstructions = CustomInstructionSafetyValidator.filterSafe(
-                loadedInstructions,
-                "Skipped unsafe auto-loaded instruction"
-            );
-
-            effectiveInstructions = safeInstructions;
-
-            if (!effectiveInstructions.isEmpty()) {
-                logger.info("Loaded {} custom instruction(s) from target directory",
-                    effectiveInstructions.size());
-            }
-        }
-        
-        // Create config with overridden parallelism
-        ExecutionConfig overriddenConfig = executionConfig.withParallelism(parallelism);
-        
-        // Load output constraints from external template
-        String outputConstraints = templateService.getOutputConstraints();
-        if (outputConstraints != null && !outputConstraints.isBlank()) {
-            logger.info("Loaded output constraints from template ({} chars)", outputConstraints.length());
-        }
+        List<CustomInstruction> effectiveInstructions = resolveEffectiveInstructions(customInstructions, target);
+        ExecutionConfig overriddenConfig = overrideParallelism(parallelism);
+        String outputConstraints = loadOutputConstraints();
         
         try (ReviewOrchestrator orchestrator = orchestratorFactory.create(
             githubToken, overriddenConfig,
             effectiveInstructions, reasoningEffort, outputConstraints)) {
             return orchestrator.executeReviews(agentConfigs, target);
         }
+    }
+
+    private List<CustomInstruction> resolveEffectiveInstructions(List<CustomInstruction> customInstructions,
+                                                                 ReviewTarget target) {
+        if (customInstructions != null) {
+            return customInstructions;
+        }
+
+        List<CustomInstruction> loadedInstructions = instructionLoader.loadForTarget(target);
+        List<CustomInstruction> safeInstructions = CustomInstructionSafetyValidator.filterSafe(
+            loadedInstructions,
+            "Skipped unsafe auto-loaded instruction"
+        );
+
+        if (!safeInstructions.isEmpty()) {
+            logger.info("Loaded {} custom instruction(s) from target directory", safeInstructions.size());
+        }
+        return safeInstructions;
+    }
+
+    private ExecutionConfig overrideParallelism(int parallelism) {
+        return executionConfig.withParallelism(parallelism);
+    }
+
+    private String loadOutputConstraints() {
+        String outputConstraints = templateService.getOutputConstraints();
+        if (outputConstraints != null && !outputConstraints.isBlank()) {
+            logger.info("Loaded output constraints from template ({} chars)", outputConstraints.length());
+        }
+        return outputConstraints;
     }
 }

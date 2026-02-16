@@ -1,0 +1,69 @@
+package dev.logicojp.reviewer.orchestrator;
+
+import dev.logicojp.reviewer.agent.ReviewContext;
+import dev.logicojp.reviewer.config.ExecutionConfig;
+import dev.logicojp.reviewer.config.LocalFileConfig;
+import dev.logicojp.reviewer.instruction.CustomInstruction;
+import com.github.copilot.sdk.CopilotClient;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+
+final class ReviewContextFactory {
+
+    private final CopilotClient client;
+    private final ExecutionConfig executionConfig;
+    private final List<CustomInstruction> customInstructions;
+    private final String reasoningEffort;
+    private final String outputConstraints;
+    private final Map<String, Object> cachedMcpServers;
+    private final long localMaxFileSize;
+    private final long localMaxTotalSize;
+    private final LocalFileConfig localFileConfig;
+    private final ScheduledExecutorService sharedScheduler;
+
+    ReviewContextFactory(CopilotClient client,
+                         ExecutionConfig executionConfig,
+                         List<CustomInstruction> customInstructions,
+                         String reasoningEffort,
+                         String outputConstraints,
+                         Map<String, Object> cachedMcpServers,
+                         long localMaxFileSize,
+                         long localMaxTotalSize,
+                         LocalFileConfig localFileConfig,
+                         ScheduledExecutorService sharedScheduler) {
+        this.client = client;
+        this.executionConfig = executionConfig;
+        this.customInstructions = customInstructions;
+        this.reasoningEffort = reasoningEffort;
+        this.outputConstraints = outputConstraints;
+        this.cachedMcpServers = cachedMcpServers;
+        this.localMaxFileSize = localMaxFileSize;
+        this.localMaxTotalSize = localMaxTotalSize;
+        this.localFileConfig = localFileConfig;
+        this.sharedScheduler = sharedScheduler;
+    }
+
+    ReviewContext create(String cachedSourceContent) {
+        return buildContext(cachedSourceContent)
+            .build();
+    }
+
+    private ReviewContext.Builder buildContext(String cachedSourceContent) {
+        return ReviewContext.builder()
+            .client(client)
+            .timeoutMinutes(executionConfig.agentTimeoutMinutes())
+            .idleTimeoutMinutes(executionConfig.idleTimeoutMinutes())
+            .customInstructions(customInstructions)
+            .reasoningEffort(reasoningEffort)
+            .maxRetries(executionConfig.maxRetries())
+            .outputConstraints(outputConstraints)
+            .cachedMcpServers(cachedMcpServers)
+            .cachedSourceContent(cachedSourceContent)
+            .maxFileSize(localMaxFileSize)
+            .maxTotalSize(localMaxTotalSize)
+            .localFileConfig(localFileConfig)
+            .sharedScheduler(sharedScheduler);
+    }
+}

@@ -35,14 +35,46 @@ public record TemplateConfig(
     }
 
     public TemplateConfig {
-        directory = Defaults.defaultIfBlank(directory, DEFAULT_DIRECTORY);
-        defaultOutputFormat = Defaults.defaultIfBlank(defaultOutputFormat, DEFAULT_OUTPUT_FORMAT);
-        report = Defaults.defaultIfBlank(report, DEFAULT_REPORT);
-        localReviewContent = Defaults.defaultIfBlank(localReviewContent, DEFAULT_LOCAL_REVIEW_CONTENT);
-        outputConstraints = Defaults.defaultIfBlank(outputConstraints, DEFAULT_OUTPUT_CONSTRAINTS);
-        reportLinkEntry = Defaults.defaultIfBlank(reportLinkEntry, DEFAULT_REPORT_LINK_ENTRY);
+        TopLevelValues normalized = normalizeTopLevelValues(
+            directory,
+            defaultOutputFormat,
+            report,
+            localReviewContent,
+            outputConstraints,
+            reportLinkEntry
+        );
+        directory = normalized.directory();
+        defaultOutputFormat = normalized.defaultOutputFormat();
+        report = normalized.report();
+        localReviewContent = normalized.localReviewContent();
+        outputConstraints = normalized.outputConstraints();
+        reportLinkEntry = normalized.reportLinkEntry();
         summary = summary != null ? summary : new SummaryTemplates(null, null, null, null, null);
         fallback = fallback != null ? fallback : new FallbackTemplates(null, null, null, null);
+    }
+
+    private static TopLevelValues normalizeTopLevelValues(String directory,
+                                                          String defaultOutputFormat,
+                                                          String report,
+                                                          String localReviewContent,
+                                                          String outputConstraints,
+                                                          String reportLinkEntry) {
+        return new TopLevelValues(
+            Defaults.defaultIfBlank(directory, DEFAULT_DIRECTORY),
+            Defaults.defaultIfBlank(defaultOutputFormat, DEFAULT_OUTPUT_FORMAT),
+            Defaults.defaultIfBlank(report, DEFAULT_REPORT),
+            Defaults.defaultIfBlank(localReviewContent, DEFAULT_LOCAL_REVIEW_CONTENT),
+            Defaults.defaultIfBlank(outputConstraints, DEFAULT_OUTPUT_CONSTRAINTS),
+            Defaults.defaultIfBlank(reportLinkEntry, DEFAULT_REPORT_LINK_ENTRY)
+        );
+    }
+
+    private record TopLevelValues(String directory,
+                                  String defaultOutputFormat,
+                                  String report,
+                                  String localReviewContent,
+                                  String outputConstraints,
+                                  String reportLinkEntry) {
     }
 
     /// Summary-related template configuration.

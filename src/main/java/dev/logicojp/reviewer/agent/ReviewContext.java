@@ -1,11 +1,13 @@
 package dev.logicojp.reviewer.agent;
 
+import dev.logicojp.reviewer.config.LocalFileConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import com.github.copilot.sdk.CopilotClient;
 import io.micronaut.core.annotation.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 
 /// Shared, immutable context for executing review agents.
@@ -25,6 +27,7 @@ import java.util.concurrent.ScheduledExecutorService;
 /// @param cachedSourceContent Pre-computed source content for local reviews (nullable, shared across agents)
 /// @param maxFileSize         Maximum local file size to collect (bytes)
 /// @param maxTotalSize        Maximum total local source content size (bytes)
+/// @param localFileConfig     Local file collection configuration (used by fallback path)
 /// @param sharedScheduler     Shared ScheduledExecutorService for idle-timeout scheduling
 public record ReviewContext(
     CopilotClient client,
@@ -38,6 +41,7 @@ public record ReviewContext(
     @Nullable String cachedSourceContent,
     long maxFileSize,
     long maxTotalSize,
+    LocalFileConfig localFileConfig,
     ScheduledExecutorService sharedScheduler
 ) {
 
@@ -61,6 +65,7 @@ public record ReviewContext(
         private String cachedSourceContent;
         private long maxFileSize;
         private long maxTotalSize;
+        private LocalFileConfig localFileConfig;
         private ScheduledExecutorService sharedScheduler;
 
         public Builder client(CopilotClient client) {
@@ -118,18 +123,24 @@ public record ReviewContext(
             return this;
         }
 
+        public Builder localFileConfig(LocalFileConfig localFileConfig) {
+            this.localFileConfig = localFileConfig;
+            return this;
+        }
+
         public Builder sharedScheduler(ScheduledExecutorService sharedScheduler) {
             this.sharedScheduler = sharedScheduler;
             return this;
         }
 
         public ReviewContext build() {
-            if (timeoutMinutes <= 0) {
-                throw new IllegalArgumentException("timeoutMinutes must be positive");
-            }
-            if (idleTimeoutMinutes <= 0) {
-                throw new IllegalArgumentException("idleTimeoutMinutes must be positive");
-            }
+            Objects.requireNonNull(client, "client must not be null");
+            Objects.requireNonNull(sharedScheduler, "sharedScheduler must not be null");
+            requirePositive(timeoutMinutes, "timeoutMinutes");
+            requirePositive(idleTimeoutMinutes, "idleTimeoutMinutes");
+
+            LocalFileConfig effectiveLocalFileConfig = resolveLocalFileConfig();
+
             return new ReviewContext(
                 client,
                 timeoutMinutes,
@@ -142,15 +153,29 @@ public record ReviewContext(
                 cachedSourceContent,
                 maxFileSize,
                 maxTotalSize,
+                effectiveLocalFileConfig,
                 sharedScheduler
             );
+        }
+
+        private void requirePositive(long value, String fieldName) {
+            if (value <= 0) {
+                throw new IllegalArgumentException(fieldName + " must be positive");
+            }
+        }
+
+        private LocalFileConfig resolveLocalFileConfig() {
+            if (localFileConfig != null) {
+                return localFileConfig;
+            }
+            return new LocalFileConfig(maxFileSize, maxTotalSize);
         }
     }
 
     @Override
     public String toString() {
-        return "ReviewContext{cachedMcpServers=%s, timeoutMinutes=%d, idleTimeoutMinutes=%d, maxRetries=%d, maxFileSize=%d, maxTotalSize=%d}"
+        return "ReviewContext{cachedMcpServers=%s, timeoutMinutes=%d, idleTimeoutMinutes=%d, maxRetries=%d, maxFileSize=%d, maxTotalSize=%d, localFileConfig=%s}"
             .formatted(cachedMcpServers != null ? "(configured)" : "(null)", timeoutMinutes, idleTimeoutMinutes, maxRetries,
-                maxFileSize, maxTotalSize);
+                maxFileSize, maxTotalSize, localFileConfig != null ? "(configured)" : "(null)");
     }
 }

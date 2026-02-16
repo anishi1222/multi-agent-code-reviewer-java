@@ -38,32 +38,30 @@ public record ModelConfig(
     private static final List<String> REASONING_PREFIX_PATTERNS = List.of("o3", "o4-mini");
 
     public ModelConfig {
-        defaultModel = (defaultModel == null || defaultModel.isBlank())
+        defaultModel = resolveDefaultModel(defaultModel);
+        reviewModel = resolveStageModel(reviewModel, defaultModel);
+        reportModel = resolveStageModel(reportModel, defaultModel);
+        summaryModel = resolveStageModel(summaryModel, defaultModel);
+        reasoningEffort = resolveReasoningEffortValue(reasoningEffort);
+    }
+
+    private static String resolveDefaultModel(String defaultModel) {
+        return (defaultModel == null || defaultModel.isBlank())
             ? DEFAULT_MODEL : defaultModel;
-        reviewModel = (reviewModel == null || reviewModel.isBlank())
-            ? defaultModel : reviewModel;
-        reportModel = (reportModel == null || reportModel.isBlank())
-            ? defaultModel : reportModel;
-        summaryModel = (summaryModel == null || summaryModel.isBlank())
-            ? defaultModel : summaryModel;
-        reasoningEffort = (reasoningEffort == null || reasoningEffort.isBlank())
+    }
+
+    private static String resolveStageModel(String stageModel, String defaultModel) {
+        return (stageModel == null || stageModel.isBlank())
+            ? defaultModel : stageModel;
+    }
+
+    private static String resolveReasoningEffortValue(String reasoningEffort) {
+        return (reasoningEffort == null || reasoningEffort.isBlank())
             ? DEFAULT_REASONING_EFFORT : reasoningEffort;
     }
 
     public ModelConfig() {
         this(null, null, null, DEFAULT_REASONING_EFFORT, DEFAULT_MODEL);
-    }
-
-    public ModelConfig(String model) {
-        this(model, model, model, DEFAULT_REASONING_EFFORT, null);
-    }
-
-    public ModelConfig(String reviewModel, String reportModel, String summaryModel) {
-        this(reviewModel, reportModel, summaryModel, DEFAULT_REASONING_EFFORT, null);
-    }
-
-    public ModelConfig(String reviewModel, String reportModel, String summaryModel, String reasoningEffort) {
-        this(reviewModel, reportModel, summaryModel, reasoningEffort, null);
     }
 
     /// Determines the appropriate reasoning effort for a model.

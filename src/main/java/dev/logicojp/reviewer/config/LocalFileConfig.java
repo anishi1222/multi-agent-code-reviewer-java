@@ -67,16 +67,20 @@ public record LocalFileConfig(
     );
 
     public LocalFileConfig {
-        maxFileSize = (maxFileSize <= 0) ? DEFAULT_MAX_FILE_SIZE : maxFileSize;
-        maxTotalSize = (maxTotalSize <= 0) ? DEFAULT_MAX_TOTAL_SIZE : maxTotalSize;
-        ignoredDirectories = ignoredDirectories == null || ignoredDirectories.isEmpty()
-            ? DEFAULT_IGNORED_DIRECTORIES : List.copyOf(ignoredDirectories);
-        sourceExtensions = sourceExtensions == null || sourceExtensions.isEmpty()
-            ? DEFAULT_SOURCE_EXTENSIONS : List.copyOf(sourceExtensions);
-        sensitiveFilePatterns = sensitiveFilePatterns == null || sensitiveFilePatterns.isEmpty()
-            ? DEFAULT_SENSITIVE_FILE_PATTERNS : List.copyOf(sensitiveFilePatterns);
-        sensitiveExtensions = sensitiveExtensions == null || sensitiveExtensions.isEmpty()
-            ? DEFAULT_SENSITIVE_EXTENSIONS : List.copyOf(sensitiveExtensions);
+        maxFileSize = defaultIfNonPositive(maxFileSize, DEFAULT_MAX_FILE_SIZE);
+        maxTotalSize = defaultIfNonPositive(maxTotalSize, DEFAULT_MAX_TOTAL_SIZE);
+        ignoredDirectories = defaultListIfEmpty(ignoredDirectories, DEFAULT_IGNORED_DIRECTORIES);
+        sourceExtensions = defaultListIfEmpty(sourceExtensions, DEFAULT_SOURCE_EXTENSIONS);
+        sensitiveFilePatterns = defaultListIfEmpty(sensitiveFilePatterns, DEFAULT_SENSITIVE_FILE_PATTERNS);
+        sensitiveExtensions = defaultListIfEmpty(sensitiveExtensions, DEFAULT_SENSITIVE_EXTENSIONS);
+    }
+
+    private static long defaultIfNonPositive(long value, long defaultValue) {
+        return value <= 0 ? defaultValue : value;
+    }
+
+    private static List<String> defaultListIfEmpty(List<String> values, List<String> defaultValues) {
+        return values == null || values.isEmpty() ? defaultValues : List.copyOf(values);
     }
 
     public LocalFileConfig(long maxFileSize, long maxTotalSize) {

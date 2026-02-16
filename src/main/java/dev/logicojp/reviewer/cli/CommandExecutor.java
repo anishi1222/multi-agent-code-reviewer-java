@@ -34,25 +34,61 @@ public final class CommandExecutor {
             Logger logger,
             CliOutput output) {
         try {
-            Optional<T> options = parser.apply(args);
-            if (options.isEmpty()) {
-                // --help was requested
-                return ExitCodes.OK;
-            }
-            return executor.apply(options.get());
+            Optional<T> options = parseOptions(args, parser);
+            return executeParsedOptions(options, executor);
         } catch (CliValidationException e) {
-            if (!e.getMessage().isBlank()) {
-                output.errorln(e.getMessage());
-            }
-            if (e.showUsage()) {
-                usagePrinter.accept(output.err());
-            }
-            return ExitCodes.USAGE;
+            return handleValidationError(e, usagePrinter, output);
         } catch (Exception e) {
-            logger.error("Execution failed: {}", e.getMessage(), e);
-            output.errorln("Error: " + e.getMessage());
-            return ExitCodes.SOFTWARE;
+            return handleUnexpectedError(e, logger, output);
         }
+    }
+
+    private static <T> Optional<T> parseOptions(String[] args,
+                                                Function<String[], Optional<T>> parser) {
+        return parser.apply(args);
+    }
+
+    private static <T> int executeParsedOptions(Optional<T> options,
+                                                Function<T, Integer> executor) {
+        if (options.isEmpty()) {
+            return ExitCodes.OK;
+        }
+        return executor.apply(options.get());
+    }
+
+    private static int handleValidationError(CliValidationException e,
+                                             Consumer<PrintStream> usagePrinter,
+                                             CliOutput output) {
+        if (hasValidationMessage(e)) {
+            output.errorln(e.getMessage());
+        }
+        printUsageIfNeeded(e, usagePrinter, output);
+        return ExitCodes.USAGE;
+    }
+
+    private static int handleUnexpectedError(Exception e,
+                                             Logger logger,
+                                             CliOutput output) {
+        logger.error("Execution failed: {}", e.getMessage(), e);
+        output.errorln(formatUnexpectedErrorMessage(e));
+        return ExitCodes.SOFTWARE;
+    }
+
+    private static boolean hasValidationMessage(CliValidationException e) {
+        String message = e.getMessage();
+        return message != null && !message.isBlank();
+    }
+
+    private static void printUsageIfNeeded(CliValidationException e,
+                                           Consumer<PrintStream> usagePrinter,
+                                           CliOutput output) {
+        if (e.showUsage()) {
+            usagePrinter.accept(output.err());
+        }
+    }
+
+    private static String formatUnexpectedErrorMessage(Exception e) {
+        return "Error: " + e.getMessage();
     }
 
     public static <T> int execute(

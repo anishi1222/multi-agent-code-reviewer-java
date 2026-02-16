@@ -6,18 +6,11 @@ import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /// Merges multiple review results from the same agent (multi-pass reviews)
 /// into a single consolidated `ReviewResult`.
@@ -27,14 +20,22 @@ import java.util.regex.Pattern;
 /// emits a deduplicated per-agent report.
 public final class ReviewResultMerger {
 
+    @FunctionalInterface
+    interface FindingBlockExtractor {
+        List<ReviewFindingParser.FindingBlock> extract(String content);
+    }
+
+    @FunctionalInterface
+    interface FindingKeyResolver {
+        String resolve(ReviewFindingParser.FindingBlock block);
+    }
+
+    @FunctionalInterface
+    interface MergedContentFormatter {
+        String format(Map<String, AggregatedFinding> aggregatedFindings, int totalPasses, int failedPasses);
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(ReviewResultMerger.class);
-    private static final Pattern FINDING_HEADER = Pattern.compile("(?m)^###\\s+(\\d+)\\.\\s+(.+?)\\s*$");
-    private static final Pattern TABLE_ROW_TEMPLATE = Pattern.compile(
-        "(?m)^\\|\\s*\\*\\*%s\\*\\*\\s*\\|\\s*(.*?)\\s*\\|\\s*$");
-    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
-    private static final Pattern KEYWORD_PATTERN = Pattern.compile("[a-z0-9_]+|[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}]{2,}");
-    private static final Map<String, Pattern> TABLE_VALUE_PATTERNS = new ConcurrentHashMap<>();
-    private static final double NEAR_DUPLICATE_SIMILARITY = 0.80d;
 
     private ReviewResultMerger() {
         // utility class
@@ -50,6 +51,18 @@ public final class ReviewResultMerger {
     /// @param results flat list of all review results (may contain duplicates per agent)
     /// @return merged list with one result per agent (order preserved)
     public static List<ReviewResult> mergeByAgent(List<ReviewResult> results) {
+        return mergeByAgent(
+            results,
+            ReviewFindingParser::extractFindingBlocks,
+            ReviewFindingParser::findingKey,
+            ReviewMergedContentFormatter::format
+        );
+    }
+
+    static List<ReviewResult> mergeByAgent(List<ReviewResult> results,
+                                           FindingBlockExtractor findingBlockExtractor,
+                                           FindingKeyResolver findingKeyResolver,
+                                           MergedContentFormatter mergedContentFormatter) {
         if (results == null || results.isEmpty()) {
             return List.of();
         }
@@ -69,7 +82,12 @@ public final class ReviewResultMerger {
             if (agentResults.size() == 1) {
                 merged.add(agentResults.getFirst());
             } else {
-                merged.add(mergeAgentResults(agentResults));
+                merged.add(mergeAgentResults(
+                    agentResults,
+                    findingBlockExtractor,
+                    findingKeyResolver,
+                    mergedContentFormatter
+                ));
             }
         }
 
@@ -77,7 +95,10 @@ public final class ReviewResultMerger {
     }
 
     /// Merges multiple results from the same agent into a single result.
-    private static ReviewResult mergeAgentResults(List<ReviewResult> agentResults) {
+    private static ReviewResult mergeAgentResults(List<ReviewResult> agentResults,
+                                                  FindingBlockExtractor findingBlockExtractor,
+                                                  FindingKeyResolver findingKeyResolver,
+                                                  MergedContentFormatter mergedContentFormatter) {
         // Use the config from the first result
         AgentConfig config = agentResults.getFirst().agentConfig();
         String repository = agentResults.getFirst().repository();
@@ -95,7 +116,6 @@ public final class ReviewResultMerger {
         logger.info("Agent {}: merging {} successful pass(es) out of {} total",
             config.name(), successful.size(), agentResults.size());
 
-        var contentBuilder = new StringBuilder();
         Map<String, AggregatedFinding> aggregatedFindings = new LinkedHashMap<>();
         Set<String> fallbackPassContents = new LinkedHashSet<>();
 
@@ -107,7 +127,7 @@ public final class ReviewResultMerger {
                 continue;
             }
 
-            List<FindingBlock> blocks = extractFindingBlocks(content);
+            List<ReviewFindingParser.FindingBlock> blocks = findingBlockExtractor.extract(content);
             if (blocks.isEmpty()) {
                 String normalized = normalizeText(content);
                 if (!normalized.isEmpty() && fallbackPassContents.add(normalized)) {
@@ -119,8 +139,8 @@ public final class ReviewResultMerger {
                 continue;
             }
 
-            for (FindingBlock block : blocks) {
-                String key = findingKey(block);
+            for (ReviewFindingParser.FindingBlock block : blocks) {
+                String key = findingKeyResolver.resolve(block);
                 AggregatedFinding existingExact = aggregatedFindings.get(key);
                 if (existingExact != null) {
                     aggregatedFindings.put(key, existingExact.withPass(passNumber));
@@ -138,95 +158,37 @@ public final class ReviewResultMerger {
             }
         }
 
-        if (aggregatedFindings.isEmpty()) {
-            contentBuilder.append("指摘事項なし");
-        } else {
-            int index = 1;
-            int totalFindings = aggregatedFindings.size();
-            for (AggregatedFinding finding : aggregatedFindings.values()) {
-                contentBuilder.append("### ").append(index).append(". ").append(finding.title()).append("\n\n");
-                if (finding.passNumbers().size() > 1) {
-                    contentBuilder.append("> 検出パス: ")
-                        .append(formatPassNumbers(finding.passNumbers()))
-                        .append("\n\n");
-                }
-                contentBuilder.append(finding.body().trim());
-                if (index < totalFindings) {
-                    contentBuilder.append("\n\n---\n\n");
-                }
-                index++;
-            }
-        }
-
-        // If some passes failed, append a note
         int failedCount = agentResults.size() - successful.size();
-        if (failedCount > 0) {
-            contentBuilder.append("\n\n---\n\n> **注記**: %d パス中 %d パスが失敗しました。上記は成功したパスの結果のみです。\n"
-                .formatted(agentResults.size(), failedCount));
-        }
+        String content = mergedContentFormatter.format(aggregatedFindings, agentResults.size(), failedCount);
 
         return ReviewResult.builder()
             .agentConfig(config)
             .repository(repository)
-            .content(contentBuilder.toString())
+            .content(content)
             .success(true)
             .timestamp(LocalDateTime.now())
             .build();
     }
 
-    private static List<FindingBlock> extractFindingBlocks(String content) {
-        Matcher matcher = FINDING_HEADER.matcher(content);
-        List<HeaderMatch> headers = new ArrayList<>();
-        while (matcher.find()) {
-            headers.add(new HeaderMatch(matcher.start(), matcher.end(), matcher.group(2).trim()));
-        }
-
-        if (headers.isEmpty()) {
-            return List.of();
-        }
-
-        List<FindingBlock> blocks = new ArrayList<>(headers.size());
-        for (int i = 0; i < headers.size(); i++) {
-            HeaderMatch current = headers.get(i);
-            int bodyEnd = i + 1 < headers.size() ? headers.get(i + 1).startIndex() : content.length();
-            String body = content.substring(current.endIndex(), bodyEnd).trim();
-            if (!body.isEmpty()) {
-                blocks.add(new FindingBlock(current.title(), body));
-            }
-        }
-        return blocks;
-    }
-
-    private static String findingKey(FindingBlock block) {
-        String priority = extractTableValue(block.body(), "Priority");
-        String summary = extractTableValue(block.body(), "指摘の概要");
-        String location = extractTableValue(block.body(), "該当箇所");
-
-        String titlePart = normalizeText(block.title());
-        String priorityPart = normalizeText(priority);
-        String summaryPart = normalizeText(summary);
-        String locationPart = normalizeText(location);
-
-        if (!titlePart.isEmpty() && (!summaryPart.isEmpty() || !locationPart.isEmpty() || !priorityPart.isEmpty())) {
-            return String.join("|", titlePart, priorityPart, locationPart, summaryPart);
-        }
-
-        return "raw|" + normalizeText(block.body());
-    }
-
     private static String findNearDuplicateKey(Map<String, AggregatedFinding> existing,
-                                               FindingBlock incoming) {
+                                               ReviewFindingParser.FindingBlock incoming) {
         String incomingTitle = normalizeText(incoming.title());
-        String incomingPriority = normalizeText(extractTableValue(incoming.body(), "Priority"));
-        String incomingSummary = normalizeText(extractTableValue(incoming.body(), "指摘の概要"));
-        String incomingLocation = normalizeText(extractTableValue(incoming.body(), "該当箇所"));
+        String incomingPriority = normalizeText(ReviewFindingParser.extractTableValue(incoming.body(), "Priority"));
+        String incomingSummary = normalizeText(ReviewFindingParser.extractTableValue(incoming.body(), "指摘の概要"));
+        String incomingLocation = normalizeText(ReviewFindingParser.extractTableValue(incoming.body(), "該当箇所"));
+        Set<String> incomingTitleBigrams = ReviewFindingSimilarity.bigrams(incomingTitle);
+        Set<String> incomingSummaryBigrams = ReviewFindingSimilarity.bigrams(incomingSummary);
+        Set<String> incomingLocationBigrams = ReviewFindingSimilarity.bigrams(incomingLocation);
 
         for (var entry : existing.entrySet()) {
             if (entry.getValue().isNearDuplicateOf(
                 incomingTitle,
                 incomingPriority,
                 incomingSummary,
-                incomingLocation
+                incomingLocation,
+                incomingTitleBigrams,
+                incomingSummaryBigrams,
+                incomingLocationBigrams
             )) {
                 return entry.getKey();
             }
@@ -234,204 +196,8 @@ public final class ReviewResultMerger {
         return null;
     }
 
-    private static String extractTableValue(String body, String key) {
-        Pattern pattern = TABLE_VALUE_PATTERNS.computeIfAbsent(
-            key,
-            k -> Pattern.compile(TABLE_ROW_TEMPLATE.pattern().formatted(Pattern.quote(k)))
-        );
-        Matcher matcher = pattern.matcher(body);
-        return matcher.find() ? matcher.group(1).trim() : "";
-    }
-
-    private static String formatPassNumbers(Set<Integer> passNumbers) {
-        StringBuilder sb = new StringBuilder();
-        int i = 0;
-        for (Integer passNumber : passNumbers) {
-            if (i > 0) {
-                sb.append(", ");
-            }
-            sb.append(passNumber);
-            i++;
-        }
-        return sb.toString();
-    }
-
     private static String normalizeText(String value) {
-        if (value == null || value.isBlank()) {
-            return "";
-        }
-
-        String normalized = value
-            .toLowerCase(Locale.ROOT)
-            .replace("`", "")
-            .replace("*", "")
-            .replace("_", "")
-            .replace("|", " ")
-            .replace("・", " ")
-            .replace("/", " ")
-            .trim();
-        normalized = WHITESPACE.matcher(normalized).replaceAll(" ");
-        return normalized;
+        return ReviewFindingSimilarity.normalizeText(value);
     }
 
-    private static boolean hasCommonKeyword(String left, String right) {
-        Set<String> leftWords = extractKeywords(left);
-        Set<String> rightWords = extractKeywords(right);
-        if (leftWords.isEmpty() || rightWords.isEmpty()) {
-            return false;
-        }
-        for (String word : leftWords) {
-            if (rightWords.contains(word)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static Set<String> extractKeywords(String text) {
-        if (text == null || text.isBlank()) {
-            return Set.of();
-        }
-        Set<String> keywords = new LinkedHashSet<>();
-        Matcher matcher = KEYWORD_PATTERN.matcher(text);
-        while (matcher.find()) {
-            String token = matcher.group();
-            if (token.length() >= 2) {
-                keywords.add(token);
-            }
-        }
-        return keywords;
-    }
-
-    private static boolean isSimilarText(String left, String right) {
-        if (left.isEmpty() || right.isEmpty()) {
-            return false;
-        }
-        if (left.equals(right)) {
-            return true;
-        }
-        if (left.length() >= 8 && right.contains(left)) {
-            return true;
-        }
-        if (right.length() >= 8 && left.contains(right)) {
-            return true;
-        }
-        return diceCoefficient(left, right) >= NEAR_DUPLICATE_SIMILARITY;
-    }
-
-    private static double diceCoefficient(String left, String right) {
-        Set<String> leftBigrams = bigrams(left);
-        Set<String> rightBigrams = bigrams(right);
-
-        if (leftBigrams.isEmpty() || rightBigrams.isEmpty()) {
-            return 0.0d;
-        }
-
-        int overlap = 0;
-        for (String gram : leftBigrams) {
-            if (rightBigrams.contains(gram)) {
-                overlap++;
-            }
-        }
-        return (2.0d * overlap) / (leftBigrams.size() + rightBigrams.size());
-    }
-
-    private static Set<String> bigrams(String text) {
-        String compact = text.replace(" ", "");
-        if (compact.length() < 2) {
-            return Set.of(compact);
-        }
-
-        Set<String> grams = new HashSet<>();
-        for (int i = 0; i < compact.length() - 1; i++) {
-            grams.add(compact.substring(i, i + 2));
-        }
-        return grams;
-    }
-
-    private record HeaderMatch(int startIndex, int endIndex, String title) {
-    }
-
-    private record FindingBlock(String title, String body) {
-    }
-
-    private record AggregatedFinding(String title,
-                                     String body,
-                                     Set<Integer> passNumbers,
-                                     String normalizedTitle,
-                                     String normalizedPriority,
-                                     String normalizedSummary,
-                                     String normalizedLocation) {
-
-        private AggregatedFinding {
-            Objects.requireNonNull(title);
-            Objects.requireNonNull(body);
-            passNumbers = new LinkedHashSet<>(passNumbers);
-        }
-
-        static AggregatedFinding from(FindingBlock block, int passNumber) {
-            String normalizedPriority = normalizeText(extractTableValue(block.body(), "Priority"));
-            String normalizedSummary = normalizeText(extractTableValue(block.body(), "指摘の概要"));
-            String normalizedLocation = normalizeText(extractTableValue(block.body(), "該当箇所"));
-            return new AggregatedFinding(
-                block.title(),
-                block.body(),
-                new LinkedHashSet<>(Set.of(passNumber)),
-                normalizeText(block.title()),
-                normalizedPriority,
-                normalizedSummary,
-                normalizedLocation
-            );
-        }
-
-        static AggregatedFinding fallback(String rawContent, int passNumber) {
-            return new AggregatedFinding(
-                "レビュー結果",
-                rawContent,
-                new LinkedHashSet<>(Set.of(passNumber)),
-                normalizeText("レビュー結果"),
-                "",
-                normalizeText(rawContent),
-                ""
-            );
-        }
-
-        boolean isNearDuplicateOf(String incomingTitle,
-                                  String incomingPriority,
-                                  String incomingSummary,
-                                  String incomingLocation) {
-            if (!normalizedPriority.isEmpty() && !incomingPriority.isEmpty()
-                && !normalizedPriority.equals(incomingPriority)) {
-                return false;
-            }
-
-            if (!normalizedLocation.isEmpty() && !incomingLocation.isEmpty()) {
-                if (!isSimilarText(normalizedLocation, incomingLocation)) {
-                    return false;
-                }
-                if (isSimilarText(normalizedSummary, incomingSummary)
-                    || isSimilarText(normalizedTitle, incomingTitle)
-                    || hasCommonKeyword(normalizedTitle, incomingTitle)) {
-                    return true;
-                }
-            }
-
-            return isSimilarText(normalizedSummary, incomingSummary)
-                && isSimilarText(normalizedTitle, incomingTitle);
-        }
-
-        AggregatedFinding withPass(int passNumber) {
-            LinkedHashSet<Integer> updated = new LinkedHashSet<>(passNumbers);
-            updated.add(passNumber);
-            return new AggregatedFinding(
-                title,
-                body,
-                updated,
-                normalizedTitle,
-                normalizedPriority,
-                normalizedSummary,
-                normalizedLocation
-            );
-        }
-    }
 }

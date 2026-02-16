@@ -18,20 +18,29 @@ public final class AgentPromptBuilder {
             sb.append(config.systemPrompt().trim()).append("\n\n");
         }
 
-        if (!config.focusAreas().isEmpty()) {
-            sb.append("## Focus Areas\n\n");
-            sb.append(PromptTexts.FOCUS_AREAS_GUIDANCE).append("\n\n");
-            for (String area : config.focusAreas()) {
-                sb.append("- ").append(area).append("\n");
-            }
-            sb.append("\n");
-        }
-
-        if (config.outputFormat() != null && !config.outputFormat().isBlank()) {
-            sb.append(config.outputFormat().trim()).append("\n");
-        }
+        appendFocusAreas(config, sb);
+        appendOutputFormat(config, sb);
 
         return sb.toString();
+    }
+
+    private static void appendFocusAreas(AgentConfig config, StringBuilder sb) {
+        if (config.focusAreas().isEmpty()) {
+            return;
+        }
+        sb.append("## Focus Areas\n\n");
+        sb.append(PromptTexts.FOCUS_AREAS_GUIDANCE).append("\n\n");
+        for (String area : config.focusAreas()) {
+            sb.append("- ").append(area).append("\n");
+        }
+        sb.append("\n");
+    }
+
+    private static void appendOutputFormat(AgentConfig config, StringBuilder sb) {
+        if (config.outputFormat() == null || config.outputFormat().isBlank()) {
+            return;
+        }
+        sb.append(config.outputFormat().trim()).append("\n");
     }
 
     /// Builds the instruction for a GitHub repository review.

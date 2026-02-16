@@ -15,11 +15,40 @@ import java.nio.file.Path;
 @Singleton
 public class ReportGeneratorFactory {
 
+    @FunctionalInterface
+    interface ReportGeneratorCreator {
+        ReportGenerator create(Path outputDirectory, TemplateService templateService);
+    }
+
+    @FunctionalInterface
+    interface SummaryGeneratorCreator {
+        SummaryGenerator create(Path outputDirectory,
+                                CopilotClient client,
+                                String summaryModel,
+                                String reasoningEffort,
+                                long timeoutMinutes,
+                                TemplateService templateService);
+    }
+
     private final TemplateService templateService;
+    private final ReportGeneratorCreator reportGeneratorCreator;
+    private final SummaryGeneratorCreator summaryGeneratorCreator;
 
     @Inject
     public ReportGeneratorFactory(TemplateService templateService) {
+        this(
+            templateService,
+            ReportGenerator::new,
+            SummaryGenerator::new
+        );
+    }
+
+    ReportGeneratorFactory(TemplateService templateService,
+                           ReportGeneratorCreator reportGeneratorCreator,
+                           SummaryGeneratorCreator summaryGeneratorCreator) {
         this.templateService = templateService;
+        this.reportGeneratorCreator = reportGeneratorCreator;
+        this.summaryGeneratorCreator = summaryGeneratorCreator;
     }
 
     /// Creates a new {@link ReportGenerator} for the given output directory.
@@ -27,7 +56,7 @@ public class ReportGeneratorFactory {
     /// @param outputDirectory Directory to write reports to
     /// @return A new ReportGenerator instance
     public ReportGenerator createReportGenerator(Path outputDirectory) {
-        return new ReportGenerator(outputDirectory, templateService);
+        return reportGeneratorCreator.create(outputDirectory, templateService);
     }
 
     /// Creates a new {@link SummaryGenerator} with the given configuration.
@@ -43,7 +72,13 @@ public class ReportGeneratorFactory {
                                                     String summaryModel,
                                                     String reasoningEffort,
                                                     long timeoutMinutes) {
-        return new SummaryGenerator(outputDirectory, client, summaryModel,
-            reasoningEffort, timeoutMinutes, templateService);
+        return summaryGeneratorCreator.create(
+            outputDirectory,
+            client,
+            summaryModel,
+            reasoningEffort,
+            timeoutMinutes,
+            templateService
+        );
     }
 }

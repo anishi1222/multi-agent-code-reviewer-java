@@ -11,7 +11,11 @@ public record AgentPathConfig(List<String> directories) {
     public static final List<String> DEFAULT_DIRECTORIES = List.of("./agents", "./.github/agents");
 
     public AgentPathConfig {
-        directories = directories == null || directories.isEmpty()
+        directories = normalizeDirectories(directories);
+    }
+
+    private static List<String> normalizeDirectories(List<String> directories) {
+        return directories == null || directories.isEmpty()
             ? DEFAULT_DIRECTORIES
             : List.copyOf(directories);
     }

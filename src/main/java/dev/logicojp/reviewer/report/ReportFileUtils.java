@@ -11,8 +11,16 @@ public final class ReportFileUtils {
     }
 
     public static void ensureOutputDirectory(Path outputDirectory) throws IOException {
-        if (!Files.exists(outputDirectory)) {
-            Files.createDirectories(outputDirectory);
+        if (isMissing(outputDirectory)) {
+            createDirectories(outputDirectory);
         }
+    }
+
+    private static boolean isMissing(Path outputDirectory) {
+        return !Files.exists(outputDirectory);
+    }
+
+    private static void createDirectories(Path outputDirectory) throws IOException {
+        Files.createDirectories(outputDirectory);
     }
 }

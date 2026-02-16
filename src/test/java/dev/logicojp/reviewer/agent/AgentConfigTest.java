@@ -251,6 +251,23 @@ class AgentConfigTest {
             
             assertThat(original.model()).isEqualTo("original-model");
         }
+
+        @Test
+        @DisplayName("withModelはskillsやfocusAreasを保持する")
+        void withModelPreservesOtherFields() {
+            SkillDefinition skill = SkillDefinition.of("skill-1", "Skill", "desc", "prompt");
+            AgentConfig original = new AgentConfig(
+                VALID_NAME, "Display", "original-model", VALID_SYSTEM_PROMPT, VALID_INSTRUCTION,
+                VALID_OUTPUT_FORMAT, List.of("area1", "area2"), List.of(skill)
+            );
+
+            AgentConfig updated = original.withModel("new-model");
+
+            assertThat(updated.skills()).containsExactly(skill);
+            assertThat(updated.focusAreas()).containsExactly("area1", "area2");
+            assertThat(updated.instruction()).isEqualTo(original.instruction());
+            assertThat(updated.systemPrompt()).isEqualTo(original.systemPrompt());
+        }
     }
 
     @Nested

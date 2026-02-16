@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 /// Service for managing and executing skills.
 @Singleton
@@ -88,13 +89,10 @@ public class SkillService {
                                                         Map<String, String> parameters,
                                                         String githubToken,
                                                         String model) {
-        Optional<SkillDefinition> skillOpt = skillRegistry.get(skillId);
-        if (skillOpt.isEmpty()) {
-            return CompletableFuture.completedFuture(
-                SkillResult.failure(skillId, "Skill not found: " + skillId));
-        }
-
-        return createExecutor(githubToken, model).execute(skillOpt.get(), parameters);
+        return executeResolvedSkill(
+            skillId,
+            skill -> createExecutor(githubToken, model).execute(skill, parameters)
+        );
     }
 
     /// Executes a skill with a custom system prompt.
@@ -103,13 +101,22 @@ public class SkillService {
                                                         String githubToken,
                                                         String model,
                                                         String systemPrompt) {
+        return executeResolvedSkill(
+            skillId,
+            skill -> createExecutor(githubToken, model).execute(skill, parameters, systemPrompt)
+        );
+    }
+
+    private CompletableFuture<SkillResult> executeResolvedSkill(
+            String skillId,
+            Function<SkillDefinition, CompletableFuture<SkillResult>> runner) {
         Optional<SkillDefinition> skillOpt = skillRegistry.get(skillId);
         if (skillOpt.isEmpty()) {
             return CompletableFuture.completedFuture(
                 SkillResult.failure(skillId, "Skill not found: " + skillId));
         }
 
-        return createExecutor(githubToken, model).execute(skillOpt.get(), parameters, systemPrompt);
+        return runner.apply(skillOpt.get());
     }
 
     private SkillExecutor createExecutor(String githubToken, String model) {
@@ -137,8 +144,8 @@ public class SkillService {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hashed);
-        } catch (NoSuchAlgorithmException _) {
-            return Integer.toString(token.hashCode());
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
         }
     }
 
@@ -151,6 +158,10 @@ public class SkillService {
 
     @PreDestroy
     public void shutdown() {
+        for (SkillExecutor executor : executorCache.values()) {
+            executor.shutdown();
+        }
+        executorCache.clear();
         ExecutorUtils.shutdownGracefully(executorService, 60);
     }
 }

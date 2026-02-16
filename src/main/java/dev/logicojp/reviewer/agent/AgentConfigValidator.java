@@ -33,10 +33,7 @@ public final class AgentConfigValidator {
     /// @param config the agent config to validate
     /// @throws IllegalArgumentException if required fields are missing
     public static void validateRequired(AgentConfig config) {
-        var missing = new StringJoiner(", ");
-        if (config.name() == null || config.name().isBlank()) missing.add("name");
-        if (config.systemPrompt() == null || config.systemPrompt().isBlank()) missing.add("systemPrompt");
-        if (config.instruction() == null || config.instruction().isBlank()) missing.add("instruction");
+        StringJoiner missing = collectMissingRequiredFields(config);
         // outputFormat may be null when loaded from an external template at runtime
         if (missing.length() > 0) {
             throw new IllegalArgumentException("Missing required agent fields: " + missing);
@@ -49,6 +46,20 @@ public final class AgentConfigValidator {
         validateOutputFormat(config);
     }
 
+    private static StringJoiner collectMissingRequiredFields(AgentConfig config) {
+        var missing = new StringJoiner(", ");
+        if (config.name() == null || config.name().isBlank()) {
+            missing.add("name");
+        }
+        if (config.systemPrompt() == null || config.systemPrompt().isBlank()) {
+            missing.add("systemPrompt");
+        }
+        if (config.instruction() == null || config.instruction().isBlank()) {
+            missing.add("instruction");
+        }
+        return missing;
+    }
+
     /// Validates that the outputFormat contains required sections.
     private static void validateOutputFormat(AgentConfig config) {
         String outputFormat = config.outputFormat();
@@ -57,11 +68,7 @@ public final class AgentConfigValidator {
         }
 
         List<String> missingSections = new ArrayList<>();
-        for (String section : REQUIRED_OUTPUT_SECTIONS) {
-            if (!outputFormat.contains(section)) {
-                missingSections.add(section);
-            }
-        }
+        collectMissingOutputSections(outputFormat, missingSections);
 
         if (!missingSections.isEmpty()) {
             logger.warn("Agent '{}' outputFormat is missing recommended sections: {}",
@@ -72,6 +79,14 @@ public final class AgentConfigValidator {
         if (!PRIORITY_PATTERN.matcher(outputFormat).find()) {
             logger.warn("Agent '{}' outputFormat does not contain Priority levels (Critical/High/Medium/Low).",
                 config.name());
+        }
+    }
+
+    private static void collectMissingOutputSections(String outputFormat, List<String> missingSections) {
+        for (String section : REQUIRED_OUTPUT_SECTIONS) {
+            if (!outputFormat.contains(section)) {
+                missingSections.add(section);
+            }
         }
     }
 }

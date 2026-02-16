@@ -56,7 +56,16 @@ public final class CliPathResolver {
             for (String name : candidateNames) {
                 Path candidate = base.resolve(name);
                 if (Files.isExecutable(candidate)) {
-                    return Optional.of(candidate.toAbsolutePath().normalize());
+                    try {
+                        Path realPath = candidate.toRealPath();
+                        String realFileName = realPath.getFileName().toString();
+                        boolean validName = Arrays.stream(candidateNames).anyMatch(realFileName::equals);
+                        if (validName) {
+                            return Optional.of(realPath);
+                        }
+                    } catch (Exception _) {
+                        // Ignore invalid candidate and continue searching PATH
+                    }
                 }
             }
         }

@@ -52,7 +52,7 @@ public class ListAgentsCommand {
             String arg = args[i];
             switch (arg) {
                 case "-h", "--help" -> {
-                    CliUsage.printList(output.out());
+                    CliUsage.printList(output);
                     return Optional.empty();
                 }
                 case "--agents-dir" -> {
@@ -84,21 +84,33 @@ public class ListAgentsCommand {
             throw new UncheckedIOException("Failed to list agents", e);
         }
 
+        printAgentDirectories(agentDirs);
+
+        if (availableAgents.isEmpty()) {
+            return printNoAgents();
+        }
+
+        printAvailableAgents(availableAgents);
+        return ExitCodes.OK;
+    }
+
+    private void printAgentDirectories(List<Path> agentDirs) {
         output.println("Agent directories:");
         for (Path dir : agentDirs) {
             output.println("  - " + dir + (Files.exists(dir) ? "" : " (not found)"));
         }
         output.println("");
+    }
 
-        if (availableAgents.isEmpty()) {
-            output.println("No agents found.");
-            return ExitCodes.OK;
-        }
+    private int printNoAgents() {
+        output.println("No agents found.");
+        return ExitCodes.OK;
+    }
 
+    private void printAvailableAgents(List<String> availableAgents) {
         output.println("Available agents:");
         for (String agent : availableAgents) {
             output.println("  - " + agent);
         }
-        return ExitCodes.OK;
     }
 }

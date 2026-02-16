@@ -39,8 +39,8 @@ public class ReportService {
     public List<Path> generateReports(List<ReviewResult> results, Path outputDirectory) 
             throws IOException {
         logger.info("Generating {} individual reports", results.size());
-        
-        var generator = reportGeneratorFactory.createReportGenerator(outputDirectory);
+
+        var generator = createReportGenerator(outputDirectory);
         return generator.generateReports(results);
     }
     
@@ -57,16 +57,26 @@ public class ReportService {
             Path outputDirectory,
             String summaryModel,
             String reasoningEffort) throws IOException {
-        
+
         logger.info("Generating executive summary using model: {}", summaryModel);
+
+        var generator = createSummaryGenerator(outputDirectory, summaryModel, reasoningEffort);
         
-        var generator = reportGeneratorFactory.createSummaryGenerator(
-            outputDirectory, 
-            copilotService.getClient(), 
+        return generator.generateSummary(results, repository);
+    }
+
+    private dev.logicojp.reviewer.report.ReportGenerator createReportGenerator(Path outputDirectory) {
+        return reportGeneratorFactory.createReportGenerator(outputDirectory);
+    }
+
+    private dev.logicojp.reviewer.report.SummaryGenerator createSummaryGenerator(Path outputDirectory,
+                                                                                  String summaryModel,
+                                                                                  String reasoningEffort) {
+        return reportGeneratorFactory.createSummaryGenerator(
+            outputDirectory,
+            copilotService.getClient(),
             summaryModel,
             reasoningEffort,
             executionConfig.summaryTimeoutMinutes());
-        
-        return generator.generateSummary(results, repository);
     }
 }

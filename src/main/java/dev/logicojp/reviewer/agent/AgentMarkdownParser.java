@@ -79,24 +79,32 @@ public class AgentMarkdownParser {
     public AgentConfig parseContent(String content, String filename) {
         FrontmatterParser.Parsed parsed = FrontmatterParser.parse(content);
 
-        String name, displayName, model, body;
+        ParsedAgentMetadata metadata = parsed.hasFrontmatter()
+            ? parseWithFrontmatter(parsed, filename)
+            : parseWithoutFrontmatter(content, filename);
 
-        if (parsed.hasFrontmatter()) {
-            Map<String, String> metadata = parsed.metadata();
-            body = parsed.body();
-            name = metadata.getOrDefault("name", extractNameFromFilename(filename));
-            displayName = metadata.getOrDefault("description",
-                metadata.getOrDefault("displayName", name));
-            model = metadata.getOrDefault("model", ModelConfig.DEFAULT_MODEL);
-        } else {
-            logger.warn("No valid frontmatter found in {}", filename);
-            body = content;
-            name = extractNameFromFilename(filename);
-            displayName = name;
-            model = ModelConfig.DEFAULT_MODEL;
-        }
+        return buildAgentConfig(
+            metadata.name(),
+            metadata.displayName(),
+            metadata.model(),
+            metadata.body()
+        );
+    }
 
-        return buildAgentConfig(name, displayName, model, body);
+    private ParsedAgentMetadata parseWithFrontmatter(FrontmatterParser.Parsed parsed, String filename) {
+        Map<String, String> metadata = parsed.metadata();
+        String defaultName = extractNameFromFilename(filename);
+        String name = metadata.getOrDefault("name", defaultName);
+        String displayName = metadata.getOrDefault("description",
+            metadata.getOrDefault("displayName", name));
+        String model = metadata.getOrDefault("model", ModelConfig.DEFAULT_MODEL);
+        return new ParsedAgentMetadata(name, displayName, model, parsed.body());
+    }
+
+    private ParsedAgentMetadata parseWithoutFrontmatter(String content, String filename) {
+        logger.warn("No valid frontmatter found in {}", filename);
+        String name = extractNameFromFilename(filename);
+        return new ParsedAgentMetadata(name, name, ModelConfig.DEFAULT_MODEL, content);
     }
 
     /// Common AgentConfig construction from extracted metadata and body.
@@ -105,21 +113,13 @@ public class AgentMarkdownParser {
         Map<String, String> sections = extractSections(body);
         String systemPrompt = getSection(sections, "role");
         String instruction = getSection(sections, "instruction");
-        String outputFormat = getSection(sections, "output format");
-
-        // Use default output format from external template if agent doesn't specify one
-        if ((outputFormat == null || outputFormat.isBlank()) && defaultOutputFormat != null) {
-            outputFormat = defaultOutputFormat;
-        }
+        String outputFormat = resolveOutputFormat(sections);
 
         if (systemPrompt == null || systemPrompt.isBlank()) {
             systemPrompt = body.trim();
         }
 
-        String focusAreasSection = getSection(sections, "focus areas");
-        List<String> focusAreas = focusAreasSection != null
-            ? parseFocusAreaItems(focusAreasSection)
-            : extractFocusAreas(body);
+        List<String> focusAreas = resolveFocusAreas(sections, body);
 
         AgentConfig config = new AgentConfig(
             name,
@@ -133,6 +133,21 @@ public class AgentMarkdownParser {
         );
         config.validateRequired();
         return config;
+    }
+
+    private String resolveOutputFormat(Map<String, String> sections) {
+        String outputFormat = getSection(sections, "output format");
+        if ((outputFormat == null || outputFormat.isBlank()) && defaultOutputFormat != null) {
+            return defaultOutputFormat;
+        }
+        return outputFormat;
+    }
+
+    private List<String> resolveFocusAreas(Map<String, String> sections, String body) {
+        String focusAreasSection = getSection(sections, "focus areas");
+        return focusAreasSection != null
+            ? parseFocusAreaItems(focusAreasSection)
+            : extractFocusAreas(body);
     }
     
     private List<String> extractFocusAreas(String body) {
@@ -182,17 +197,14 @@ public class AgentMarkdownParser {
         String currentKey = null;
 
         for (String line : body.split("\\n", -1)) {
-            Matcher matcher = SECTION_HEADER_PATTERN.matcher(line.trim());
-            if (matcher.matches()) {
-                String sectionKey = normalizeSectionKey(matcher.group(1));
-                if (RECOGNIZED_SECTIONS.contains(sectionKey)) {
-                    if (sectionBuilders.containsKey(sectionKey)) {
-                        logger.warn("Duplicate section '## {}' found; using the last occurrence.", matcher.group(1));
-                    }
-                    currentKey = sectionKey;
-                    sectionBuilders.put(currentKey, new StringBuilder());
-                    continue;
+            String sectionKey = extractRecognizedSectionKey(line);
+            if (sectionKey != null) {
+                if (sectionBuilders.containsKey(sectionKey)) {
+                    logger.warn("Duplicate section '## {}' found; using the last occurrence.", sectionKey);
                 }
+                currentKey = sectionKey;
+                sectionBuilders.put(currentKey, new StringBuilder());
+                continue;
             }
 
             if (currentKey != null) {
@@ -205,6 +217,15 @@ public class AgentMarkdownParser {
             sections.put(entry.getKey(), entry.getValue().toString().trim());
         }
         return sections;
+    }
+
+    private String extractRecognizedSectionKey(String line) {
+        Matcher matcher = SECTION_HEADER_PATTERN.matcher(line.trim());
+        if (!matcher.matches()) {
+            return null;
+        }
+        String sectionKey = normalizeSectionKey(matcher.group(1));
+        return RECOGNIZED_SECTIONS.contains(sectionKey) ? sectionKey : null;
     }
 
     private String getSection(Map<String, String> sections, String... keys) {
@@ -230,5 +251,8 @@ public class AgentMarkdownParser {
             name = name.substring(0, name.length() - ".md".length());
         }
         return name;
+    }
+
+    private record ParsedAgentMetadata(String name, String displayName, String model, String body) {
     }
 }

@@ -56,13 +56,13 @@ public final class FrontmatterParser {
     /// @param rawContent The raw file content
     /// @return A {@link Parsed} record with separated metadata and body
     public static Parsed parse(String rawContent) {
-        if (rawContent == null || !rawContent.startsWith("---")) {
-            return new Parsed(Map.of(), rawContent != null ? rawContent : "", false, null);
+        if (!startsWithFrontmatter(rawContent)) {
+            return withoutFrontmatter(rawContent);
         }
 
         Matcher matcher = FRONTMATTER_PATTERN.matcher(rawContent);
         if (!matcher.matches()) {
-            return new Parsed(Map.of(), rawContent, false, null);
+            return withoutFrontmatter(rawContent);
         }
 
         String frontmatter = matcher.group(1);
@@ -117,7 +117,7 @@ public final class FrontmatterParser {
     /// @param rawContent The raw file content
     /// @return The raw frontmatter text, or {@code null} if no frontmatter is found
     public static String extractRawFrontmatter(String rawContent) {
-        if (rawContent == null || !rawContent.startsWith("---")) {
+        if (!startsWithFrontmatter(rawContent)) {
             return null;
         }
         Matcher matcher = FRONTMATTER_PATTERN.matcher(rawContent);
@@ -162,5 +162,13 @@ public final class FrontmatterParser {
             return value.substring(1, value.length() - 1);
         }
         return value;
+    }
+
+    private static boolean startsWithFrontmatter(String rawContent) {
+        return rawContent != null && rawContent.startsWith("---");
+    }
+
+    private static Parsed withoutFrontmatter(String rawContent) {
+        return new Parsed(Map.of(), rawContent != null ? rawContent : "", false, null);
     }
 }

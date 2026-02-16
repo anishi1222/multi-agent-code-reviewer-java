@@ -14,7 +14,11 @@ public record SkillConfig(
     private static final String DEFAULT_DIRECTORY = ".github/skills";
 
     public SkillConfig {
-        filename = (filename == null || filename.isBlank()) ? DEFAULT_FILENAME : filename;
-        directory = (directory == null || directory.isBlank()) ? DEFAULT_DIRECTORY : directory;
+        filename = defaultIfBlank(filename, DEFAULT_FILENAME);
+        directory = defaultIfBlank(directory, DEFAULT_DIRECTORY);
+    }
+
+    private static String defaultIfBlank(String value, String defaultValue) {
+        return (value == null || value.isBlank()) ? defaultValue : value;
     }
 }

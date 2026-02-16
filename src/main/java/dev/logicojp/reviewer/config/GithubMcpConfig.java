@@ -88,24 +88,37 @@ public record GithubMcpConfig(
     /// Builds MCP server map from a token and config, or returns null if inputs are invalid.
     /// Centralizes the null/blank check logic for reuse across the codebase.
     public static Map<String, Object> buildMcpServers(String githubToken, GithubMcpConfig config) {
-        if (githubToken != null && !githubToken.isBlank() && config != null) {
+        if (canBuildMcpServers(githubToken, config)) {
             return Map.of("github", config.toMcpServer(githubToken));
         }
         return null;
     }
 
+    private static boolean canBuildMcpServers(String githubToken, GithubMcpConfig config) {
+        return githubToken != null && !githubToken.isBlank() && config != null;
+    }
+
     /// Builds a type-safe MCP server configuration, then converts to Map for SDK compatibility.
     public Map<String, Object> toMcpServer(String token) {
         Map<String, String> combinedHeaders = new HashMap<>(headers != null ? headers : Map.of());
-        if (token != null && !token.isBlank()
-            && authHeaderName != null && !authHeaderName.isBlank()
-            && authHeaderTemplate != null && !authHeaderTemplate.isBlank()) {
-            String headerValue = authHeaderTemplate
-                .replace("${token}", token)
-                .replace("{token}", token);
-            combinedHeaders.put(authHeaderName, headerValue);
-        }
+        applyAuthHeader(token, combinedHeaders);
 
         return new McpServerConfig(type, url, tools, combinedHeaders).toMap();
+    }
+
+    private void applyAuthHeader(String token, Map<String, String> combinedHeaders) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        if (authHeaderName == null || authHeaderName.isBlank()) {
+            return;
+        }
+        if (authHeaderTemplate == null || authHeaderTemplate.isBlank()) {
+            return;
+        }
+        String headerValue = authHeaderTemplate
+            .replace("${token}", token)
+            .replace("{token}", token);
+        combinedHeaders.put(authHeaderName, headerValue);
     }
 }

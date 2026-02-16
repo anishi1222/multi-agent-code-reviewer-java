@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -160,6 +161,35 @@ class FindingsExtractorTest {
     @Nested
     @DisplayName("サマリー生成")
     class SummaryGeneration {
+
+        @Test
+        @DisplayName("差し替えたparserとformatter戦略が利用される")
+        void usesInjectedParserAndFormatterStrategies() {
+            var parserCalled = new AtomicBoolean(false);
+            var formatterCalled = new AtomicBoolean(false);
+
+            var results = List.of(
+                ReviewResult.builder()
+                    .agentConfig(testAgent("security")).repository("test")
+                    .content("anything").success(true).build()
+            );
+
+            String summary = FindingsExtractor.buildFindingsSummary(
+                results,
+                (content, agent) -> {
+                    parserCalled.set(true);
+                    return List.of(new FindingsExtractor.Finding("Injected", "High", agent));
+                },
+                findings -> {
+                    formatterCalled.set(true);
+                    return "INJECTED";
+                }
+            );
+
+            assertThat(summary).isEqualTo("INJECTED");
+            assertThat(parserCalled).isTrue();
+            assertThat(formatterCalled).isTrue();
+        }
 
         @Test
         @DisplayName("複数エージェントの結果から優先度別サマリーを生成する")

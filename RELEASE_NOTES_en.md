@@ -1,5 +1,30 @@
 # Release Notes
 
+## 2026-02-16
+
+### Summary
+- Continued the large-class decomposition track and completed modular splits across CLI, target collection, orchestrator, report pipeline, and Copilot startup flow.
+- Preserved behavior while reducing command/service class responsibility density and improving testability through focused collaborators.
+- Verified full regression safety after the latest `CopilotClientStarter` extraction.
+
+### Highlights
+- CLI refactoring:
+  - `ReviewCommand` now delegates parsing/resolution/preparation/request-build/execution to dedicated classes.
+  - `SkillCommand` now delegates parsing/preparation/execution/output formatting to dedicated classes.
+  - Explicitly rejects direct token values for `--token` (stdin/env based flow only).
+- Local source collection refactoring:
+  - `LocalFileProvider` responsibilities split into candidate collection, candidate processing, content formatting, and normalized selection config.
+- Orchestrator/report refactoring:
+  - Added dedicated execution/result pipeline/context/precompute components in orchestrator.
+  - Split report/summary internals into parser/formatter/builder helpers.
+- Copilot startup refactoring:
+  - `CopilotService` now delegates CLI path resolution, health checks, timeout resolution, startup error formatting, and startup execution to dedicated components.
+  - Added `CopilotClientStarter` to isolate start-time timeout/cause mapping and safe close behavior.
+
+### Validation
+- Focused tests: 101 run, 0 failures, 0 errors
+- Full test suite: 760 run, 0 failures, 0 errors
+
 ## 2026-02-14
 
 ### Summary
