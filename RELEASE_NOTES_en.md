@@ -1,5 +1,12 @@
 # Release Notes
 
+## Update Rules (Template)
+
+1. Add a new date section with the same structure in both EN and JA files.
+2. Create and push an annotated tag (for example: `vYYYY.MM.DD-notes`).
+3. Publish a GitHub Release from the tag and include EN/JA summary notes.
+4. Update `README_en.md` and `README_ja.md` with release references and URLs.
+
 ## 2026-02-17
 
 ### Summary
