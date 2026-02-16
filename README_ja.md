@@ -33,6 +33,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - README 日英対応ガイド: `reports/anishi1222/multi-agent-code-reviewer/readme_bilingual_alignment_2026-02-17.md`
 - ドキュメント同期チェックリスト: `reports/anishi1222/multi-agent-code-reviewer/documentation_sync_checklist_2026-02-17.md`
 - リリース詳細: `RELEASE_NOTES_ja.md` の `2026-02-17` セクション
+- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer-java/releases/tag/v2026.02.17-notes
 
 ## 要件
 

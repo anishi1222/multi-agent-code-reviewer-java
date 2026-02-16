@@ -33,6 +33,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 - README EN/JA alignment guide: `reports/anishi1222/multi-agent-code-reviewer/readme_bilingual_alignment_2026-02-17.md`
 - Documentation sync checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation_sync_checklist_2026-02-17.md`
 - Release details: `RELEASE_NOTES_en.md` (section `2026-02-17`)
+- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer-java/releases/tag/v2026.02.17-notes
 
 ## Requirements
 
