@@ -44,6 +44,8 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 ## リリース更新手順（テンプレート）
 
+参照チェックリスト: `reports/anishi1222/multi-agent-code-reviewer/documentation_sync_checklist_2026-02-17.md`
+
 1. `RELEASE_NOTES_en.md` と `RELEASE_NOTES_ja.md` に同一構成で新しい日付セクションを追加する。
 2. 注釈付きタグ（例: `vYYYY.MM.DD-notes`）を作成して push する。
 3. タグから GitHub Release を作成し、EN/JA の要約を本文に含める。

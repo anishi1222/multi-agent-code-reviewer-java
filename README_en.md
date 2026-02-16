@@ -44,6 +44,8 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 
 ## Release Update Procedure (Template)
 
+Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation_sync_checklist_2026-02-17.md`
+
 1. Add a new date section to `RELEASE_NOTES_en.md` and `RELEASE_NOTES_ja.md` with matching structure.
 2. Create and push an annotated tag (for example: `vYYYY.MM.DD-notes`).
 3. Publish a GitHub Release from the tag and include EN/JA notes summary.
