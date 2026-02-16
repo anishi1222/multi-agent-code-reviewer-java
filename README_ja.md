@@ -35,6 +35,13 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - リリース詳細: `RELEASE_NOTES_ja.md` の `2026-02-17` セクション
 - GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer-java/releases/tag/v2026.02.17-notes
 
+## 運用完了チェック（2026-02-17）
+
+- [x] PR #26 を `main` にマージ（最終リメディエーションと日英ドキュメント同期）
+- [x] リリースタグ公開: `v2026.02.17-notes`
+- [x] GitHub Release 公開（公開URL利用可能）
+- [x] README EN/JA と RELEASE_NOTES EN/JA へリリース参照を同期
+
 ## 要件
 
 - **GraalVM 25.0.2** (Java 25)
