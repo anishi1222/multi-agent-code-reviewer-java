@@ -652,36 +652,54 @@ flowchart TB
     ReviewApp --> ListAgentsCommand
     ReviewApp --> SkillCommand
 
-    %% ── Review flow (left) ──
-    subgraph ReviewFlow[" "]
+    %% ── Review flow ──
+    subgraph ReviewFlow["Review Flow"]
         direction TB
-        ReviewCommand --> ReviewService
-        ReviewService --> CustomInstructionLoader[CustomInstructionLoader]
-        ReviewService --> ReviewOrchestrator["ReviewOrchestrator
-        Virtual Threads / Structured Concurrency"]
+        ReviewCommand --> ReviewExecutionCoordinator
+        ReviewExecutionCoordinator --> ReviewRunExecutor
 
-        ReviewOrchestrator --> Security[Security]
-        ReviewOrchestrator --> CodeQuality[Code Quality]
-        ReviewOrchestrator --> Performance[Performance]
-        ReviewOrchestrator --> BestPractices[Best Practices]
+        ReviewRunExecutor --> ReviewService
+        ReviewService --> CustomInstructionLoader
+        ReviewService --> ReviewOrchestratorFactory
+        ReviewOrchestratorFactory --> ReviewOrchestrator
 
-        Security & CodeQuality & Performance & BestPractices --> ContentSanitizer
-        ContentSanitizer --> ReviewResultMerger["ReviewResultMerger
-        Multi-Pass Result Merge"]
+        subgraph Orchestrator["ReviewOrchestrator"]
+            direction TB
+            LocalSourcePrecomputer["LocalSourcePrecomputer
+            Local source pre-collection"]
+            ReviewContextFactory["ReviewContextFactory
+            Shared context creation"]
+            ReviewExecutionModeRunner["ReviewExecutionModeRunner
+            Async / Structured Concurrency"]
+            AgentReviewExecutor["AgentReviewExecutor
+            Semaphore control + Timeout"]
+            ReviewResultPipeline["ReviewResultPipeline
+            Result collection & merge"]
 
-        ReviewCommand --> ReportService
+            LocalSourcePrecomputer --> ReviewContextFactory
+            ReviewContextFactory --> ReviewExecutionModeRunner
+            ReviewExecutionModeRunner --> AgentReviewExecutor
+            AgentReviewExecutor --> ReviewAgent
+            ReviewAgent --> ContentSanitizer
+            ReviewExecutionModeRunner --> ReviewResultPipeline
+            ReviewResultPipeline --> ReviewResultMerger["ReviewResultMerger
+            Multi-pass deduplication"]
+        end
+
+        ReviewRunExecutor --> ReportService
         ReportService --> ReportGenerator
-        ReportService --> SummaryGenerator
-        SummaryGenerator --> FindingsExtractor
+        ReportService --> SummaryGenerator["SummaryGenerator
+        AI-powered summary"]
     end
 
-    %% ── List flow (center) ──
+    %% ── List flow ──
     ListAgentsCommand --> AgentService
 
-    %% ── Skill flow (right) ──
-    subgraph SkillFlow[" "]
+    %% ── Skill flow ──
+    subgraph SkillFlow["Skill Flow"]
         direction TB
-        SkillCommand --> SkillService
+        SkillCommand --> SkillExecutionCoordinator
+        SkillExecutionCoordinator --> SkillService
         SkillService --> SkillRegistry
         SkillService --> SkillExecutor["SkillExecutor
         Structured Concurrency"]
@@ -698,9 +716,12 @@ flowchart TB
     %% ── Shared services ──
     subgraph Shared["Shared Services"]
         direction LR
-        CopilotService
+        CopilotService["CopilotService
+        SDK lifecycle management"]
         TemplateService
     end
+
+    ReviewExecutionCoordinator --> CopilotService
 
     %% ── External ──
     subgraph External["External"]
@@ -711,8 +732,8 @@ flowchart TB
     end
 
     CopilotService --> CopilotAPI
-    Security & CodeQuality & Performance & BestPractices -.-> CopilotAPI
-    Security & CodeQuality & Performance & BestPractices -.-> GitHubMCP
+    ReviewAgent -.-> CopilotAPI
+    ReviewAgent -.-> GitHubMCP
     SkillExecutor -.-> CopilotAPI
     SkillExecutor -.-> GitHubMCP
     SummaryGenerator -.-> CopilotAPI

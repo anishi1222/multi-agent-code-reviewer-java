@@ -652,36 +652,54 @@ flowchart TB
     ReviewApp --> ListAgentsCommand
     ReviewApp --> SkillCommand
 
-    %% ── レビューフロー（左） ──
-    subgraph ReviewFlow[" "]
+    %% ── レビューフロー ──
+    subgraph ReviewFlow["レビューフロー"]
         direction TB
-        ReviewCommand --> ReviewService
-        ReviewService --> CustomInstructionLoader[CustomInstructionLoader]
-        ReviewService --> ReviewOrchestrator["ReviewOrchestrator
-        仮想スレッド / Structured Concurrency"]
+        ReviewCommand --> ReviewExecutionCoordinator
+        ReviewExecutionCoordinator --> ReviewRunExecutor
 
-        ReviewOrchestrator --> Security[Security]
-        ReviewOrchestrator --> CodeQuality[Code Quality]
-        ReviewOrchestrator --> Performance[Performance]
-        ReviewOrchestrator --> BestPractices[Best Practices]
+        ReviewRunExecutor --> ReviewService
+        ReviewService --> CustomInstructionLoader
+        ReviewService --> ReviewOrchestratorFactory
+        ReviewOrchestratorFactory --> ReviewOrchestrator
 
-        Security & CodeQuality & Performance & BestPractices --> ContentSanitizer
-        ContentSanitizer --> ReviewResultMerger["ReviewResultMerger
-        マルチパス結果マージ"]
+        subgraph Orchestrator["ReviewOrchestrator"]
+            direction TB
+            LocalSourcePrecomputer["LocalSourcePrecomputer
+            ローカルソース事前収集"]
+            ReviewContextFactory["ReviewContextFactory
+            共有コンテキスト生成"]
+            ReviewExecutionModeRunner["ReviewExecutionModeRunner
+            非同期 / Structured Concurrency"]
+            AgentReviewExecutor["AgentReviewExecutor
+            Semaphore制御 + タイムアウト"]
+            ReviewResultPipeline["ReviewResultPipeline
+            結果収集・マージ"]
 
-        ReviewCommand --> ReportService
+            LocalSourcePrecomputer --> ReviewContextFactory
+            ReviewContextFactory --> ReviewExecutionModeRunner
+            ReviewExecutionModeRunner --> AgentReviewExecutor
+            AgentReviewExecutor --> ReviewAgent
+            ReviewAgent --> ContentSanitizer
+            ReviewExecutionModeRunner --> ReviewResultPipeline
+            ReviewResultPipeline --> ReviewResultMerger["ReviewResultMerger
+            マルチパス重複排除"]
+        end
+
+        ReviewRunExecutor --> ReportService
         ReportService --> ReportGenerator
-        ReportService --> SummaryGenerator
-        SummaryGenerator --> FindingsExtractor
+        ReportService --> SummaryGenerator["SummaryGenerator
+        AI要約生成"]
     end
 
-    %% ── 一覧フロー（中央） ──
+    %% ── 一覧フロー ──
     ListAgentsCommand --> AgentService
 
-    %% ── スキルフロー（右） ──
-    subgraph SkillFlow[" "]
+    %% ── スキルフロー ──
+    subgraph SkillFlow["スキルフロー"]
         direction TB
-        SkillCommand --> SkillService
+        SkillCommand --> SkillExecutionCoordinator
+        SkillExecutionCoordinator --> SkillService
         SkillService --> SkillRegistry
         SkillService --> SkillExecutor["SkillExecutor
         Structured Concurrency"]
@@ -698,9 +716,12 @@ flowchart TB
     %% ── 共有サービス ──
     subgraph Shared["共有サービス"]
         direction LR
-        CopilotService
+        CopilotService["CopilotService
+        SDK ライフサイクル管理"]
         TemplateService
     end
+
+    ReviewExecutionCoordinator --> CopilotService
 
     %% ── 外部サービス ──
     subgraph External["外部サービス"]
@@ -711,8 +732,8 @@ flowchart TB
     end
 
     CopilotService --> CopilotAPI
-    Security & CodeQuality & Performance & BestPractices -.-> CopilotAPI
-    Security & CodeQuality & Performance & BestPractices -.-> GitHubMCP
+    ReviewAgent -.-> CopilotAPI
+    ReviewAgent -.-> GitHubMCP
     SkillExecutor -.-> CopilotAPI
     SkillExecutor -.-> GitHubMCP
     SummaryGenerator -.-> CopilotAPI
