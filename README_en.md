@@ -42,6 +42,13 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 - [x] GitHub Release published (public URL available)
 - [x] README EN/JA and Release Notes EN/JA synchronized with release links and references
 
+## Release Update Procedure (Template)
+
+1. Add a new date section to `RELEASE_NOTES_en.md` and `RELEASE_NOTES_ja.md` with matching structure.
+2. Create and push an annotated tag (for example: `vYYYY.MM.DD-notes`).
+3. Publish a GitHub Release from the tag and include EN/JA notes summary.
+4. Update `README_en.md` and `README_ja.md` with release references and URLs.
+
 ## Requirements
 
 - **GraalVM 25.0.2** (Java 25)
