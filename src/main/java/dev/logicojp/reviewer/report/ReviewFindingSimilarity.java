@@ -21,25 +21,35 @@ final class ReviewFindingSimilarity {
             return "";
         }
 
-        String normalized = value
-            .toLowerCase(Locale.ROOT)
-            .replace("`", "")
-            .replace("*", "")
-            .replace("_", "")
-            .replace("|", " ")
-            .replace("・", " ")
-            .replace("/", " ")
-            .trim();
-        return WHITESPACE.matcher(normalized).replaceAll(" ");
+        char[] chars = value.toCharArray();
+        StringBuilder sb = new StringBuilder(chars.length);
+        boolean lastWasSpace = true;
+        for (char c : chars) {
+            char lower = Character.toLowerCase(c);
+            switch (lower) {
+                case '`', '*', '_' -> { /* skip */ }
+                case '|', '/', '\t', '\n', '\r', ' ' -> {
+                    if (!lastWasSpace) { sb.append(' '); lastWasSpace = true; }
+                }
+                default -> {
+                    if (lower == '\u30FB') { // ・
+                        if (!lastWasSpace) { sb.append(' '); lastWasSpace = true; }
+                    } else {
+                        sb.append(lower); lastWasSpace = false;
+                    }
+                }
+            }
+        }
+        return sb.toString().trim();
     }
 
     static Set<String> bigrams(String text) {
         String compact = text.replace(" ", "");
         if (compact.length() < 2) {
-            return Set.of(compact);
+            return compact.isEmpty() ? Set.of() : Set.of(compact);
         }
 
-        Set<String> grams = new HashSet<>();
+        Set<String> grams = HashSet.newHashSet(compact.length() - 1);
         for (int i = 0; i < compact.length() - 1; i++) {
             grams.add(compact.substring(i, i + 2));
         }

@@ -20,7 +20,7 @@ class ContentCollector {
     private static final int MAX_ACCUMULATED_SIZE = 4 * 1024 * 1024; // 4MB
 
     private final CompletableFuture<String> future = new CompletableFuture<>();
-    private final StringBuilder accumulatedBuilder = new StringBuilder(64 * 1024);
+    private final StringBuilder accumulatedBuilder = new StringBuilder(4096);
     private final Object accumulatedLock = new Object();
     private int accumulatedSize;
     private long accumulatedVersion;

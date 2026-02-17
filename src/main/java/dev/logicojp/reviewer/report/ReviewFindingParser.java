@@ -57,6 +57,19 @@ final class ReviewFindingParser {
         return "raw|" + ReviewFindingSimilarity.normalizeText(block.body());
     }
 
+    /// Derives a finding key from an already-computed NormalizedFinding,
+    /// avoiding redundant extractTableValue and normalizeText calls.
+    static String findingKeyFromNormalized(AggregatedFinding.NormalizedFinding normalized,
+                                            String rawBody) {
+        if (!normalized.title().isEmpty()
+            && (!normalized.summary().isEmpty() || !normalized.location().isEmpty()
+                || !normalized.priority().isEmpty())) {
+            return String.join("|", normalized.title(), normalized.priority(),
+                               normalized.location(), normalized.summary());
+        }
+        return "raw|" + ReviewFindingSimilarity.normalizeText(rawBody);
+    }
+
     static String extractTableValue(String body, String key) {
         Pattern pattern = TABLE_VALUE_PATTERNS.computeIfAbsent(
             key,

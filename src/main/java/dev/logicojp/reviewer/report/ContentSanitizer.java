@@ -55,10 +55,15 @@ public final class ContentSanitizer {
         Pattern.DOTALL | Pattern.CASE_INSENSITIVE
     );
 
+    /// Combined pattern to remove CoT blocks and dangerous HTML in a single pass.
+    private static final Pattern REMOVABLE_BLOCKS_PATTERN = Pattern.compile(
+        "(?:" + COT_BLOCK_PATTERN.pattern() + ")|(?:" + DANGEROUS_HTML_PATTERN.pattern() + ")",
+        Pattern.DOTALL | Pattern.CASE_INSENSITIVE
+    );
+
     private static final ContentSanitizationPipeline PIPELINE = new ContentSanitizationPipeline(
         List.of(
-            new ContentSanitizationRule(COT_BLOCK_PATTERN, ""),
-            new ContentSanitizationRule(DANGEROUS_HTML_PATTERN, ""),
+            new ContentSanitizationRule(REMOVABLE_BLOCKS_PATTERN, ""),
             new ContentSanitizationRule(EXCESSIVE_BLANK_LINES, "\n\n")
         )
     );

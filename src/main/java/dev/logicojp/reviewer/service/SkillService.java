@@ -127,19 +127,23 @@ public class SkillService {
             model
         );
         synchronized (executorCache) {
-            return executorCache.computeIfAbsent(key, ignored -> {
-                evictIfNecessary();
-                return new SkillExecutor(
-                    copilotService.getClient(),
-                    githubToken,
-                    githubMcpConfig,
-                    model,
-                    executionConfig.skillTimeoutMinutes(),
-                    executorService,
-                    false,
-                    featureFlags.structuredConcurrencySkills()
-                );
-            });
+            SkillExecutor existing = executorCache.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            evictIfNecessary();
+            var executor = new SkillExecutor(
+                copilotService.getClient(),
+                githubToken,
+                githubMcpConfig,
+                model,
+                executionConfig.skillTimeoutMinutes(),
+                executorService,
+                false,
+                featureFlags.structuredConcurrencySkills()
+            );
+            executorCache.put(key, executor);
+            return executor;
         }
     }
 
