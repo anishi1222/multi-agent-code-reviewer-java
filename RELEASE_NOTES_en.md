@@ -9,6 +9,73 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
 4. Update `README_en.md` and `README_ja.md` with release references and URLs.
 
+## 2026-02-17 (v2)
+
+### Summary
+- Executed a second full review cycle (best-practices / code-quality / performance / security) with the multi-agent code reviewer itself.
+- Addressed all findings across 7 PRs (#34–#40), covering security hardening, performance optimization, code quality, best practices, and test coverage.
+- Test count increased from 614 to 722 (+108 tests).
+
+### Highlights
+
+#### PR #34: Initial Review Findings (Security, Performance, Best Practices, Tests)
+- Added `DANGEROUS_HTML_PATTERN` to `ContentSanitizer` for XSS prevention
+- Added homoglyph normalization and delimiter injection detection to safety validator
+- Added prompt injection validation for `.agent.md` files
+- Fixed `ReviewResultMerger` O(N²) near-duplicate detection
+- Reduced `ContentCollector` lock contention
+- Added `@Serial serialVersionUID` to `CopilotCliException`
+- Injected `CopilotTimeoutResolver` into `CopilotCliHealthChecker` (DRY)
+- Added 91 new tests across 17 test files
+
+#### PR #35: Best Practices Review
+- Replaced volatile lazy init with Holder idiom in `LocalFileConfig`
+- `SkillExecutor` now implements `AutoCloseable`
+- `CustomInstructionLoader` supports Micronaut DI injection
+- `ReviewTarget.isLocal()` uses exhaustive `switch` expression
+- `GithubMcpConfig` uses named `MaskedToStringMap` class
+- `SkillService` uses `LinkedHashMap(accessOrder=true)` for LRU cache
+- Added `CliValidationException` cause-chain constructor
+- `ReviewResult.Builder` marked `final`
+
+#### PR #36: Code Quality Review
+- Fixed `AgentMarkdownParser.extractFocusAreas()` immutable list bug (High)
+- Restored `AggregatedFinding` record immutability (`addPass()` → `withPass()`)
+- Removed dead `focusAreas() == null` check in `AgentConfigValidator`
+- Consolidated `DEFAULT_LOCAL_REVIEW_RESULT_PROMPT` in `AgentPromptBuilder`
+- Added `SummaryCollaborators.withDefaults()` method
+- Flattened `AgentReviewExecutor` nested try-catch
+
+#### PR #37: Performance Review
+- **Critical**: Fixed `SkillService` `computeIfAbsent` deadlock risk
+- Replaced 7-step `String.replace()` with single-pass `char[]` in `normalizeText()`
+- Merged CoT+HTML patterns in `ContentSanitizer` (3 passes → 2)
+- Added `find()` pre-check in `ContentSanitizationRule`
+- Reduced `ContentCollector` StringBuilder from 64KB to 4KB
+
+#### PR #38: Security Review
+- Wrapped source code in `<source_code trust_level="untrusted">` delimiters
+- Added `--trust` audit logging
+- Extended `sensitive-file-patterns.txt` with generic config files
+- Added `javascript:` and `data:base64` URI detection
+- Windows `.exe`/`.cmd` support in `CliPathResolver`
+
+#### PR #40: Test Alignment
+- Updated `SkillExecutorTest` from deprecated `shutdown()` to `close()`
+- Added 7 HTML/XSS sanitization tests to `ContentSanitizerTest`
+- Added `LogbackLevelSwitcherTest` (new file)
+- Added tests for cause-chain constructor, `generateReports()`, source code delimiters
+
+### Validation
+- Full test suite: 722 tests, 0 failures, 0 errors
+- CI: All 5 checks passed on every PR (Build and Test, Native Image, Supply Chain Guard, Dependency Review, Dependency Submission)
+- Runtime: `mvn clean package` + `run --repo ... --all` exit code 0
+
+### Merged PRs
+- [#34](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/34)–[#40](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/40)
+
+---
+
 ## 2026-02-17
 
 ### Summary

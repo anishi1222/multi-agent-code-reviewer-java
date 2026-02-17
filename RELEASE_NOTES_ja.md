@@ -9,6 +9,73 @@
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。
 4. `README_en.md` と `README_ja.md` にリリース参照とURLを追記する。
 
+## 2026-02-17 (v2)
+
+### 概要
+- マルチエージェントコードレビュアー自体に対して2回目のフルレビューサイクル（best-practices / code-quality / performance / security）を実施しました。
+- 全指摘事項を7つのPR（#34〜#40）で対応。セキュリティ強化、パフォーマンス最適化、コード品質、ベストプラクティス、テストカバレッジを改善しました。
+- テスト数が614から722に増加（+108テスト）。
+
+### 主な変更
+
+#### PR #34: 初期レビュー指摘対応（セキュリティ・パフォーマンス・ベストプラクティス・テスト追加）
+- `ContentSanitizer` に XSS 防止用 `DANGEROUS_HTML_PATTERN` を追加
+- 安全性バリデータにホモグリフ正規化・デリミタインジェクション検出を追加
+- `.agent.md` ファイルのプロンプトインジェクション検証を追加
+- `ReviewResultMerger` の O(N²) 近似重複検出を改善
+- `ContentCollector` のロック競合を軽減
+- `CopilotCliException` に `@Serial serialVersionUID` を追加
+- `CopilotCliHealthChecker` に `CopilotTimeoutResolver` を DI 注入（DRY）
+- 17テストファイルに91件の新規テストを追加
+
+#### PR #35: ベストプラクティスレビュー対応
+- `LocalFileConfig` の volatile 遅延初期化を Holder イディオムに変更
+- `SkillExecutor` に `AutoCloseable` を実装
+- `CustomInstructionLoader` を Micronaut DI 対応
+- `ReviewTarget.isLocal()` を exhaustive `switch` 式に変更
+- `GithubMcpConfig` に名前付き `MaskedToStringMap` クラスを導入
+- `SkillService` を `LinkedHashMap(accessOrder=true)` による LRU キャッシュに変更
+- `CliValidationException` に cause-chain コンストラクタを追加
+- `ReviewResult.Builder` に `final` を追加
+
+#### PR #36: コード品質レビュー対応
+- `AgentMarkdownParser.extractFocusAreas()` のイミュータブルリストバグを修正（High）
+- `AggregatedFinding` の record 不変性を復元（`addPass()` → `withPass()`）
+- `AgentConfigValidator` のデッドコード `focusAreas() == null` チェックを削除
+- `DEFAULT_LOCAL_REVIEW_RESULT_PROMPT` を `AgentPromptBuilder` に集約
+- `SummaryCollaborators.withDefaults()` メソッドを追加
+- `AgentReviewExecutor` のネスト try-catch を平坦化
+
+#### PR #37: パフォーマンスレビュー対応
+- **Critical**: `SkillService` の `computeIfAbsent` デッドロックリスクを修正
+- `normalizeText()` の7段 `String.replace()` を単一パス `char[]` 処理に変更
+- `ContentSanitizer` の CoT+HTML パターンを統合（3パス→2パス）
+- `ContentSanitizationRule` に `find()` 事前チェックを追加
+- `ContentCollector` の StringBuilder を 64KB→4KB に削減
+
+#### PR #38: セキュリティレビュー対応
+- ソースコードを `<source_code trust_level="untrusted">` デリミタで囲み保護
+- `--trust` 使用時の監査ログを追加
+- `sensitive-file-patterns.txt` に汎用設定ファイルパターンを追加
+- `javascript:` および `data:base64` URI 検出を追加
+- `CliPathResolver` に Windows `.exe`/`.cmd` 対応を追加
+
+#### PR #40: テスト整備
+- `SkillExecutorTest` を deprecated `shutdown()` → `close()` に更新
+- `ContentSanitizerTest` に HTML/XSS サニタイズ7テストを追加
+- `LogbackLevelSwitcherTest` を新規作成
+- cause-chain コンストラクタ、`generateReports()`、ソースコードデリミタのテストを追加
+
+### 検証
+- 全体テスト: 722テスト合格、0失敗、0エラー
+- CI: 全PR で全5チェック合格（Build and Test, Native Image, Supply Chain Guard, Dependency Review, Dependency Submission）
+- 実行確認: `mvn clean package` + `run --repo ... --all` 終了コード 0
+
+### マージ済み PR
+- [#34](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/34)〜[#40](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/40)
+
+---
+
 ## 2026-02-17
 
 ### 概要
