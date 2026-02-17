@@ -1,4 +1,4 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.sanitize;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

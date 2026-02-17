@@ -1,4 +1,4 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.finding;
 
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class ReviewFindingSimilarity {
+public final class ReviewFindingSimilarity {
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
     private static final Pattern KEYWORD_PATTERN = Pattern.compile("[a-z0-9_]+|[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}]{2,}");
@@ -16,7 +16,7 @@ final class ReviewFindingSimilarity {
     private ReviewFindingSimilarity() {
     }
 
-    static String normalizeText(String value) {
+    public static String normalizeText(String value) {
         if (value == null || value.isBlank()) {
             return "";
         }
@@ -43,7 +43,7 @@ final class ReviewFindingSimilarity {
         return sb.toString().trim();
     }
 
-    static Set<String> bigrams(String text) {
+    public static Set<String> bigrams(String text) {
         String compact = text.replace(" ", "");
         if (compact.length() < 2) {
             return compact.isEmpty() ? Set.of() : Set.of(compact);
@@ -56,7 +56,7 @@ final class ReviewFindingSimilarity {
         return grams;
     }
 
-    static boolean isSimilarText(String left, String right,
+    public static boolean isSimilarText(String left, String right,
                                  Set<String> leftBigrams,
                                  Set<String> rightBigrams) {
         if (left.isEmpty() || right.isEmpty()) {
@@ -74,7 +74,7 @@ final class ReviewFindingSimilarity {
         return diceCoefficient(leftBigrams, rightBigrams) >= NEAR_DUPLICATE_SIMILARITY;
     }
 
-    static boolean hasCommonKeyword(String left, String right) {
+    public static boolean hasCommonKeyword(String left, String right) {
         Set<String> leftWords = extractKeywords(left);
         Set<String> rightWords = extractKeywords(right);
         if (leftWords.isEmpty() || rightWords.isEmpty()) {

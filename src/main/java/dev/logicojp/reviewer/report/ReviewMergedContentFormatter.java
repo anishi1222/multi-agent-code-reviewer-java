@@ -1,5 +1,9 @@
 package dev.logicojp.reviewer.report;
 
+import dev.logicojp.reviewer.report.finding.AggregatedFinding;
+import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
+import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;
+
 import java.util.Map;
 import java.util.Set;
 

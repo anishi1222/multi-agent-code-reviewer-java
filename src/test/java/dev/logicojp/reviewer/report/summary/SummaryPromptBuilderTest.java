@@ -1,4 +1,7 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.summary;
+
+import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.finding.FindingsExtractor;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.TemplateConfig;

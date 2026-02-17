@@ -1,4 +1,6 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.finding;
+
+import dev.logicojp.reviewer.report.ReviewResult;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import org.junit.jupiter.api.DisplayName;

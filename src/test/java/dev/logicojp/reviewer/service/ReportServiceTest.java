@@ -1,5 +1,12 @@
 package dev.logicojp.reviewer.service;
 
+import dev.logicojp.reviewer.report.finding.AggregatedFinding;
+import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
+import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;
+import dev.logicojp.reviewer.report.finding.FindingsExtractor;
+import dev.logicojp.reviewer.report.sanitize.ContentSanitizer;
+import dev.logicojp.reviewer.report.summary.SummaryGenerator;
+
 import com.github.copilot.sdk.CopilotClient;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.SummaryConfig;
@@ -7,7 +14,7 @@ import dev.logicojp.reviewer.config.TemplateConfig;
 import dev.logicojp.reviewer.report.ReportGenerator;
 import dev.logicojp.reviewer.report.ReportGeneratorFactory;
 import dev.logicojp.reviewer.report.ReviewResult;
-import dev.logicojp.reviewer.report.SummaryGenerator;
+import dev.logicojp.reviewer.report.summary.SummaryGenerator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

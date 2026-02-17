@@ -1,5 +1,9 @@
 package dev.logicojp.reviewer.report;
 
+import dev.logicojp.reviewer.report.finding.AggregatedFinding;
+import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
+import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;
+
 import dev.logicojp.reviewer.agent.AgentConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

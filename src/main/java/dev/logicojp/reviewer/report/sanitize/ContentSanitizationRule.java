@@ -1,9 +1,9 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.sanitize;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-record ContentSanitizationRule(Pattern pattern, String replacement) {
+public record ContentSanitizationRule(Pattern pattern, String replacement) {
 
     String apply(String input) {
         Matcher matcher = pattern.matcher(input);

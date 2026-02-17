@@ -1,4 +1,4 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.finding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class ReviewFindingParser {
+public final class ReviewFindingParser {
 
     private static final Pattern FINDING_HEADER = Pattern.compile("(?m)^###\\s+(\\d+)\\.\\s+(.+?)\\s*$");
     private static final Pattern TABLE_ROW_TEMPLATE = Pattern.compile(
@@ -17,7 +17,7 @@ final class ReviewFindingParser {
     private ReviewFindingParser() {
     }
 
-    static List<FindingBlock> extractFindingBlocks(String content) {
+    public static List<FindingBlock> extractFindingBlocks(String content) {
         Matcher matcher = FINDING_HEADER.matcher(content);
         List<HeaderMatch> headers = new ArrayList<>();
         while (matcher.find()) {
@@ -40,7 +40,7 @@ final class ReviewFindingParser {
         return blocks;
     }
 
-    static String findingKey(FindingBlock block) {
+    public static String findingKey(FindingBlock block) {
         String priority = extractTableValue(block.body(), "Priority");
         String summary = extractTableValue(block.body(), "指摘の概要");
         String location = extractTableValue(block.body(), "該当箇所");
@@ -59,7 +59,7 @@ final class ReviewFindingParser {
 
     /// Derives a finding key from an already-computed NormalizedFinding,
     /// avoiding redundant extractTableValue and normalizeText calls.
-    static String findingKeyFromNormalized(AggregatedFinding.NormalizedFinding normalized,
+    public static String findingKeyFromNormalized(AggregatedFinding.NormalizedFinding normalized,
                                             String rawBody) {
         if (!normalized.title().isEmpty()
             && (!normalized.summary().isEmpty() || !normalized.location().isEmpty()
@@ -70,7 +70,7 @@ final class ReviewFindingParser {
         return "raw|" + ReviewFindingSimilarity.normalizeText(rawBody);
     }
 
-    static String extractTableValue(String body, String key) {
+    public static String extractTableValue(String body, String key) {
         Pattern pattern = TABLE_VALUE_PATTERNS.computeIfAbsent(
             key,
             k -> Pattern.compile(TABLE_ROW_TEMPLATE.pattern().formatted(Pattern.quote(k)))
@@ -82,6 +82,6 @@ final class ReviewFindingParser {
     private record HeaderMatch(int startIndex, int endIndex, String title) {
     }
 
-    record FindingBlock(String title, String body) {
+    public record FindingBlock(String title, String body) {
     }
 }

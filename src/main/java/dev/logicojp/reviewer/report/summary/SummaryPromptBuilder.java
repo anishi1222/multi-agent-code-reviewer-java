@@ -1,11 +1,13 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.summary;
+
+import dev.logicojp.reviewer.report.ReviewResult;
 
 import dev.logicojp.reviewer.service.TemplateService;
 
 import java.util.List;
 import java.util.Map;
 
-final class SummaryPromptBuilder {
+public final class SummaryPromptBuilder {
 
     private final TemplateService templateService;
     private final int maxContentPerAgent;

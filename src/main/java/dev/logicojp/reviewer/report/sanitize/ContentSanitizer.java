@@ -1,4 +1,4 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.sanitize;
 
 import java.util.List;
 import java.util.regex.Pattern;

@@ -1,4 +1,9 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.summary;
+
+import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.finding.FindingsExtractor;
+import dev.logicojp.reviewer.report.ReportFileUtils;
+import dev.logicojp.reviewer.report.ReportFilenameUtils;
 
 import dev.logicojp.reviewer.service.TemplateService;
 
@@ -6,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-final class SummaryFinalReportFormatter {
+public final class SummaryFinalReportFormatter {
 
     private final TemplateService templateService;
 

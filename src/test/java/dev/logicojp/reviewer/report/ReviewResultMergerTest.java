@@ -1,5 +1,12 @@
 package dev.logicojp.reviewer.report;
 
+import dev.logicojp.reviewer.report.finding.AggregatedFinding;
+import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
+import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;
+import dev.logicojp.reviewer.report.finding.FindingsExtractor;
+import dev.logicojp.reviewer.report.sanitize.ContentSanitizer;
+import dev.logicojp.reviewer.report.summary.SummaryGenerator;
+
 import dev.logicojp.reviewer.agent.AgentConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -1,11 +1,11 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.finding;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-final class FindingsSummaryFormatter {
+public final class FindingsSummaryFormatter {
 
     private FindingsSummaryFormatter() {
     }

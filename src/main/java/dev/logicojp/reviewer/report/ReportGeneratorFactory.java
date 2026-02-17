@@ -1,5 +1,7 @@
 package dev.logicojp.reviewer.report;
 
+import dev.logicojp.reviewer.report.summary.SummaryGenerator;
+
 import dev.logicojp.reviewer.config.SummaryConfig;
 import dev.logicojp.reviewer.service.TemplateService;
 import com.github.copilot.sdk.CopilotClient;

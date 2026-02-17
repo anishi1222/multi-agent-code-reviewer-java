@@ -1,6 +1,6 @@
 package dev.logicojp.reviewer.agent;
 
-import dev.logicojp.reviewer.report.ContentSanitizer;
+import dev.logicojp.reviewer.report.sanitize.ContentSanitizer;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import com.github.copilot.sdk.CopilotSession;

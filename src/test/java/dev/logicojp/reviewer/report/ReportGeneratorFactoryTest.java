@@ -1,5 +1,12 @@
 package dev.logicojp.reviewer.report;
 
+import dev.logicojp.reviewer.report.finding.AggregatedFinding;
+import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
+import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;
+import dev.logicojp.reviewer.report.finding.FindingsExtractor;
+import dev.logicojp.reviewer.report.sanitize.ContentSanitizer;
+import dev.logicojp.reviewer.report.summary.SummaryGenerator;
+
 import com.github.copilot.sdk.CopilotClient;
 import dev.logicojp.reviewer.config.SummaryConfig;
 import dev.logicojp.reviewer.config.TemplateConfig;

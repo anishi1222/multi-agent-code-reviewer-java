@@ -1,4 +1,8 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.summary;
+
+import dev.logicojp.reviewer.report.ReportFileUtils;
+
+import dev.logicojp.reviewer.report.ReviewResult;
 
 import com.github.copilot.sdk.CopilotClient;
 import com.github.copilot.sdk.CopilotSession;

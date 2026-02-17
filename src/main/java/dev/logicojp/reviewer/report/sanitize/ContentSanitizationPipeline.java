@@ -1,8 +1,8 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.sanitize;
 
 import java.util.List;
 
-final class ContentSanitizationPipeline {
+public final class ContentSanitizationPipeline {
 
     private final List<ContentSanitizationRule> rules;
 
