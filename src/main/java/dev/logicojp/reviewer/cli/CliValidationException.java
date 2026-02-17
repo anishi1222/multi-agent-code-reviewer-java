@@ -1,17 +1,17 @@
 package dev.logicojp.reviewer.cli;
 
-public final class CliValidationException extends RuntimeException {
+final class CliValidationException extends RuntimeException {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 
     private final boolean showUsage;
 
-    public CliValidationException(String message, boolean showUsage) {
+     CliValidationException(String message, boolean showUsage) {
         super(normalizeMessage(message));
         this.showUsage = showUsage;
     }
 
-    public CliValidationException(String message, boolean showUsage, Throwable cause) {
+     CliValidationException(String message, boolean showUsage, Throwable cause) {
         super(normalizeMessage(message), cause);
         this.showUsage = showUsage;
     }

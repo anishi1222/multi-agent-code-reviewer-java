@@ -7,7 +7,7 @@ import dev.logicojp.reviewer.service.TemplateService;
 import java.util.List;
 import java.util.Map;
 
-public final class SummaryPromptBuilder {
+final class SummaryPromptBuilder {
 
     private final TemplateService templateService;
     private final int maxContentPerAgent;

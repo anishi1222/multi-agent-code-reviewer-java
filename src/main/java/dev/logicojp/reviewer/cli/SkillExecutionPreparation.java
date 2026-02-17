@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Singleton
-public class SkillExecutionPreparation {
+class SkillExecutionPreparation {
 
     @FunctionalInterface
     interface AgentLoader {

@@ -38,7 +38,7 @@ public class TemplateService {
     /// @param templateName The template name (without directory prefix)
     /// @param placeholders Map of placeholder names to values (e.g., "repository" -> "owner/repo")
     /// @return The processed template content
-    public String loadTemplate(String templateName, Map<String, String> placeholders) {
+     String loadTemplate(String templateName, Map<String, String> placeholders) {
         String content = loadTemplateContent(templateName);
         return applyPlaceholders(content, placeholders);
     }
@@ -181,7 +181,7 @@ public class TemplateService {
     // Convenience methods for specific templates
 
     /// Loads the default output format template.
-    public String getDefaultOutputFormat() {
+     String getDefaultOutputFormat() {
         return loadTemplateContent(config.defaultOutputFormat());
     }
 
@@ -201,7 +201,7 @@ public class TemplateService {
     }
 
     /// Loads the local review content template with placeholders applied.
-    public String getLocalReviewContent(Map<String, String> placeholders) {
+     String getLocalReviewContent(Map<String, String> placeholders) {
         return loadTemplate(config.localReviewContent(), placeholders);
     }
 
@@ -216,12 +216,12 @@ public class TemplateService {
     }
 
     /// Loads the summary result entry template (per-agent success) with placeholders applied.
-    public String getSummaryResultEntry(Map<String, String> placeholders) {
+     String getSummaryResultEntry(Map<String, String> placeholders) {
         return loadTemplate(config.summary().resultEntry(), placeholders);
     }
 
     /// Loads the summary result error entry template (per-agent failure) with placeholders applied.
-    public String getSummaryResultErrorEntry(Map<String, String> placeholders) {
+     String getSummaryResultErrorEntry(Map<String, String> placeholders) {
         return loadTemplate(config.summary().resultErrorEntry(), placeholders);
     }
 
@@ -248,7 +248,7 @@ public class TemplateService {
     /// Loads the output constraints template.
     /// Contains constraints such as CoT suppression, output format enforcement,
     /// and language requirements for review output.
-    public String getOutputConstraints() {
+     String getOutputConstraints() {
         return loadTemplateContent(config.outputConstraints());
     }
 

@@ -33,7 +33,7 @@ public final class CliUsage {
         output.err().print(GENERAL_USAGE);
     }
 
-    public static void printRun(CliOutput output) {
+     static void printRun(CliOutput output) {
             output.out().print("""
                 Usage: review run [options]
 
@@ -61,7 +61,7 @@ public final class CliUsage {
                 """);
     }
 
-    public static void printList(CliOutput output) {
+     static void printList(CliOutput output) {
         output.out().print("""
                 Usage: review list [options]
 
@@ -70,7 +70,7 @@ public final class CliUsage {
                 """);
     }
 
-    public static void printSkill(CliOutput output) {
+     static void printSkill(CliOutput output) {
         output.out().print("""
                 Usage: review skill [skill-id] [options]
 

@@ -32,7 +32,7 @@ public final class CliParsing {
         return false;
     }
 
-    public static OptionValue readSingleValue(String arg, String[] args, int index, String optionName) {
+     static OptionValue readSingleValue(String arg, String[] args, int index, String optionName) {
         String inline = inlineValue(arg);
         if (inline != null) {
             return new OptionValue(inline, index);
@@ -43,7 +43,7 @@ public final class CliParsing {
         return new OptionValue(args[index + 1], index + 1);
     }
 
-    public static MultiValue readMultiValues(String arg, String[] args, int index, String optionName) {
+     static MultiValue readMultiValues(String arg, String[] args, int index, String optionName) {
         List<String> values = new ArrayList<>();
         addInlineValue(arg, values);
         int newIndex = index;
@@ -56,13 +56,13 @@ public final class CliParsing {
         return new MultiValue(values, newIndex);
     }
 
-    public static int readInto(String[] args, int i, String optName, Consumer<String> setter) {
+     static int readInto(String[] args, int i, String optName, Consumer<String> setter) {
         OptionValue value = readSingleValue(args[i], args, i, optName);
         setter.accept(value.value());
         return value.newIndex();
     }
 
-    public static int readMultiInto(String[] args, int i, String optName, Consumer<String> setter) {
+     static int readMultiInto(String[] args, int i, String optName, Consumer<String> setter) {
         MultiValue values = readMultiValues(args[i], args, i, optName);
         for (String value : values.values()) {
             setter.accept(value);
@@ -70,11 +70,11 @@ public final class CliParsing {
         return values.newIndex();
     }
 
-    public static int readTokenInto(String[] args, int i, String optName, Consumer<String> setter) {
+     static int readTokenInto(String[] args, int i, String optName, Consumer<String> setter) {
         return readInto(args, i, optName, value -> setter.accept(readTokenWithWarning(value)));
     }
 
-    public static List<String> splitComma(String value) {
+     static List<String> splitComma(String value) {
         List<String> parts = new ArrayList<>();
         if (value == null || value.isBlank()) {
             return List.of();
@@ -116,7 +116,7 @@ public final class CliParsing {
     /// exposure in process listings and shell history.
     /// Only `"-"` (stdin) is accepted; for other values a
     /// {@link CliValidationException} is thrown.
-    public static String readTokenWithWarning(String value) {
+     static String readTokenWithWarning(String value) {
         if (!"-".equals(value)) {
             throw directTokenPassingNotSupported();
         }
@@ -132,7 +132,7 @@ public final class CliParsing {
     /// It will remain in the JVM heap until garbage collected. Callers should
     /// minimize the scope of token references and prefer short-lived tokens
     /// (e.g., fine-grained personal access tokens) to reduce exposure window.
-    public static String readToken(String value) {
+     static String readToken(String value) {
         if ("-".equals(value)) {
             try {
                 if (System.console() != null) {

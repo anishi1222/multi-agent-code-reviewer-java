@@ -92,7 +92,7 @@ public class CustomInstructionLoader {
     /// Loads custom instructions from a local directory.
     /// @param directory The directory to search for instruction files
     /// @return List of custom instructions found (empty if none found)
-    public List<CustomInstruction> loadFromLocalDirectory(Path directory) {
+     List<CustomInstruction> loadFromLocalDirectory(Path directory) {
         if (directory == null || !Files.isDirectory(directory)) {
             return List.of();
         }

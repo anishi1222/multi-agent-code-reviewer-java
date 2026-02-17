@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 /// Loaded prompts are converted to [CustomInstruction] records and injected
 /// into the agent system prompt alongside regular instructions.
 @Singleton
-public class PromptLoader {
+class PromptLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(PromptLoader.class);
 

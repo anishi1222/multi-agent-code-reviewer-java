@@ -19,7 +19,7 @@ import java.util.Map;
 
 /// Executes the review run lifecycle: review execution, report generation, summary generation.
 @Singleton
-public class ReviewRunExecutor {
+class ReviewRunExecutor {
 
     @FunctionalInterface
     interface ReviewRunner {

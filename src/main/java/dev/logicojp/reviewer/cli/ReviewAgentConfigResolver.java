@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @Singleton
-public class ReviewAgentConfigResolver {
+class ReviewAgentConfigResolver {
 
     public record AgentResolution(List<Path> agentDirectories, Map<String, AgentConfig> agentConfigs) {}
 

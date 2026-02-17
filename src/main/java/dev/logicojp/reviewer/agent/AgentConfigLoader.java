@@ -250,7 +250,7 @@ public class AgentConfigLoader {
     }
     
     /// Gets the list of configured agent directories.
-    public List<Path> getAgentDirectories() {
+     List<Path> getAgentDirectories() {
         return agentDirectories;  // already immutable via List.copyOf()
     }
 }

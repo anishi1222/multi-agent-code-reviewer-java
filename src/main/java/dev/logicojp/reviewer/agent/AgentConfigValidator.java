@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 /// Validates {@link AgentConfig} instances.
 /// Separated from the record to maintain single responsibility —
 /// the record is a pure data carrier.
-public final class AgentConfigValidator {
+final class AgentConfigValidator {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentConfigValidator.class);
 

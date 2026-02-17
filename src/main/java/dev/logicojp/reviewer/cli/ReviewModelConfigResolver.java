@@ -5,7 +5,7 @@ import jakarta.inject.Singleton;
 
 /// Resolves effective model configuration from defaults and CLI overrides.
 @Singleton
-public class ReviewModelConfigResolver {
+class ReviewModelConfigResolver {
 
     public ModelConfig resolve(ModelConfig defaultModelConfig,
                                String defaultModel,

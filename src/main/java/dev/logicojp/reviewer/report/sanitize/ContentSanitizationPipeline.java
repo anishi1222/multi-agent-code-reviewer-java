@@ -2,7 +2,7 @@ package dev.logicojp.reviewer.report.sanitize;
 
 import java.util.List;
 
-public final class ContentSanitizationPipeline {
+final class ContentSanitizationPipeline {
 
     private final List<ContentSanitizationRule> rules;
 

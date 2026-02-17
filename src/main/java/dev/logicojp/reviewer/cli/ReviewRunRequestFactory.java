@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @Singleton
-public class ReviewRunRequestFactory {
+class ReviewRunRequestFactory {
 
     public ReviewRunExecutor.ReviewRunRequest create(
         ReviewCommand.ParsedOptions options,

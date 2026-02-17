@@ -27,7 +27,7 @@ public class SkillRegistry {
     }
 
     /// Registers multiple skill definitions.
-    public void registerAll(Collection<SkillDefinition> skillDefinitions) {
+     void registerAll(Collection<SkillDefinition> skillDefinitions) {
         for (SkillDefinition skill : skillDefinitions) {
             register(skill);
         }
@@ -39,7 +39,7 @@ public class SkillRegistry {
     }
 
     /// Gets all registered skills.
-    public List<SkillDefinition> getAll() {
+     public List<SkillDefinition> getAll() {
         return List.copyOf(skills.values());
     }
 

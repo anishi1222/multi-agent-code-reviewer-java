@@ -20,11 +20,11 @@ public class CliOutput {
         this.err = err;
     }
 
-    public PrintStream out() {
+     PrintStream out() {
         return out;
     }
 
-    public PrintStream err() {
+     PrintStream err() {
         return err;
     }
 

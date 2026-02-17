@@ -3,7 +3,7 @@ package dev.logicojp.reviewer.report.sanitize;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public record ContentSanitizationRule(Pattern pattern, String replacement) {
+record ContentSanitizationRule(Pattern pattern, String replacement) {
 
     String apply(String input) {
         Matcher matcher = pattern.matcher(input);

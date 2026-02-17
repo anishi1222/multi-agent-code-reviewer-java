@@ -15,7 +15,7 @@ import java.util.Map;
 
 /// Formats and prints review command output for banners and completion summaries.
 @Singleton
-public class ReviewOutputFormatter {
+class ReviewOutputFormatter {
 
     private final CliOutput output;
     private final ExecutionConfig executionConfig;

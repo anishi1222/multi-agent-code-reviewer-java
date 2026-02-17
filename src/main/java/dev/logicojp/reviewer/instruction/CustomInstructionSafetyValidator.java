@@ -91,7 +91,7 @@ public final class CustomInstructionSafetyValidator {
     private CustomInstructionSafetyValidator() {
     }
 
-    public static ValidationResult validate(CustomInstruction instruction) {
+     static ValidationResult validate(CustomInstruction instruction) {
         return validate(instruction, false);
     }
 

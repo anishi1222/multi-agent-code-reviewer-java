@@ -43,7 +43,7 @@ public final class ReviewFindingSimilarity {
         return sb.toString().trim();
     }
 
-    public static Set<String> bigrams(String text) {
+     static Set<String> bigrams(String text) {
         String compact = text.replace(" ", "");
         if (compact.length() < 2) {
             return compact.isEmpty() ? Set.of() : Set.of(compact);
@@ -56,7 +56,7 @@ public final class ReviewFindingSimilarity {
         return grams;
     }
 
-    public static boolean isSimilarText(String left, String right,
+     static boolean isSimilarText(String left, String right,
                                  Set<String> leftBigrams,
                                  Set<String> rightBigrams) {
         if (left.isEmpty() || right.isEmpty()) {
@@ -74,7 +74,7 @@ public final class ReviewFindingSimilarity {
         return diceCoefficient(leftBigrams, rightBigrams) >= NEAR_DUPLICATE_SIMILARITY;
     }
 
-    public static boolean hasCommonKeyword(String left, String right) {
+     static boolean hasCommonKeyword(String left, String right) {
         Set<String> leftWords = extractKeywords(left);
         Set<String> rightWords = extractKeywords(right);
         if (leftWords.isEmpty() || rightWords.isEmpty()) {

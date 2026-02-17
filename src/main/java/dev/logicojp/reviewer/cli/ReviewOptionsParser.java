@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Singleton
-public class ReviewOptionsParser {
+class ReviewOptionsParser {
 
     private final ExecutionConfig executionConfig;
 

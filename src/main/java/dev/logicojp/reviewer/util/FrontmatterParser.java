@@ -116,7 +116,7 @@ public final class FrontmatterParser {
     ///
     /// @param rawContent The raw file content
     /// @return The raw frontmatter text, or {@code null} if no frontmatter is found
-    public static String extractRawFrontmatter(String rawContent) {
+     static String extractRawFrontmatter(String rawContent) {
         if (!startsWithFrontmatter(rawContent)) {
             return null;
         }

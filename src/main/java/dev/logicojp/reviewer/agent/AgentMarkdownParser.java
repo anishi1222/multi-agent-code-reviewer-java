@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
 /// - SQL Injection
 /// - XSS
 /// ```
-public class AgentMarkdownParser {
+class AgentMarkdownParser {
     
     private static final Logger logger = LoggerFactory.getLogger(AgentMarkdownParser.class);
     
@@ -57,13 +57,13 @@ public class AgentMarkdownParser {
     private final String defaultOutputFormat;
 
     /// Creates a parser with no default output format.
-    public AgentMarkdownParser() {
+     AgentMarkdownParser() {
         this(null);
     }
 
     /// Creates a parser with a default output format loaded from an external template.
     /// @param defaultOutputFormat Fallback output format when the agent file doesn't specify one
-    public AgentMarkdownParser(String defaultOutputFormat) {
+     AgentMarkdownParser(String defaultOutputFormat) {
         this.defaultOutputFormat = defaultOutputFormat;
     }
     

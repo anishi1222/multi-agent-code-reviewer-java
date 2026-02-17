@@ -19,7 +19,7 @@ import java.util.Optional;
 
 /// Resolves custom instructions for a review run.
 @Singleton
-public class ReviewCustomInstructionResolver {
+class ReviewCustomInstructionResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(ReviewCustomInstructionResolver.class);
 

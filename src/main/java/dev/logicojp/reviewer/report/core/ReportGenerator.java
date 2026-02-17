@@ -33,7 +33,7 @@ public class ReportGenerator {
     /// Generates a markdown report file for the given review result.
     /// @param result The review result to generate a report for
     /// @return Path to the generated report file
-    public Path generateReport(ReviewResult result) throws IOException {
+     Path generateReport(ReviewResult result) throws IOException {
         ensureOutputDirectory();
         AgentConfig config = result.agentConfig();
         String date = LocalDate.now().format(DATE_FORMATTER);

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @Singleton
-public class ReviewPreparationService {
+class ReviewPreparationService {
 
     @FunctionalInterface
     interface BannerPrinter {

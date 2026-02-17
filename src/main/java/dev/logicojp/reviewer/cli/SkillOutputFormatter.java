@@ -8,7 +8,7 @@ import jakarta.inject.Singleton;
 import java.util.Collection;
 
 @Singleton
-public class SkillOutputFormatter {
+class SkillOutputFormatter {
 
     private final CliOutput output;
 

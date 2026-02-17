@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Singleton
-public class ReviewTargetResolver {
+class ReviewTargetResolver {
 
     public record TargetAndToken(ReviewTarget target, String resolvedToken) {
         @Override

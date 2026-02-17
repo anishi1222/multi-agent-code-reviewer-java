@@ -43,7 +43,7 @@ public class SkillMarkdownParser {
     }
 
     /// Returns the configured skill filename.
-    public String getSkillFilename() {
+     String getSkillFilename() {
         return skillFilename;
     }
 
@@ -70,7 +70,7 @@ public class SkillMarkdownParser {
     /// @param content The full content of the SKILL.md file
     /// @param skillId The skill ID (directory name)
     /// @return SkillDefinition parsed from the content
-    public SkillDefinition parseContent(String content, String skillId) {
+     SkillDefinition parseContent(String content, String skillId) {
         String id = skillId;
 
         FrontmatterParser.Parsed parsed = FrontmatterParser.parse(content);
@@ -96,7 +96,7 @@ public class SkillMarkdownParser {
     }
 
     /// Checks whether the given path matches the configured skill filename.
-    public boolean isSkillFile(Path path) {
+     boolean isSkillFile(Path path) {
         if (path == null) return false;
         return path.getFileName().toString().equals(skillFilename);
     }

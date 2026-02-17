@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Singleton
-public class SkillOptionsParser {
+class SkillOptionsParser {
 
     public Optional<SkillCommand.ParsedOptions> parse(String[] args) {
         args = Objects.requireNonNullElse(args, new String[0]);

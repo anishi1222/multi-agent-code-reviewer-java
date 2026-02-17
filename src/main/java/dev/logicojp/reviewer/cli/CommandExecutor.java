@@ -10,7 +10,7 @@ import java.util.function.Function;
 ///
 /// Centralizes the common try-catch structure for parsing arguments,
 /// handling {@link CliValidationException}, and returning exit codes.
-public final class CommandExecutor {
+final class CommandExecutor {
 
     private static final CliOutput DEFAULT_CLI_OUTPUT = new CliOutput();
 

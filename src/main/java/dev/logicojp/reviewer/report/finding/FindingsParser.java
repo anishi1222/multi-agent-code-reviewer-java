@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class FindingsParser {
+final class FindingsParser {
 
     private static final Pattern PRIORITY_PATTERN = Pattern.compile(
         "\\|\\s*\\*{0,2}Priority\\*{0,2}\\s*\\|\\s*(Critical|High|Medium|Low)\\b",

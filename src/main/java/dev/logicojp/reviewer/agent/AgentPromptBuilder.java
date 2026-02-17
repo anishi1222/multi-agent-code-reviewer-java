@@ -19,7 +19,7 @@ public final class AgentPromptBuilder {
 
     /// Builds the complete system prompt including output format instructions
     /// and output constraints (language, CoT suppression).
-    public static String buildFullSystemPrompt(AgentConfig config) {
+     static String buildFullSystemPrompt(AgentConfig config) {
         return buildFullSystemPrompt(config, DEFAULT_FOCUS_AREAS_GUIDANCE);
     }
 
@@ -64,7 +64,7 @@ public final class AgentPromptBuilder {
     /// @param config The agent configuration
     /// @param repository The repository name (e.g. "owner/repo")
     /// @return The formatted instruction
-    public static String buildInstruction(AgentConfig config, String repository) {
+     static String buildInstruction(AgentConfig config, String repository) {
         if (config.instruction() == null || config.instruction().isBlank()) {
             throw new IllegalStateException("Instruction is not configured for agent: " + config.name());
         }
@@ -77,7 +77,7 @@ public final class AgentPromptBuilder {
     /// @param targetName Display name of the target directory
     /// @param sourceContent Collected source code content
     /// @return The formatted instruction with embedded source code
-    public static String buildLocalInstruction(AgentConfig config, String targetName, String sourceContent) {
+     static String buildLocalInstruction(AgentConfig config, String targetName, String sourceContent) {
         return buildLocalInstruction(config, targetName, sourceContent, DEFAULT_LOCAL_SOURCE_HEADER);
     }
 
@@ -101,7 +101,7 @@ public final class AgentPromptBuilder {
     /// Builds only the local-review base instruction without embedding source code.
     /// This enables callers to reuse shared source-content references and avoid
     /// creating large concatenated strings per agent.
-    public static String buildLocalInstructionBase(AgentConfig config, String targetName) {
+     static String buildLocalInstructionBase(AgentConfig config, String targetName) {
         if (config.instruction() == null || config.instruction().isBlank()) {
             throw new IllegalStateException("Instruction is not configured for agent: " + config.name());
         }

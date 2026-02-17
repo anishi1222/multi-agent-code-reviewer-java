@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Singleton
-public class SkillExecutionCoordinator {
+class SkillExecutionCoordinator {
 
     @FunctionalInterface
     interface Initializer {
