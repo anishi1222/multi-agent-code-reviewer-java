@@ -2,6 +2,8 @@
 
 ## 更新ルール（テンプレート）
 
+参照チェックリスト: `reports/anishi1222/multi-agent-code-reviewer/documentation_sync_checklist_2026-02-17.md`
+
 1. EN/JA 両方に同一構成で新しい日付セクションを追加する。
 2. 注釈付きタグ（例: `vYYYY.MM.DD-notes`）を作成して push する。
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。

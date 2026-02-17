@@ -2,6 +2,8 @@
 
 ## Update Rules (Template)
 
+Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation_sync_checklist_2026-02-17.md`
+
 1. Add a new date section with the same structure in both EN and JA files.
 2. Create and push an annotated tag (for example: `vYYYY.MM.DD-notes`).
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
