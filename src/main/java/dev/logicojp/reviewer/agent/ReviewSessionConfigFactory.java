@@ -5,16 +5,18 @@ import com.github.copilot.sdk.json.SessionConfig;
 import com.github.copilot.sdk.json.SystemMessageConfig;
 import dev.logicojp.reviewer.config.ModelConfig;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 final class ReviewSessionConfigFactory {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReviewSessionConfigFactory.class);
+
     SessionConfig create(AgentConfig config,
                          ReviewContext ctx,
                          String systemPrompt,
-                         Map<String, Object> mcpServers,
-                         Logger logger) {
+                         Map<String, Object> mcpServers) {
         var sessionConfig = new SessionConfig()
             .setModel(config.model())
             .setSystemMessage(new SystemMessageConfig()
@@ -22,7 +24,7 @@ final class ReviewSessionConfigFactory {
                 .setContent(systemPrompt));
 
         applyMcpServers(sessionConfig, mcpServers);
-        applyReasoningEffort(config, ctx, sessionConfig, logger);
+        applyReasoningEffort(config, ctx, sessionConfig);
         return sessionConfig;
     }
 
@@ -34,8 +36,7 @@ final class ReviewSessionConfigFactory {
 
     private void applyReasoningEffort(AgentConfig config,
                                       ReviewContext ctx,
-                                      SessionConfig sessionConfig,
-                                      Logger logger) {
+                                      SessionConfig sessionConfig) {
         String effort = ModelConfig.resolveReasoningEffort(config.model(), ctx.reasoningEffort());
         if (effort != null) {
             logger.info("Setting reasoning effort '{}' for model: {}", effort, config.model());

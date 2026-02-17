@@ -15,6 +15,12 @@ public record CustomInstruction(
     String applyTo,
     String description
 ) {
+    public CustomInstruction {
+        sourcePath = sourcePath != null ? sourcePath : "";
+        content = content != null ? content : "";
+        source = source != null ? source : InstructionSource.LOCAL_FILE;
+    }
+
     /// Checks if this instruction has no meaningful content.
     ///
     /// @return true if content is null or blank

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /// Configuration for the GitHub MCP server connection.
 @ConfigurationProperties("reviewer.mcp.github")
@@ -62,7 +63,7 @@ public record GithubMcpConfig(
         public String toString() {
             // Mask Authorization header values to prevent token leakage in logs
             Map<String, String> maskedHeaders = headers.entrySet().stream()
-                .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                .collect(Collectors.toUnmodifiableMap(
                     Map.Entry::getKey,
                     entry -> {
                         String normalized = entry.getKey() == null ? "" : entry.getKey().toLowerCase();

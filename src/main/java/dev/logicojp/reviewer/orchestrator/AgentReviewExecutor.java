@@ -5,6 +5,7 @@ import dev.logicojp.reviewer.agent.ReviewContext;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -15,16 +16,14 @@ import java.util.concurrent.TimeoutException;
 
 final class AgentReviewExecutor {
 
-    private final Logger logger;
+    private static final Logger logger = LoggerFactory.getLogger(AgentReviewExecutor.class);
     private final Semaphore concurrencyLimit;
     private final ExecutorService agentExecutionExecutor;
     private final ReviewOrchestrator.AgentReviewerFactory reviewerFactory;
 
-    AgentReviewExecutor(Logger logger,
-                        Semaphore concurrencyLimit,
+    AgentReviewExecutor(Semaphore concurrencyLimit,
                         ExecutorService agentExecutionExecutor,
                         ReviewOrchestrator.AgentReviewerFactory reviewerFactory) {
-        this.logger = logger;
         this.concurrencyLimit = concurrencyLimit;
         this.agentExecutionExecutor = agentExecutionExecutor;
         this.reviewerFactory = reviewerFactory;

@@ -66,7 +66,7 @@ class ReviewOrchestratorTest {
             );
 
             assertThat(results).hasSize(1);
-            assertThat(results.getFirst().isSuccess()).isTrue();
+            assertThat(results.getFirst().success()).isTrue();
             assertThat(results.getFirst().content()).isEqualTo("ok");
         } finally {
             client.close();

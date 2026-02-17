@@ -43,7 +43,7 @@ public class ReviewOutputFormatter {
     }
 
     public void printCompletionSummary(List<ReviewResult> results, Path outputDirectory) {
-        long successCount = results.stream().filter(ReviewResult::isSuccess).count();
+        long successCount = results.stream().filter(ReviewResult::success).count();
         output.println("");
         output.println("════════════════════════════════════════════════════════════");
         output.println("Review completed!");

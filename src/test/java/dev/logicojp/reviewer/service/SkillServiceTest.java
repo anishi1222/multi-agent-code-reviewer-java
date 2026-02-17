@@ -39,7 +39,7 @@ class SkillServiceTest {
 
         var result = service.executeSkill("missing", Map.of(), null, "model").join();
 
-        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.success()).isFalse();
         assertThat(result.errorMessage()).contains("Skill not found");
     }
 

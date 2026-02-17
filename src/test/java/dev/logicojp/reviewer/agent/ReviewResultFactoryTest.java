@@ -32,7 +32,7 @@ class ReviewResultFactoryTest {
 
             ReviewResult result = factory.fromException(AGENT_CONFIG, REPOSITORY, exception);
 
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
             assertThat(result.errorMessage()).isEqualTo("Something went wrong");
             assertThat(result.agentConfig()).isEqualTo(AGENT_CONFIG);
             assertThat(result.repository()).isEqualTo(REPOSITORY);
@@ -46,7 +46,7 @@ class ReviewResultFactoryTest {
 
             ReviewResult result = factory.fromException(AGENT_CONFIG, REPOSITORY, exception);
 
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
             assertThat(result.errorMessage()).isNull();
         }
     }
@@ -60,7 +60,7 @@ class ReviewResultFactoryTest {
         void returnsSpecificMessageForMcpTimeout() {
             ReviewResult result = factory.emptyContentFailure(AGENT_CONFIG, REPOSITORY, true);
 
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
             assertThat(result.errorMessage()).contains("MCP tool calls");
             assertThat(result.agentConfig()).isEqualTo(AGENT_CONFIG);
             assertThat(result.repository()).isEqualTo(REPOSITORY);
@@ -72,7 +72,7 @@ class ReviewResultFactoryTest {
         void returnsGenericMessageWithoutMcp() {
             ReviewResult result = factory.emptyContentFailure(AGENT_CONFIG, REPOSITORY, false);
 
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
             assertThat(result.errorMessage()).isEqualTo("Agent returned empty review content");
             assertThat(result.errorMessage()).doesNotContain("MCP");
         }
@@ -89,7 +89,7 @@ class ReviewResultFactoryTest {
 
             ReviewResult result = factory.success(AGENT_CONFIG, REPOSITORY, content);
 
-            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.success()).isTrue();
             assertThat(result.content()).isEqualTo(content);
             assertThat(result.agentConfig()).isEqualTo(AGENT_CONFIG);
             assertThat(result.repository()).isEqualTo(REPOSITORY);

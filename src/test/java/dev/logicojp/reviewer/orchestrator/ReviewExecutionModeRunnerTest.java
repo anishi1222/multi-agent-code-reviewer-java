@@ -27,7 +27,7 @@ class ReviewExecutionModeRunnerTest {
     @DisplayName("asyncモードで結果を収集しmulti-pass時にマージする")
     void executesAsyncAndMerges() {
         ExecutionConfig config = new ExecutionConfig(2, 2, 2, 1, 1, 1, 1, 1, 0);
-        var pipeline = new ReviewResultPipeline(LoggerFactory.getLogger("test-async"));
+        var pipeline = new ReviewResultPipeline();
         ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
         try {
@@ -64,7 +64,7 @@ class ReviewExecutionModeRunnerTest {
     @DisplayName("structuredモードで結果を収集できる")
     void executesStructured() {
         ExecutionConfig config = new ExecutionConfig(2, 1, 2, 1, 1, 1, 1, 1, 0);
-        var pipeline = new ReviewResultPipeline(LoggerFactory.getLogger("test-structured"));
+        var pipeline = new ReviewResultPipeline();
         var runner = new ReviewExecutionModeRunner(config, null, pipeline);
 
         var results = runner.executeStructured(
@@ -81,6 +81,6 @@ class ReviewExecutionModeRunnerTest {
         );
 
         assertThat(results).hasSize(1);
-        assertThat(results.getFirst().isSuccess()).isTrue();
+        assertThat(results.getFirst().success()).isTrue();
     }
 }

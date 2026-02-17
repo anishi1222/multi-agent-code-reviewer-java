@@ -42,7 +42,6 @@ class AgentReviewExecutorTest {
         var ctx = context();
         try {
             var executor = new AgentReviewExecutor(
-                LoggerFactory.getLogger("agent-review-exec-test"),
                 new Semaphore(1),
                 executorService,
                 (config, context) -> target -> ReviewResult.builder()
@@ -61,7 +60,7 @@ class AgentReviewExecutorTest {
                 1
             );
 
-            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.success()).isTrue();
             assertThat(result.content()).isEqualTo("ok");
         } finally {
             executorService.close();
@@ -77,7 +76,6 @@ class AgentReviewExecutorTest {
         var ctx = context();
         try {
             var executor = new AgentReviewExecutor(
-                LoggerFactory.getLogger("agent-review-exec-test"),
                 new Semaphore(1),
                 executorService,
                 (config, context) -> target -> {
@@ -92,7 +90,7 @@ class AgentReviewExecutorTest {
                 1
             );
 
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
             assertThat(result.errorMessage()).contains("Review failed:");
         } finally {
             executorService.close();

@@ -46,8 +46,42 @@ public record ExecutionConfig(
     /// @param newParallelism the new parallelism value
     /// @return a new ExecutionConfig with the updated parallelism
     public ExecutionConfig withParallelism(int newParallelism) {
-        return new ExecutionConfig(newParallelism, reviewPasses, orchestratorTimeoutMinutes,
-            agentTimeoutMinutes, idleTimeoutMinutes, skillTimeoutMinutes,
-            summaryTimeoutMinutes, ghAuthTimeoutSeconds, maxRetries);
+        return Builder.from(this)
+            .parallelism(newParallelism)
+            .build();
+    }
+
+    public static final class Builder {
+        private int parallelism;
+        private int reviewPasses;
+        private long orchestratorTimeoutMinutes;
+        private long agentTimeoutMinutes;
+        private long idleTimeoutMinutes;
+        private long skillTimeoutMinutes;
+        private long summaryTimeoutMinutes;
+        private long ghAuthTimeoutSeconds;
+        private int maxRetries;
+
+        public static Builder from(ExecutionConfig source) {
+            var b = new Builder();
+            b.parallelism = source.parallelism;
+            b.reviewPasses = source.reviewPasses;
+            b.orchestratorTimeoutMinutes = source.orchestratorTimeoutMinutes;
+            b.agentTimeoutMinutes = source.agentTimeoutMinutes;
+            b.idleTimeoutMinutes = source.idleTimeoutMinutes;
+            b.skillTimeoutMinutes = source.skillTimeoutMinutes;
+            b.summaryTimeoutMinutes = source.summaryTimeoutMinutes;
+            b.ghAuthTimeoutSeconds = source.ghAuthTimeoutSeconds;
+            b.maxRetries = source.maxRetries;
+            return b;
+        }
+
+        public Builder parallelism(int parallelism) { this.parallelism = parallelism; return this; }
+
+        public ExecutionConfig build() {
+            return new ExecutionConfig(parallelism, reviewPasses, orchestratorTimeoutMinutes,
+                agentTimeoutMinutes, idleTimeoutMinutes, skillTimeoutMinutes,
+                summaryTimeoutMinutes, ghAuthTimeoutSeconds, maxRetries);
+        }
     }
 }

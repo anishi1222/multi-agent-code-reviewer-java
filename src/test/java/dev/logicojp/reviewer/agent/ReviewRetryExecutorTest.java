@@ -28,7 +28,7 @@ class ReviewRetryExecutorTest {
             this::failureFromException
         );
 
-        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.success()).isTrue();
         assertThat(attempts.get()).isEqualTo(1);
     }
 
@@ -44,7 +44,7 @@ class ReviewRetryExecutorTest {
             this::failureFromException
         );
 
-        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.success()).isTrue();
         assertThat(attempts.get()).isEqualTo(2);
         assertThat(sleeps.get()).isEqualTo(1);
     }
@@ -64,7 +64,7 @@ class ReviewRetryExecutorTest {
             this::failureFromException
         );
 
-        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.success()).isFalse();
         assertThat(result.errorMessage()).isEqualTo("boom");
         assertThat(attempts.get()).isEqualTo(2);
         assertThat(sleeps.get()).isEqualTo(1);

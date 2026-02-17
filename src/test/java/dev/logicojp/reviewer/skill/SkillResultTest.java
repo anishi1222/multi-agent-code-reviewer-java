@@ -19,7 +19,7 @@ class SkillResultTest {
         @DisplayName("successは成功結果を生成する")
         void successCreatesSuccessResult() {
             SkillResult result = SkillResult.success("skill-1", "content output");
-            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.success()).isTrue();
             assertThat(result.skillId()).isEqualTo("skill-1");
             assertThat(result.content()).isEqualTo("content output");
             assertThat(result.errorMessage()).isNull();
@@ -30,7 +30,7 @@ class SkillResultTest {
         @DisplayName("failureは失敗結果を生成する")
         void failureCreatesFailureResult() {
             SkillResult result = SkillResult.failure("skill-2", "timeout");
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
             assertThat(result.skillId()).isEqualTo("skill-2");
             assertThat(result.content()).isNull();
             assertThat(result.errorMessage()).isEqualTo("timeout");

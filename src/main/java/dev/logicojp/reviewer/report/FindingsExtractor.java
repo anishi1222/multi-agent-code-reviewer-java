@@ -80,7 +80,7 @@ public final class FindingsExtractor {
     }
 
     private static boolean shouldSkipResult(ReviewResult result) {
-        return !result.isSuccess() || result.content() == null || result.content().isBlank();
+        return !result.success() || result.content() == null || result.content().isBlank();
     }
 
     private static String resolveAgentName(ReviewResult result) {

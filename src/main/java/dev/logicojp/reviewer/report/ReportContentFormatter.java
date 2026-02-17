@@ -23,7 +23,7 @@ final class ReportContentFormatter {
     }
 
     private String resolveReportContent(ReviewResult result) {
-        if (result.isSuccess()) {
+        if (result.success()) {
             return result.content() != null ? result.content() : "";
         }
         return "⚠️ **レビュー失敗**\n\nエラー: " + result.errorMessage();

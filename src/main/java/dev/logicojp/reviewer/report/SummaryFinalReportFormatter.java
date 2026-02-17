@@ -43,7 +43,7 @@ final class SummaryFinalReportFormatter {
         placeholders.put("date", date);
         placeholders.put("repository", repository);
         placeholders.put("agentCount", String.valueOf(results.size()));
-        long successCount = results.stream().filter(ReviewResult::isSuccess).count();
+        long successCount = results.stream().filter(ReviewResult::success).count();
         placeholders.put("successCount", String.valueOf(successCount));
         placeholders.put("failureCount", String.valueOf(results.size() - successCount));
         placeholders.put("summaryContent", summaryContent != null ? summaryContent : "");

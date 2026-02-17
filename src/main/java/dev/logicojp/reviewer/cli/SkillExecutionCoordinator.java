@@ -133,7 +133,7 @@ public class SkillExecutionCoordinator {
     }
 
     private int toExitCode(SkillResult result) {
-        if (result.isSuccess()) {
+        if (result.success()) {
             return handleSuccessfulResult(result);
         }
         return handleFailedResult(result);

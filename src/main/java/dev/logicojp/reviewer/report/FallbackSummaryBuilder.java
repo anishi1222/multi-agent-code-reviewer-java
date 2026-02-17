@@ -39,7 +39,7 @@ final class FallbackSummaryBuilder {
     private String buildAgentSummaries(List<ReviewResult> results) {
         var agentSummariesBuilder = new StringBuilder();
         for (ReviewResult result : results) {
-            if (result.isSuccess()) {
+            if (result.success()) {
                 agentSummariesBuilder.append(templateService.getFallbackAgentSuccess(
                     Map.of(
                         "displayName", result.agentConfig().displayName(),
@@ -62,7 +62,7 @@ final class FallbackSummaryBuilder {
     }
 
     private String excerpt(ReviewResult result) {
-        if (result == null || !result.isSuccess() || result.content() == null || result.content().isBlank()) {
+        if (result == null || !result.success() || result.content() == null || result.content().isBlank()) {
             return "N/A";
         }
         String content = result.content();

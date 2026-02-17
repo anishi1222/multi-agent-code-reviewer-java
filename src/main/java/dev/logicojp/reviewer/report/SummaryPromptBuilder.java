@@ -29,7 +29,7 @@ final class SummaryPromptBuilder {
             templateService.getConfig().summary().resultErrorEntry());
 
         for (ReviewResult result : results) {
-            if (result.isSuccess()) {
+            if (result.success()) {
                 int remaining = maxTotalPromptContent - totalContentSize;
                 if (remaining <= 0) {
                     break;

@@ -104,7 +104,7 @@ public final class ReviewResultMerger {
         String repository = agentResults.getFirst().repository();
 
         List<ReviewResult> successful = agentResults.stream()
-            .filter(ReviewResult::isSuccess)
+            .filter(ReviewResult::success)
             .toList();
 
         if (successful.isEmpty()) {

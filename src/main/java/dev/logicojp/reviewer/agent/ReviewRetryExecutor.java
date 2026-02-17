@@ -63,7 +63,7 @@ final class ReviewRetryExecutor {
         for (int attempt = 1; attempt <= totalAttempts; attempt++) {
             try {
                 lastResult = attemptExecutor.execute();
-                if (lastResult.isSuccess()) {
+                if (lastResult.success()) {
                     logRetrySuccess(attempt, totalAttempts);
                     return lastResult;
                 }

@@ -134,7 +134,7 @@ class AgentConfigLoaderTest {
         @Test
         @DisplayName("不変リストを返す")
         void returnsImmutableList(@TempDir Path tempDir) {
-            var loader = new AgentConfigLoader(List.of(tempDir));
+            var loader = new AgentConfigLoader(tempDir);
             List<Path> dirs = loader.getAgentDirectories();
 
             assertThat(dirs).hasSize(1);

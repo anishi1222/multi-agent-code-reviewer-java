@@ -24,8 +24,4 @@ public record SkillResult(
     public static SkillResult failure(String skillId, String errorMessage) {
         return new SkillResult(skillId, false, null, errorMessage, LocalDateTime.now());
     }
-
-    public boolean isSuccess() {
-        return success;
-    }
 }

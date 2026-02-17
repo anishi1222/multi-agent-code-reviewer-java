@@ -39,7 +39,7 @@ class SkillExecutorTest {
 
         SkillResult result = executor.execute(skill, Map.of()).join();
 
-        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.success()).isFalse();
         assertThat(result.errorMessage()).contains("Missing required parameter");
     }
 

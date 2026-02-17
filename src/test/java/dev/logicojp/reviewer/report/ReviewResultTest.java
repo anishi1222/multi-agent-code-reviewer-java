@@ -37,7 +37,7 @@ class ReviewResultTest {
             assertThat(result.agentConfig()).isEqualTo(config);
             assertThat(result.repository()).isEqualTo("owner/repo");
             assertThat(result.content()).isEqualTo("review content");
-            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.success()).isTrue();
             assertThat(result.errorMessage()).isNull();
             assertThat(result.timestamp()).isNotNull();
         }
@@ -53,7 +53,7 @@ class ReviewResultTest {
                 .errorMessage("timeout occurred")
                 .build();
 
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
             assertThat(result.errorMessage()).isEqualTo("timeout occurred");
             assertThat(result.content()).isNull();
         }
@@ -98,7 +98,7 @@ class ReviewResultTest {
                 .repository("r")
                 .success(true)
                 .build();
-            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.success()).isTrue();
         }
 
         @Test
@@ -109,7 +109,7 @@ class ReviewResultTest {
                 .repository("r")
                 .success(false)
                 .build();
-            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.success()).isFalse();
         }
     }
 }

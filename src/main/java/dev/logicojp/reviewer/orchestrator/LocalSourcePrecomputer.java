@@ -3,19 +3,18 @@ package dev.logicojp.reviewer.orchestrator;
 import dev.logicojp.reviewer.config.LocalFileConfig;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 
 final class LocalSourcePrecomputer {
 
-    private final Logger logger;
+    private static final Logger logger = LoggerFactory.getLogger(LocalSourcePrecomputer.class);
     private final ReviewOrchestrator.LocalSourceCollectorFactory localSourceCollectorFactory;
     private final LocalFileConfig localFileConfig;
 
-    LocalSourcePrecomputer(Logger logger,
-                           ReviewOrchestrator.LocalSourceCollectorFactory localSourceCollectorFactory,
+    LocalSourcePrecomputer(ReviewOrchestrator.LocalSourceCollectorFactory localSourceCollectorFactory,
                            LocalFileConfig localFileConfig) {
-        this.logger = logger;
         this.localSourceCollectorFactory = localSourceCollectorFactory;
         this.localFileConfig = localFileConfig;
     }
@@ -33,10 +32,10 @@ final class LocalSourcePrecomputer {
     }
 
     private Path resolveLocalDirectory(ReviewTarget target) {
-        if (target instanceof ReviewTarget.LocalTarget(Path directory)) {
-            return directory;
-        }
-        return null;
+        return switch (target) {
+            case ReviewTarget.LocalTarget(Path directory) -> directory;
+            case ReviewTarget.GitHubTarget(_) -> null;
+        };
     }
 
     private void logPrecomputeStart(Path directory) {

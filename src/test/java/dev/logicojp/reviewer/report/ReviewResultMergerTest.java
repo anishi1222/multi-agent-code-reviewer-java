@@ -147,7 +147,7 @@ class ReviewResultMergerTest {
 
             assertThat(merged).hasSize(1);
             ReviewResult mergedResult = merged.getFirst();
-            assertThat(mergedResult.isSuccess()).isTrue();
+            assertThat(mergedResult.success()).isTrue();
             assertThat(mergedResult.agentConfig().name()).isEqualTo("security");
             assertThat(mergedResult.content()).contains("### 1. SQLインジェクション");
             assertThat(mergedResult.content()).contains("検出パス: 1, 2");
@@ -185,7 +185,7 @@ class ReviewResultMergerTest {
 
             assertThat(merged).hasSize(1);
             ReviewResult mergedResult = merged.getFirst();
-            assertThat(mergedResult.isSuccess()).isTrue();
+            assertThat(mergedResult.success()).isTrue();
             assertThat(mergedResult.content()).contains("### 1. トークン露出");
             assertThat(mergedResult.content()).contains("1 パスが失敗しました");
         }
@@ -202,7 +202,7 @@ class ReviewResultMergerTest {
 
             assertThat(merged).hasSize(1);
             ReviewResult mergedResult = merged.getFirst();
-            assertThat(mergedResult.isSuccess()).isFalse();
+            assertThat(mergedResult.success()).isFalse();
             assertThat(mergedResult.errorMessage()).isEqualTo("Error 2");
         }
 

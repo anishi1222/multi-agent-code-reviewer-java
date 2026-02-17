@@ -52,8 +52,7 @@ class ReviewSessionConfigFactoryTest {
             ReviewContext ctx = createContext(null);
 
             SessionConfig result = factory.create(
-                AGENT_CONFIG, ctx, SYSTEM_PROMPT, null,
-                LoggerFactory.getLogger(ReviewSessionConfigFactoryTest.class));
+                AGENT_CONFIG, ctx, SYSTEM_PROMPT, null);
 
             assertThat(result.getModel()).isEqualTo(MODEL);
         }
@@ -64,8 +63,7 @@ class ReviewSessionConfigFactoryTest {
             ReviewContext ctx = createContext(null);
 
             SessionConfig result = factory.create(
-                AGENT_CONFIG, ctx, SYSTEM_PROMPT, null,
-                LoggerFactory.getLogger(ReviewSessionConfigFactoryTest.class));
+                AGENT_CONFIG, ctx, SYSTEM_PROMPT, null);
 
             assertThat(result.getSystemMessage()).isNotNull();
             assertThat(result.getSystemMessage().getContent()).isEqualTo(SYSTEM_PROMPT);
@@ -78,8 +76,7 @@ class ReviewSessionConfigFactoryTest {
             ReviewContext ctx = createContext(null);
 
             SessionConfig result = factory.create(
-                AGENT_CONFIG, ctx, SYSTEM_PROMPT, null,
-                LoggerFactory.getLogger(ReviewSessionConfigFactoryTest.class));
+                AGENT_CONFIG, ctx, SYSTEM_PROMPT, null);
 
             // Should not throw
             assertThat(result).isNotNull();
@@ -92,8 +89,7 @@ class ReviewSessionConfigFactoryTest {
             Map<String, Object> mcpServers = Map.of("github", Map.of("url", "https://api.example.com"));
 
             SessionConfig result = factory.create(
-                AGENT_CONFIG, ctx, SYSTEM_PROMPT, mcpServers,
-                LoggerFactory.getLogger(ReviewSessionConfigFactoryTest.class));
+                AGENT_CONFIG, ctx, SYSTEM_PROMPT, mcpServers);
 
             assertThat(result).isNotNull();
         }

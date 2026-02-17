@@ -1,4 +1,15 @@
-# NOTICE
+# Multi-Agent Code Reviewer
+
+AI-powered parallel code review tool that orchestrates multiple specialized agents using the GitHub Copilot SDK for Java.
+
+## Quick Start
+
+```bash
+mvn clean package
+java --enable-preview -jar target/multi-agent-reviewer-1.0.0-SNAPSHOT.jar run --repo owner/repo --all
+```
+
+## Documentation
 
 - English: [README_en.md](./README_en.md)
 - 日本語: [README_ja.md](./README_ja.md)

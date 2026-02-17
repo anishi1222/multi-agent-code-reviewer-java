@@ -67,18 +67,7 @@ public class AgentConfigLoader {
     
     /// Creates a loader with a single agents directory and default skill settings.
     public AgentConfigLoader(Path agentsDirectory) {
-        this(List.of(agentsDirectory));
-    }
-    
-    /// Creates a loader with multiple agent directories and default skill settings.
-    /// Directories are searched in order; later directories override earlier ones.
-    public AgentConfigLoader(List<Path> agentDirectories) {
-        this(agentDirectories, new SkillConfig(null, null), null);
-    }
-
-    /// Creates a loader with multiple agent directories and skill configuration.
-    public AgentConfigLoader(List<Path> agentDirectories, SkillConfig skillConfig) {
-        this(agentDirectories, skillConfig, null);
+        this(List.of(agentsDirectory), new SkillConfig(null, null), null);
     }
 
     /// Creates a loader with multiple agent directories, skill configuration,

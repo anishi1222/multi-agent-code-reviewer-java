@@ -26,7 +26,7 @@ class ReviewResultPipelineTest {
     @Test
     @DisplayName("reviewPassesが1の場合はnull除外のみ行う")
     void finalizeResultsFiltersNullWithoutMerge() {
-        var pipeline = new ReviewResultPipeline(testLogger);
+        var pipeline = new ReviewResultPipeline();
         var security = ReviewResult.builder()
             .agentConfig(agent("security"))
             .repository("owner/repo")
@@ -47,7 +47,7 @@ class ReviewResultPipelineTest {
     @Test
     @DisplayName("reviewPassesが複数の場合はエージェント単位にマージする")
     void finalizeResultsMergesWhenMultiPass() {
-        var pipeline = new ReviewResultPipeline(testLogger);
+        var pipeline = new ReviewResultPipeline();
         var pass1 = ReviewResult.builder()
             .agentConfig(agent("security"))
             .repository("owner/repo")
@@ -88,7 +88,7 @@ class ReviewResultPipelineTest {
     @Test
     @DisplayName("collectFromFuturesは完了済みfutureから結果を収集する")
     void collectFromFuturesCollectsCompletedResults() {
-        var pipeline = new ReviewResultPipeline(testLogger);
+        var pipeline = new ReviewResultPipeline();
         var result = ReviewResult.builder()
             .agentConfig(agent("security"))
             .repository("owner/repo")

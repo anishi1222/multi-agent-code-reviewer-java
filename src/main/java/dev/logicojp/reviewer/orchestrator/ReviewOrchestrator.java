@@ -13,6 +13,7 @@ import dev.logicojp.reviewer.target.ReviewTarget;
 import dev.logicojp.reviewer.util.ExecutorUtils;
 import dev.logicojp.reviewer.util.FeatureFlags;
 import com.github.copilot.sdk.CopilotClient;
+import io.micronaut.core.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,7 @@ public class ReviewOrchestrator implements AutoCloseable {
         AgentReviewerFactory reviewerFactory,
         LocalSourceCollectorFactory localSourceCollectorFactory,
         Semaphore concurrencyLimit,
-        ExecutorService executorService,
+        @Nullable ExecutorService executorService,
         ExecutorService agentExecutionExecutor,
         ScheduledExecutorService sharedScheduler,
         Map<String, Object> cachedMcpServers,
@@ -99,14 +100,14 @@ public class ReviewOrchestrator implements AutoCloseable {
     private final LocalSourcePrecomputer localSourcePrecomputer;
 
     public record OrchestratorConfig(
-        String githubToken,
-        GithubMcpConfig githubMcpConfig,
+        @Nullable String githubToken,
+        @Nullable GithubMcpConfig githubMcpConfig,
         LocalFileConfig localFileConfig,
         FeatureFlags featureFlags,
         ExecutionConfig executionConfig,
         List<CustomInstruction> customInstructions,
-        String reasoningEffort,
-        String outputConstraints,
+        @Nullable String reasoningEffort,
+        @Nullable String outputConstraints,
         String focusAreasGuidance,
         String localSourceHeader,
         String localReviewResultRequest
@@ -196,9 +197,8 @@ public class ReviewOrchestrator implements AutoCloseable {
                 orchestratorConfig.githubToken(),
                 orchestratorConfig.githubMcpConfig()
             ).orElse(Map.of());
-            ReviewResultPipeline reviewResultPipeline = new ReviewResultPipeline(logger);
+            ReviewResultPipeline reviewResultPipeline = new ReviewResultPipeline();
             AgentReviewExecutor agentReviewExecutor = new AgentReviewExecutor(
-                logger,
                 concurrencyLimit,
                 agentExecutionExecutor,
                 reviewerFactory
@@ -219,7 +219,6 @@ public class ReviewOrchestrator implements AutoCloseable {
                 sharedScheduler
             );
             LocalSourcePrecomputer localSourcePrecomputer = new LocalSourcePrecomputer(
-                logger,
                 localSourceCollectorFactory,
                 orchestratorConfig.localFileConfig()
             );
@@ -251,9 +250,11 @@ public class ReviewOrchestrator implements AutoCloseable {
             ReviewAgent agent = new ReviewAgent(
                 config,
                 context,
-                orchestratorConfig.focusAreasGuidance(),
-                orchestratorConfig.localSourceHeader(),
-                orchestratorConfig.localReviewResultRequest()
+                new ReviewAgent.PromptTemplates(
+                    orchestratorConfig.focusAreasGuidance(),
+                    orchestratorConfig.localSourceHeader(),
+                    orchestratorConfig.localReviewResultRequest()
+                )
             );
             return agent::review;
         };

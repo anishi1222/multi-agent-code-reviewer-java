@@ -3,6 +3,7 @@ package dev.logicojp.reviewer.orchestrator;
 import dev.logicojp.reviewer.report.ReviewResult;
 import dev.logicojp.reviewer.report.ReviewResultMerger;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,10 +13,9 @@ import java.util.concurrent.CompletableFuture;
 /// Finalizes orchestrated review results: collect, filter, log, and optional merge.
 final class ReviewResultPipeline {
 
-    private final Logger logger;
+    private static final Logger logger = LoggerFactory.getLogger(ReviewResultPipeline.class);
 
-    ReviewResultPipeline(Logger logger) {
-        this.logger = logger;
+    ReviewResultPipeline() {
     }
 
     List<ReviewResult> collectFromFutures(List<CompletableFuture<ReviewResult>> futures) {
@@ -58,7 +58,7 @@ final class ReviewResultPipeline {
     }
 
     private long countSuccessful(List<ReviewResult> results) {
-        return results.stream().filter(ReviewResult::isSuccess).count();
+        return results.stream().filter(ReviewResult::success).count();
     }
 
     private String completionSummaryMessage() {

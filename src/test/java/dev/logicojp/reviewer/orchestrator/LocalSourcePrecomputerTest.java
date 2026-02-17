@@ -17,7 +17,6 @@ class LocalSourcePrecomputerTest {
     @DisplayName("GitHubターゲットでは事前収集を行わずnullを返す")
     void returnsNullForGithubTarget() {
         var precomputer = new LocalSourcePrecomputer(
-            LoggerFactory.getLogger("local-source-precomputer-test"),
             (directory, config) -> () -> {
                 throw new IllegalStateException("should not be called");
             },
@@ -33,7 +32,6 @@ class LocalSourcePrecomputerTest {
     @DisplayName("ローカルターゲットでは収集結果のreviewContentを返す")
     void returnsReviewContentForLocalTarget() {
         var precomputer = new LocalSourcePrecomputer(
-            LoggerFactory.getLogger("local-source-precomputer-test"),
             (directory, config) -> () -> new dev.logicojp.reviewer.target.LocalFileProvider.CollectionResult(
                 "SOURCE_CONTENT",
                 "summary",

@@ -35,6 +35,18 @@ public class ReviewAgent {
         ReviewResultFactory reviewResultFactory
     ) {
     }
+
+    public record PromptTemplates(
+        String focusAreasGuidance,
+        String localSourceHeader,
+        String localReviewResultPrompt
+    ) {
+        static final PromptTemplates DEFAULTS = new PromptTemplates(
+            AgentPromptBuilder.DEFAULT_FOCUS_AREAS_GUIDANCE,
+            AgentPromptBuilder.DEFAULT_LOCAL_SOURCE_HEADER,
+            AgentPromptBuilder.DEFAULT_LOCAL_REVIEW_RESULT_PROMPT
+        );
+    }
     
     private final AgentConfig config;
     private final ReviewContext ctx;
@@ -64,31 +76,18 @@ public class ReviewAgent {
     }
 
     public ReviewAgent(AgentConfig config, ReviewContext ctx) {
-        this(
-            config,
-            ctx,
-            IdleTimeoutScheduler.defaultScheduler(),
-            new ReviewSystemPromptFormatter(),
-            AgentPromptBuilder.DEFAULT_FOCUS_AREAS_GUIDANCE,
-            AgentPromptBuilder.DEFAULT_LOCAL_SOURCE_HEADER,
-            DEFAULT_LOCAL_REVIEW_RESULT_PROMPT,
-            defaultCollaborators(config, ctx)
-        );
+        this(config, ctx, PromptTemplates.DEFAULTS);
     }
 
-    public ReviewAgent(AgentConfig config,
-                       ReviewContext ctx,
-                       String focusAreasGuidance,
-                       String localSourceHeaderPrompt,
-                       String localReviewResultPrompt) {
+    public ReviewAgent(AgentConfig config, ReviewContext ctx, PromptTemplates promptTemplates) {
         this(
             config,
             ctx,
             IdleTimeoutScheduler.defaultScheduler(),
             new ReviewSystemPromptFormatter(),
-            focusAreasGuidance,
-            localSourceHeaderPrompt,
-            localReviewResultPrompt,
+            promptTemplates.focusAreasGuidance(),
+            promptTemplates.localSourceHeader(),
+            promptTemplates.localReviewResultPrompt(),
             defaultCollaborators(config, ctx)
         );
     }
@@ -159,8 +158,7 @@ public class ReviewAgent {
             config,
             ctx,
             systemPrompt,
-            mcpServers,
-            logger
+            mcpServers
         );
 
         try (var session = ctx.client().createSession(sessionConfig)
