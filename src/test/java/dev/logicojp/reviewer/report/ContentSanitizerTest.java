@@ -108,6 +108,66 @@ class ContentSanitizerTest {
     }
 
     @Nested
+    @DisplayName("危険なHTML除去")
+    class DangerousHtmlRemoval {
+
+        @Test
+        @DisplayName("scriptタグの開始タグを除去する")
+        void removesScriptTags() {
+            String input = "Before <script>alert('xss')</script> After";
+            String result = ContentSanitizer.sanitize(input);
+            assertThat(result).doesNotContain("<script>");
+            assertThat(result).contains("After");
+        }
+
+        @Test
+        @DisplayName("iframeタグの開始タグを除去する")
+        void removesIframeTags() {
+            String input = "Before <iframe src=\"evil.html\"></iframe> After";
+            String result = ContentSanitizer.sanitize(input);
+            assertThat(result).doesNotContain("<iframe");
+            assertThat(result).contains("After");
+        }
+
+        @Test
+        @DisplayName("自己閉じタグを除去する")
+        void removesSelfClosingTags() {
+            String input = "Before <input type=\"hidden\" value=\"x\"/> After";
+            assertThat(ContentSanitizer.sanitize(input)).isEqualTo("Before  After");
+        }
+
+        @Test
+        @DisplayName("onclickイベントハンドラを除去する")
+        void removesEventHandlers() {
+            String input = "Before onclick=\"alert(1)\" After";
+            assertThat(ContentSanitizer.sanitize(input)).doesNotContain("onclick");
+        }
+
+        @Test
+        @DisplayName("javascript: URIスキームを除去する")
+        void removesJavascriptUri() {
+            String input = "Before javascript: void(0) After";
+            assertThat(ContentSanitizer.sanitize(input)).doesNotContain("javascript");
+        }
+
+        @Test
+        @DisplayName("data: base64 URIを除去する")
+        void removesDataUri() {
+            String input = "Before data:text/html;base64,PHNjcmlwdD4= After";
+            assertThat(ContentSanitizer.sanitize(input)).doesNotContain("base64");
+        }
+
+        @Test
+        @DisplayName("大文字小文字を区別しないHTMLタグ除去")
+        void caseInsensitiveHtmlRemoval() {
+            String input = "Before <SCRIPT>alert('x')</SCRIPT> After";
+            String result = ContentSanitizer.sanitize(input);
+            assertThat(result).doesNotContainIgnoringCase("<script>");
+            assertThat(result).contains("After");
+        }
+    }
+
+    @Nested
     @DisplayName("エッジケース")
     class EdgeCases {
 

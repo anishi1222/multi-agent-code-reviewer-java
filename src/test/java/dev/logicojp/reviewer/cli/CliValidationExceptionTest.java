@@ -51,4 +51,30 @@ class CliValidationExceptionTest {
             assertThat(exception).isInstanceOf(RuntimeException.class);
         }
     }
+
+    @Nested
+    @DisplayName("原因チェーンコンストラクタ")
+    class CauseChainConstructor {
+
+        @Test
+        @DisplayName("原因例外が保持される")
+        void preservesCause() {
+            var cause = new IllegalArgumentException("root cause");
+            var exception = new CliValidationException("wrapped", true, cause);
+
+            assertThat(exception.getCause()).isSameAs(cause);
+            assertThat(exception.getMessage()).isEqualTo("wrapped");
+            assertThat(exception.showUsage()).isTrue();
+        }
+
+        @Test
+        @DisplayName("nullメッセージでも原因例外が保持される")
+        void preservesCauseWithNullMessage() {
+            var cause = new RuntimeException("original");
+            var exception = new CliValidationException(null, false, cause);
+
+            assertThat(exception.getMessage()).isEmpty();
+            assertThat(exception.getCause()).isSameAs(cause);
+        }
+    }
 }

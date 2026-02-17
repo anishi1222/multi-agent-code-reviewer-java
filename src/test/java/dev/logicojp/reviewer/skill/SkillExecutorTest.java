@@ -44,8 +44,8 @@ class SkillExecutorTest {
     }
 
     @Test
-    @DisplayName("ownsExecutor=true の場合 shutdown でExecutorServiceを停止する")
-    void shutdownStopsOwnedExecutorService() {
+    @DisplayName("ownsExecutor=true の場合 close でExecutorServiceを停止する")
+    void closeStopsOwnedExecutorService() {
         ExecutorService es = Executors.newSingleThreadExecutor();
         SkillExecutor executor = new SkillExecutor(
             null,
@@ -58,14 +58,14 @@ class SkillExecutorTest {
             false
         );
 
-        executor.shutdown();
+        executor.close();
 
         assertThat(es.isShutdown()).isTrue();
     }
 
     @Test
-    @DisplayName("ownsExecutor=false の場合 shutdown で外部ExecutorServiceを停止しない")
-    void shutdownDoesNotStopExternalExecutorService() throws InterruptedException {
+    @DisplayName("ownsExecutor=false の場合 close で外部ExecutorServiceを停止しない")
+    void closeDoesNotStopExternalExecutorService() throws InterruptedException {
         ExecutorService es = Executors.newSingleThreadExecutor();
         SkillExecutor executor = new SkillExecutor(
             null,
@@ -78,7 +78,7 @@ class SkillExecutorTest {
             false
         );
 
-        executor.shutdown();
+        executor.close();
 
         assertThat(es.isShutdown()).isFalse();
         es.shutdownNow();
