@@ -80,6 +80,8 @@ final class ReviewMessageFlow {
             .append(localSourceHeaderPrompt)
             .toString();
 
+        // Instruction prompt establishes context; its response is not used because
+        // the actual review content comes from the subsequent source content message.
         promptSender.send(instructionPrompt);
 
         String sourceResponse = promptSender.send(localSourceContent);

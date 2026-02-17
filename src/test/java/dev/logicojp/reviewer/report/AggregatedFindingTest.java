@@ -21,9 +21,9 @@ class AggregatedFindingTest {
         );
         var finding = AggregatedFinding.from(block, 1);
 
-        finding.addPass(2);
+        var updated = finding.withPass(2);
 
-        assertThat(finding.passNumbers()).containsExactly(1, 2);
+        assertThat(updated.passNumbers()).containsExactly(1, 2);
     }
 
     @Test

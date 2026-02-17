@@ -38,7 +38,7 @@ public final class AgentConfigValidator {
         if (missing.length() > 0) {
             throw new IllegalArgumentException("Missing required agent fields: " + missing);
         }
-        if (config.focusAreas() == null || config.focusAreas().isEmpty()) {
+        if (config.focusAreas().isEmpty()) {
             logger.warn("Agent '{}' has no focusAreas; proceeding with defaults.", config.name());
         }
 

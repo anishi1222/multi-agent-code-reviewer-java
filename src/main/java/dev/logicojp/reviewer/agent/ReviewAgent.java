@@ -25,7 +25,7 @@ public class ReviewAgent {
     private static final String FOLLOWUP_PROMPT =
         "Please provide the complete review results in the specified output format.";
     private static final String DEFAULT_LOCAL_REVIEW_RESULT_PROMPT =
-        "ソースコードを読み込んだ内容に基づいて、指定された出力形式でレビュー結果を返してください。";
+        AgentPromptBuilder.DEFAULT_LOCAL_REVIEW_RESULT_PROMPT;
 
     record AgentCollaborators(
         ReviewTargetInstructionResolver reviewTargetInstructionResolver,

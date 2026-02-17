@@ -52,6 +52,16 @@ public class SummaryGenerator {
                 generator::buildSummaryWithAI
             );
         }
+
+        /// Merges this collaborators instance with defaults, filling in null fields.
+        SummaryCollaborators withDefaults(SummaryCollaborators defaults) {
+            return new SummaryCollaborators(
+                summaryPromptBuilder != null ? summaryPromptBuilder : defaults.summaryPromptBuilder(),
+                fallbackSummaryBuilder != null ? fallbackSummaryBuilder : defaults.fallbackSummaryBuilder(),
+                summaryFinalReportFormatter != null ? summaryFinalReportFormatter : defaults.summaryFinalReportFormatter(),
+                aiSummaryBuilder != null ? aiSummaryBuilder : defaults.aiSummaryBuilder()
+            );
+        }
     }
     
     private static final Logger logger = LoggerFactory.getLogger(SummaryGenerator.class);
@@ -97,15 +107,11 @@ public class SummaryGenerator {
         this.timeoutMinutes = timeoutMinutes;
         this.templateService = templateService;
         SummaryCollaborators defaults = SummaryCollaborators.defaults(templateService, summaryConfig, this);
-        var effective = collaborators != null ? collaborators : defaults;
-        this.summaryPromptBuilder = effective.summaryPromptBuilder() != null
-            ? effective.summaryPromptBuilder() : defaults.summaryPromptBuilder();
-        this.fallbackSummaryBuilder = effective.fallbackSummaryBuilder() != null
-            ? effective.fallbackSummaryBuilder() : defaults.fallbackSummaryBuilder();
-        this.summaryFinalReportFormatter = effective.summaryFinalReportFormatter() != null
-            ? effective.summaryFinalReportFormatter() : defaults.summaryFinalReportFormatter();
-        this.aiSummaryBuilder = effective.aiSummaryBuilder() != null
-            ? effective.aiSummaryBuilder() : defaults.aiSummaryBuilder();
+        var effective = (collaborators != null ? collaborators : defaults).withDefaults(defaults);
+        this.summaryPromptBuilder = effective.summaryPromptBuilder();
+        this.fallbackSummaryBuilder = effective.fallbackSummaryBuilder();
+        this.summaryFinalReportFormatter = effective.summaryFinalReportFormatter();
+        this.aiSummaryBuilder = effective.aiSummaryBuilder();
     }
     
     /// Generates an executive summary from all review results.

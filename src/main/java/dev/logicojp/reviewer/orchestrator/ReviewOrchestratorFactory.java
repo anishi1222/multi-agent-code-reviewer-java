@@ -128,7 +128,7 @@ public class ReviewOrchestratorFactory {
             ),
             loadTemplateOrDefault(
                 "local-review-result-request.md",
-                "ソースコードを読み込んだ内容に基づいて、指定された出力形式でレビュー結果を返してください。"
+                dev.logicojp.reviewer.agent.AgentPromptBuilder.DEFAULT_LOCAL_REVIEW_RESULT_PROMPT
             )
         );
     }

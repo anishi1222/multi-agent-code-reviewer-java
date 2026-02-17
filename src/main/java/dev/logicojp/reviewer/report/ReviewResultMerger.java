@@ -145,14 +145,14 @@ public final class ReviewResultMerger {
                 String key = findingKeyResolver.resolve(block);
                 AggregatedFinding existingExact = aggregatedFindings.get(key);
                 if (existingExact != null) {
-                    existingExact.addPass(passNumber);
+                    aggregatedFindings.put(key, existingExact.withPass(passNumber));
                     continue;
                 }
 
                 String nearDuplicateKey = findNearDuplicateKey(aggregatedFindings, findingKeysByPriority, normalized);
                 if (nearDuplicateKey != null) {
                     AggregatedFinding nearExisting = aggregatedFindings.get(nearDuplicateKey);
-                    nearExisting.addPass(passNumber);
+                    aggregatedFindings.put(nearDuplicateKey, nearExisting.withPass(passNumber));
                     continue;
                 }
 

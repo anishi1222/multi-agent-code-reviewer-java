@@ -10,6 +10,8 @@ public final class AgentPromptBuilder {
         "以下の観点 **のみ** に基づいてレビューしてください。これ以外の観点での指摘は行わないでください。";
     public static final String DEFAULT_LOCAL_SOURCE_HEADER =
         "以下は対象ディレクトリのソースコードです。読み込んだらレビューを開始してください。";
+    public static final String DEFAULT_LOCAL_REVIEW_RESULT_PROMPT =
+        "ソースコードを読み込んだ内容に基づいて、指定された出力形式でレビュー結果を返してください。";
 
     private AgentPromptBuilder() {
         // Utility class — not instantiable

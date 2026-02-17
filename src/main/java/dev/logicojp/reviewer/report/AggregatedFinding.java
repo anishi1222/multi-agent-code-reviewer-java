@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.report;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -29,7 +30,7 @@ record AggregatedFinding(String title,
     AggregatedFinding {
         Objects.requireNonNull(title);
         Objects.requireNonNull(body);
-        passNumbers = new LinkedHashSet<>(passNumbers);
+        passNumbers = Collections.unmodifiableSet(new LinkedHashSet<>(passNumbers));
     }
 
     static AggregatedFinding from(ReviewFindingParser.FindingBlock block, int passNumber) {
@@ -131,11 +132,12 @@ record AggregatedFinding(String title,
             titleBigrams, incoming.titleBigrams());
     }
 
-    /// Adds a pass number to this finding in-place.
-    /// This is safe because AggregatedFinding instances are only mutated
-    /// within ReviewResultMerger's merge loop, never shared across threads.
-    void addPass(int passNumber) {
-        passNumbers.add(passNumber);
+    AggregatedFinding withPass(int passNumber) {
+        var newPasses = new LinkedHashSet<>(passNumbers);
+        newPasses.add(passNumber);
+        return new AggregatedFinding(title, body, newPasses,
+            normalizedTitle, normalizedPriority, normalizedSummary,
+            normalizedLocation, titleBigrams, summaryBigrams, locationBigrams);
     }
 
     private static String normalizeText(String value) {

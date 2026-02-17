@@ -156,7 +156,7 @@ public class AgentMarkdownParser {
         Matcher matcher = FOCUS_AREA_PATTERN.matcher(body);
         if (matcher.find()) {
             String listContent = matcher.group(1);
-            focusAreas = parseBulletItems(listContent);
+            focusAreas = new ArrayList<>(parseBulletItems(listContent));
         }
         
         // If no focus areas found, return a default

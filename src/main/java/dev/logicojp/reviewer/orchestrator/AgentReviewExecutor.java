@@ -36,37 +36,39 @@ final class AgentReviewExecutor {
                                     long perAgentTimeoutMinutes) {
         try {
             concurrencyLimit.acquire();
-            try {
-                ReviewOrchestrator.AgentReviewer reviewer = reviewerFactory.create(config, context);
-                Future<ReviewResult> future = agentExecutionExecutor.submit(() -> reviewer.review(target));
-                try {
-                    return future.get(perAgentTimeoutMinutes, TimeUnit.MINUTES);
-                } catch (TimeoutException e) {
-                    future.cancel(true);
-                    throw e;
-                }
-            } catch (TimeoutException e) {
-                logger.warn("Agent {} timed out after {} minutes", config.name(), perAgentTimeoutMinutes, e);
-                return ReviewResult.builder()
-                    .agentConfig(config)
-                    .repository(target.displayName())
-                    .success(false)
-                    .errorMessage("Review timed out after " + perAgentTimeoutMinutes + " minutes")
-                    .build();
-            } catch (ExecutionException e) {
-                logger.error("Agent {} execution failed: {}", config.name(), e.getMessage(), e);
-                return ReviewResult.builder()
-                    .agentConfig(config)
-                    .repository(target.displayName())
-                    .success(false)
-                    .errorMessage("Review failed: " + e.getMessage())
-                    .build();
-            } finally {
-                concurrencyLimit.release();
-            }
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             return failedResult(config, target, "Review interrupted while waiting for concurrency permit");
+        }
+        try {
+            return executeWithTimeout(config, target, context, perAgentTimeoutMinutes);
+        } finally {
+            concurrencyLimit.release();
+        }
+    }
+
+    private ReviewResult executeWithTimeout(AgentConfig config,
+                                            ReviewTarget target,
+                                            ReviewContext context,
+                                            long perAgentTimeoutMinutes) {
+        try {
+            ReviewOrchestrator.AgentReviewer reviewer = reviewerFactory.create(config, context);
+            Future<ReviewResult> future = agentExecutionExecutor.submit(() -> reviewer.review(target));
+            try {
+                return future.get(perAgentTimeoutMinutes, TimeUnit.MINUTES);
+            } catch (TimeoutException e) {
+                future.cancel(true);
+                throw e;
+            }
+        } catch (TimeoutException e) {
+            logger.warn("Agent {} timed out after {} minutes", config.name(), perAgentTimeoutMinutes, e);
+            return failedResult(config, target, "Review timed out after " + perAgentTimeoutMinutes + " minutes");
+        } catch (ExecutionException e) {
+            logger.error("Agent {} execution failed: {}", config.name(), e.getMessage(), e);
+            return failedResult(config, target, "Review failed: " + e.getMessage());
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return failedResult(config, target, "Review interrupted during execution");
         }
     }
 
