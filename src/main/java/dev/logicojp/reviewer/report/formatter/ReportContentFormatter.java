@@ -1,20 +1,21 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.formatter;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.service.TemplateService;
 
 import java.util.Map;
 import java.util.StringJoiner;
 
-final class ReportContentFormatter {
+public final class ReportContentFormatter {
 
     private final TemplateService templateService;
 
-    ReportContentFormatter(TemplateService templateService) {
+    public ReportContentFormatter(TemplateService templateService) {
         this.templateService = templateService;
     }
 
-    String format(ReviewResult result, String date) {
+    public String format(ReviewResult result, String date) {
         AgentConfig config = result.agentConfig();
         String content = resolveReportContent(result);
         Map<String, String> placeholders = buildPlaceholders(result, config, date, content);

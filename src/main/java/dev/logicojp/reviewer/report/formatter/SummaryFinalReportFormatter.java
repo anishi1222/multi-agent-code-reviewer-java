@@ -1,9 +1,9 @@
-package dev.logicojp.reviewer.report.summary;
+package dev.logicojp.reviewer.report.formatter;
 
-import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.report.finding.FindingsExtractor;
-import dev.logicojp.reviewer.report.ReportFileUtils;
-import dev.logicojp.reviewer.report.ReportFilenameUtils;
+import dev.logicojp.reviewer.report.util.ReportFileUtils;
+import dev.logicojp.reviewer.report.util.ReportFilenameUtils;
 
 import dev.logicojp.reviewer.service.TemplateService;
 
@@ -15,11 +15,11 @@ public final class SummaryFinalReportFormatter {
 
     private final TemplateService templateService;
 
-    SummaryFinalReportFormatter(TemplateService templateService) {
+    public SummaryFinalReportFormatter(TemplateService templateService) {
         this.templateService = templateService;
     }
 
-    String format(String summaryContent,
+    public String format(String summaryContent,
                   String repository,
                   List<ReviewResult> results,
                   String date) {

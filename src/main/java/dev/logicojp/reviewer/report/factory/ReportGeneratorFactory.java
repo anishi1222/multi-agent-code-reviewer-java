@@ -1,5 +1,6 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.factory;
 
+import dev.logicojp.reviewer.report.core.ReportGenerator;
 import dev.logicojp.reviewer.report.summary.SummaryGenerator;
 
 import dev.logicojp.reviewer.config.SummaryConfig;

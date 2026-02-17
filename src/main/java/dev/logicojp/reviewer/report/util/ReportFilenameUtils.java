@@ -1,4 +1,4 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.util;
 
 public final class ReportFilenameUtils {
 

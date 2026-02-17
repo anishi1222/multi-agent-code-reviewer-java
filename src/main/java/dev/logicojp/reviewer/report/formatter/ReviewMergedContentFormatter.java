@@ -1,18 +1,16 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.formatter;
 
 import dev.logicojp.reviewer.report.finding.AggregatedFinding;
-import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
-import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;
 
 import java.util.Map;
 import java.util.Set;
 
-final class ReviewMergedContentFormatter {
+public final class ReviewMergedContentFormatter {
 
     private ReviewMergedContentFormatter() {
     }
 
-    static String format(Map<String, AggregatedFinding> aggregatedFindings,
+    public static String format(Map<String, AggregatedFinding> aggregatedFindings,
                          int totalPasses,
                          int failedPasses) {
         var contentBuilder = new StringBuilder();

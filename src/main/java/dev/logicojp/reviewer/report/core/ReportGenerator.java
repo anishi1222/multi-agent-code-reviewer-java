@@ -1,6 +1,9 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.core;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
+import dev.logicojp.reviewer.report.formatter.ReportContentFormatter;
+import dev.logicojp.reviewer.report.util.ReportFileUtils;
+import dev.logicojp.reviewer.report.util.ReportFilenameUtils;
 import dev.logicojp.reviewer.service.TemplateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

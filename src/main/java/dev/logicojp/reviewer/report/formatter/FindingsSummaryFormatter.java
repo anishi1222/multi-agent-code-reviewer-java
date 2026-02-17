@@ -1,4 +1,6 @@
-package dev.logicojp.reviewer.report.finding;
+package dev.logicojp.reviewer.report.formatter;
+
+import dev.logicojp.reviewer.report.finding.FindingsExtractor;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,7 +12,7 @@ public final class FindingsSummaryFormatter {
     private FindingsSummaryFormatter() {
     }
 
-    static String formatSummary(List<FindingsExtractor.Finding> findings) {
+    public static String formatSummary(List<FindingsExtractor.Finding> findings) {
         var sb = new StringBuilder();
         Map<String, List<FindingsExtractor.Finding>> grouped = groupByPriority(findings);
 
