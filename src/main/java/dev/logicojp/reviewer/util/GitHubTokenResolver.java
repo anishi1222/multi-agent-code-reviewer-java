@@ -26,11 +26,7 @@ public final class GitHubTokenResolver {
 
     private final long timeoutSeconds;
 
-    public GitHubTokenResolver() {
-        this(DEFAULT_TIMEOUT_SECONDS);
-    }
-
-    public GitHubTokenResolver(long timeoutSeconds) {
+    GitHubTokenResolver(long timeoutSeconds) {
         this.timeoutSeconds = (timeoutSeconds <= 0) ? DEFAULT_TIMEOUT_SECONDS : timeoutSeconds;
     }
 

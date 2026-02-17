@@ -149,10 +149,4 @@ public class SkillExecutor implements AutoCloseable {
             dev.logicojp.reviewer.util.ExecutorUtils.shutdownGracefully(es, 30);
         }
     }
-
-    /// @deprecated Use {@link #close()} instead. Retained for backward compatibility.
-    @Deprecated(forRemoval = true)
-    public void shutdown() {
-        close();
-    }
 }

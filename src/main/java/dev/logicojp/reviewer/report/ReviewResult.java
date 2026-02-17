@@ -19,7 +19,8 @@ public record ReviewResult(
         timestamp = (timestamp == null) ? LocalDateTime.now() : timestamp;
     }
 
-    /// Alias for the record accessor `success()`, kept for readability.
+    /// @deprecated Use the record accessor {@code success()} instead.
+    @Deprecated(forRemoval = true)
     public boolean isSuccess() {
         return success;
     }

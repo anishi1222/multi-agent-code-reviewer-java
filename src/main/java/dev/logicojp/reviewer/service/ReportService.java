@@ -1,8 +1,10 @@
 package dev.logicojp.reviewer.service;
 
 import dev.logicojp.reviewer.config.ExecutionConfig;
+import dev.logicojp.reviewer.report.ReportGenerator;
 import dev.logicojp.reviewer.report.ReportGeneratorFactory;
 import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.SummaryGenerator;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -65,11 +67,11 @@ public class ReportService {
         return generator.generateSummary(results, repository);
     }
 
-    private dev.logicojp.reviewer.report.ReportGenerator createReportGenerator(Path outputDirectory) {
+    private ReportGenerator createReportGenerator(Path outputDirectory) {
         return reportGeneratorFactory.createReportGenerator(outputDirectory);
     }
 
-    private dev.logicojp.reviewer.report.SummaryGenerator createSummaryGenerator(Path outputDirectory,
+    private SummaryGenerator createSummaryGenerator(Path outputDirectory,
                                                                                   String summaryModel,
                                                                                   String reasoningEffort) {
         return reportGeneratorFactory.createSummaryGenerator(

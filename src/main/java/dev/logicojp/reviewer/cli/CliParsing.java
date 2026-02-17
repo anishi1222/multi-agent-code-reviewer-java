@@ -21,8 +21,10 @@ public final class CliParsing {
     }
 
     public static boolean hasHelpFlag(String[] args) {
-        String[] safeArgs = Objects.requireNonNullElse(args, new String[0]);
-        for (String arg : safeArgs) {
+        if (args == null) {
+            return false;
+        }
+        for (String arg : args) {
             if (isHelpOption(arg)) {
                 return true;
             }

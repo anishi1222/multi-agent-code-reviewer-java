@@ -147,8 +147,7 @@ public class ReviewOrchestrator implements AutoCloseable {
                        OrchestratorConfig orchestratorConfig,
                        OrchestratorCollaborators collaborators) {
         this.executionConfig = orchestratorConfig.executionConfig();
-        this.customInstructions = orchestratorConfig.customInstructions() != null
-            ? List.copyOf(orchestratorConfig.customInstructions()) : List.of();
+        this.customInstructions = orchestratorConfig.customInstructions();
         this.structuredConcurrencyEnabled = orchestratorConfig.featureFlags().structuredConcurrency();
         this.executorService = collaborators.executorService();
         this.agentExecutionExecutor = collaborators.agentExecutionExecutor();

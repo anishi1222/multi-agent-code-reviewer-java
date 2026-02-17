@@ -73,22 +73,10 @@ public class CustomInstructionLoader {
         this(null, true, promptLoader, scopedInstructionLoader);
     }
 
-    public CustomInstructionLoader() {
-        this(null, true,
-            new PromptLoader(),
-            new ScopedInstructionLoader());
-    }
-
-    public CustomInstructionLoader(List<Path> additionalInstructionPaths) {
-        this(additionalInstructionPaths, true,
-            new PromptLoader(),
-            new ScopedInstructionLoader(INSTRUCTIONS_DIRECTORY, INSTRUCTIONS_EXTENSION));
-    }
-
-    public CustomInstructionLoader(List<Path> additionalInstructionPaths, boolean loadPrompts) {
-        this(additionalInstructionPaths, loadPrompts,
-            new PromptLoader(),
-            new ScopedInstructionLoader(INSTRUCTIONS_DIRECTORY, INSTRUCTIONS_EXTENSION));
+    /// Creates a loader with custom settings, using default collaborators.
+    public static CustomInstructionLoader withSettings(List<Path> additionalInstructionPaths, boolean loadPrompts) {
+        return new CustomInstructionLoader(additionalInstructionPaths, loadPrompts,
+            new PromptLoader(), new ScopedInstructionLoader());
     }
 
     CustomInstructionLoader(List<Path> additionalInstructionPaths, boolean loadPrompts,

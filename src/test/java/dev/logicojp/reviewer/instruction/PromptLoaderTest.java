@@ -315,7 +315,7 @@ class PromptLoaderTest {
                 ---
                 Write unit tests with JUnit 5.""");
 
-            CustomInstructionLoader instructionLoader = new CustomInstructionLoader();
+            CustomInstructionLoader instructionLoader = new CustomInstructionLoader(null, true, new PromptLoader(), new ScopedInstructionLoader());
             List<CustomInstruction> result = instructionLoader.loadFromLocalDirectory(tempDir);
 
             assertThat(result).hasSize(2);
@@ -347,7 +347,7 @@ class PromptLoaderTest {
                 ---
                 Java rules.""");
 
-            CustomInstructionLoader instructionLoader = new CustomInstructionLoader(null, false);
+            CustomInstructionLoader instructionLoader = new CustomInstructionLoader(null, false, new PromptLoader(), new ScopedInstructionLoader());
             List<CustomInstruction> result = instructionLoader.loadFromLocalDirectory(tempDir);
 
             // Only instruction loaded, not the prompt
@@ -381,7 +381,7 @@ class PromptLoaderTest {
                 ---
                 Follow Spring Boot conventions.""");
 
-            CustomInstructionLoader instructionLoader = new CustomInstructionLoader();
+            CustomInstructionLoader instructionLoader = new CustomInstructionLoader(null, true, new PromptLoader(), new ScopedInstructionLoader());
             List<CustomInstruction> result = instructionLoader.loadFromLocalDirectory(tempDir);
 
             assertThat(result).hasSize(3);

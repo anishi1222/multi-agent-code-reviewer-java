@@ -93,7 +93,7 @@ class ReviewCustomInstructionResolverTest {
     }
 
     private ReviewCustomInstructionResolver newResolver(ByteArrayOutputStream outBuffer) {
-        var loader = new CustomInstructionLoader(null, false);
+        var loader = CustomInstructionLoader.withSettings(null, false);
         var output = new CliOutput(new PrintStream(outBuffer), new PrintStream(new ByteArrayOutputStream()));
         return new ReviewCustomInstructionResolver(loader, output);
     }

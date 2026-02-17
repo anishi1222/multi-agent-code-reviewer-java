@@ -23,23 +23,30 @@ class ReviewContextTest {
         @Test
         @DisplayName("toStringは主要フィールドを含む")
         void toStringContainsContextSummary() {
-            var context = new ReviewContext(
-                null,
-                5,
-                3,
-                List.of(),
-                null,
-                2,
-                null,
-                null,
-                null,
-                new LocalFileConfig(),
-                null);
+            var client = new com.github.copilot.sdk.CopilotClient(new com.github.copilot.sdk.json.CopilotClientOptions());
+            var scheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+            try {
+                var context = new ReviewContext(
+                    client,
+                    5,
+                    3,
+                    List.of(),
+                    null,
+                    2,
+                    null,
+                    null,
+                    null,
+                    new LocalFileConfig(),
+                    scheduler);
 
-            String result = context.toString();
+                String result = context.toString();
 
-            assertThat(result).contains("ReviewContext");
-            assertThat(result).contains("timeoutMinutes=5");
+                assertThat(result).contains("ReviewContext");
+                assertThat(result).contains("timeoutMinutes=5");
+            } finally {
+                scheduler.shutdownNow();
+                client.close();
+            }
         }
     }
 
@@ -50,20 +57,27 @@ class ReviewContextTest {
         @Test
         @DisplayName("customInstructionsがnullの場合は空リストになる")
         void nullCustomInstructionsBecomesEmptyList() {
-            var context = new ReviewContext(
-                null,
-                5,
-                3,
-                null,
-                null,
-                2,
-                null,
-                null,
-                null,
-                new LocalFileConfig(),
-                null);
+            var client = new com.github.copilot.sdk.CopilotClient(new com.github.copilot.sdk.json.CopilotClientOptions());
+            var scheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+            try {
+                var context = new ReviewContext(
+                    client,
+                    5,
+                    3,
+                    null,
+                    null,
+                    2,
+                    null,
+                    null,
+                    null,
+                    new LocalFileConfig(),
+                    scheduler);
 
-            assertThat(context.customInstructions()).isEmpty();
+                assertThat(context.customInstructions()).isEmpty();
+            } finally {
+                scheduler.shutdownNow();
+                client.close();
+            }
         }
 
         @Test

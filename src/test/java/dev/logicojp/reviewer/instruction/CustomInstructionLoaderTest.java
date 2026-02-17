@@ -24,7 +24,7 @@ class CustomInstructionLoaderTest {
 
     @BeforeEach
     void setUp() {
-        loader = new CustomInstructionLoader();
+        loader = new CustomInstructionLoader(null, true, new PromptLoader(), new ScopedInstructionLoader());
     }
 
     // === Load from Local Directory Tests ===
@@ -131,7 +131,8 @@ class CustomInstructionLoaderTest {
         Files.writeString(additionalFile, "Custom instructions");
 
         CustomInstructionLoader loaderWithPaths = new CustomInstructionLoader(
-            List.of(Path.of("custom/my-instructions.md"))
+            List.of(Path.of("custom/my-instructions.md")), true,
+            new PromptLoader(), new ScopedInstructionLoader()
         );
 
         List<CustomInstruction> result = loaderWithPaths.loadFromLocalDirectory(tempDir);
@@ -146,7 +147,8 @@ class CustomInstructionLoaderTest {
         Files.writeString(additionalFile, "External content");
 
         CustomInstructionLoader loaderWithPaths = new CustomInstructionLoader(
-            List.of(additionalFile)
+            List.of(additionalFile), true,
+            new PromptLoader(), new ScopedInstructionLoader()
         );
 
         List<CustomInstruction> result = loaderWithPaths.loadFromLocalDirectory(tempDir);

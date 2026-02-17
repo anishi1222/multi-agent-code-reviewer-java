@@ -42,6 +42,8 @@ public record ReviewContext(
 ) {
 
     public ReviewContext {
+        Objects.requireNonNull(client, "client must not be null");
+        Objects.requireNonNull(sharedScheduler, "sharedScheduler must not be null");
         customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
     }
 

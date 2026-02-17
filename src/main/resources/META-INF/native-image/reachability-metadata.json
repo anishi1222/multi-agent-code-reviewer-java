@@ -1535,6 +1535,24 @@
       ]
     },
     {
+      "type": "dev.logicojp.reviewer.instruction.$PromptLoader$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "dev.logicojp.reviewer.instruction.$ScopedInstructionLoader$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "dev.logicojp.reviewer.orchestrator.$ReviewOrchestratorFactory$Definition",
       "methods": [
         {

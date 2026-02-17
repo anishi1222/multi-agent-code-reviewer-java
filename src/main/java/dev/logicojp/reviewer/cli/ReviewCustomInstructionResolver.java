@@ -130,7 +130,7 @@ public class ReviewCustomInstructionResolver {
 
     private CustomInstructionLoader resolveTargetLoader(InstructionOptions options) {
         if (options.noPrompts()) {
-            return new CustomInstructionLoader(null, false);
+            return CustomInstructionLoader.withSettings(null, false);
         }
         return instructionLoader;
     }

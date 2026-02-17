@@ -3,12 +3,9 @@ package dev.logicojp.reviewer.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 
 final class ConfigDefaults {
@@ -35,29 +32,25 @@ final class ConfigDefaults {
     }
 
     static List<String> loadListFromResource(String resourcePath, List<String> fallback) {
-        try (InputStream stream = ConfigDefaults.class.getClassLoader().getResourceAsStream(resourcePath)) {
-            if (stream == null) {
-                logger.debug("Default config resource not found: {}", resourcePath);
+        InputStream stream = ConfigDefaults.class.getClassLoader().getResourceAsStream(resourcePath);
+        if (stream == null) {
+            logger.debug("Default config resource not found: {}", resourcePath);
+            return List.copyOf(fallback);
+        }
+
+        try (stream) {
+            String content = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            List<String> values = content.lines()
+                .map(String::trim)
+                .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                .toList();
+
+            if (values.isEmpty()) {
+                logger.debug("Default config resource is empty: {}", resourcePath);
                 return List.copyOf(fallback);
             }
 
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-                List<String> values = new ArrayList<>();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String trimmed = line.trim();
-                    if (!trimmed.isEmpty() && !trimmed.startsWith("#")) {
-                        values.add(trimmed);
-                    }
-                }
-
-                if (values.isEmpty()) {
-                    logger.debug("Default config resource is empty: {}", resourcePath);
-                    return List.copyOf(fallback);
-                }
-
-                return List.copyOf(values);
-            }
+            return List.copyOf(values);
         } catch (IOException e) {
             logger.debug("Failed to read default config resource '{}': {}", resourcePath, e.getMessage());
             return List.copyOf(fallback);

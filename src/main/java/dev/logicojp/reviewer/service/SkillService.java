@@ -147,15 +147,14 @@ public class SkillService {
         }
     }
 
+    /// Caller must hold synchronized(executorCache).
     private void evictIfNecessary() {
-        synchronized (executorCache) {
-            while (executorCache.size() >= MAX_EXECUTOR_CACHE_SIZE) {
-                var it = executorCache.entrySet().iterator();
-                if (it.hasNext()) {
-                    var entry = it.next();
-                    it.remove();
-                    entry.getValue().close();
-                }
+        while (executorCache.size() >= MAX_EXECUTOR_CACHE_SIZE) {
+            var it = executorCache.entrySet().iterator();
+            if (it.hasNext()) {
+                var entry = it.next();
+                it.remove();
+                entry.getValue().close();
             }
         }
     }

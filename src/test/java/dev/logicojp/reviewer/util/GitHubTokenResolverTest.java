@@ -60,9 +60,9 @@ class GitHubTokenResolverTest {
     class Constructor {
 
         @Test
-        @DisplayName("デフォルトコンストラクタはエラーなく動作する")
-        void defaultConstructorWorks() {
-            GitHubTokenResolver resolver = new GitHubTokenResolver();
+        @DisplayName("デフォルトタイムアウトでインスタンスを生成できる")
+        void defaultTimeoutWorks() {
+            GitHubTokenResolver resolver = new GitHubTokenResolver(10);
             assertThat(resolver).isNotNull();
         }
 

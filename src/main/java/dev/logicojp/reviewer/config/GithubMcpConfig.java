@@ -61,15 +61,17 @@ public record GithubMcpConfig(
         @Override
         public String toString() {
             // Mask Authorization header values to prevent token leakage in logs
-            Map<String, String> maskedHeaders = new HashMap<>(headers);
-            for (var entry : headers.entrySet()) {
-                String key = entry.getKey();
-                String value = entry.getValue();
-                String normalized = key == null ? "" : key.toLowerCase();
-                if (normalized.contains("authorization") || normalized.contains("token")) {
-                    maskedHeaders.put(key, maskSensitiveHeaderValue(value));
-                }
-            }
+            Map<String, String> maskedHeaders = headers.entrySet().stream()
+                .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                    Map.Entry::getKey,
+                    entry -> {
+                        String normalized = entry.getKey() == null ? "" : entry.getKey().toLowerCase();
+                        if (normalized.contains("authorization") || normalized.contains("token")) {
+                            return maskSensitiveHeaderValue(entry.getValue());
+                        }
+                        return entry.getValue();
+                    }
+                ));
             return "McpServerConfig{type='%s', url='%s', tools=%s, headers=%s}"
                 .formatted(type, url, tools, maskedHeaders);
         }
