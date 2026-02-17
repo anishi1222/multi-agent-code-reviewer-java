@@ -1,9 +1,9 @@
 package dev.logicojp.reviewer.service;
 
 import dev.logicojp.reviewer.config.ExecutionConfig;
-import dev.logicojp.reviewer.report.ReportGenerator;
-import dev.logicojp.reviewer.report.ReportGeneratorFactory;
-import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.core.ReportGenerator;
+import dev.logicojp.reviewer.report.factory.ReportGeneratorFactory;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.report.summary.SummaryGenerator;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

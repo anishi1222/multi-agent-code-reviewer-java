@@ -1,6 +1,6 @@
-package dev.logicojp.reviewer.report.summary;
+package dev.logicojp.reviewer.report.formatter;
 
-import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.report.finding.FindingsExtractor;
 
 import dev.logicojp.reviewer.agent.AgentConfig;

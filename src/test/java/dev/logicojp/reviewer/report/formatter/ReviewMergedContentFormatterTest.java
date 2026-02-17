@@ -1,4 +1,4 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.formatter;
 
 import dev.logicojp.reviewer.report.finding.AggregatedFinding;
 import dev.logicojp.reviewer.report.finding.ReviewFindingParser;

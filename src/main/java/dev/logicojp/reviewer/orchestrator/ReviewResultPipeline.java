@@ -1,7 +1,7 @@
 package dev.logicojp.reviewer.orchestrator;
 
-import dev.logicojp.reviewer.report.ReviewResult;
-import dev.logicojp.reviewer.report.ReviewResultMerger;
+import dev.logicojp.reviewer.report.core.ReviewResult;
+import dev.logicojp.reviewer.report.merger.ReviewResultMerger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

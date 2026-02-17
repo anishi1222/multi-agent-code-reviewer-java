@@ -1,6 +1,6 @@
 package dev.logicojp.reviewer.agent;
 
-import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 
 import java.time.LocalDateTime;
 

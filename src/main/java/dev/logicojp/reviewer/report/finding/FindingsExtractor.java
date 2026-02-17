@@ -37,7 +37,7 @@ public final class FindingsExtractor {
     /// @param title   The finding title
     /// @param priority The priority level (Critical, High, Medium, Low)
     /// @param agent   The agent name that produced the finding
-    record Finding(String title, String priority, String agent) {}
+    public record Finding(String title, String priority, String agent) {}
 
     /// Builds a deterministic findings summary from all review results.
     ///

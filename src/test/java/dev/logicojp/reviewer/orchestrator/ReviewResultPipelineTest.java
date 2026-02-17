@@ -1,7 +1,7 @@
 package dev.logicojp.reviewer.orchestrator;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
-import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

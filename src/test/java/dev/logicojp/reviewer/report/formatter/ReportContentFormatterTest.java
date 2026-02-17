@@ -1,5 +1,6 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.formatter;
 
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.TemplateConfig;
 import dev.logicojp.reviewer.service.TemplateService;

@@ -2,7 +2,7 @@ package dev.logicojp.reviewer.cli;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
-import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.service.ReportService;
 import dev.logicojp.reviewer.service.ReviewService;
 import dev.logicojp.reviewer.target.ReviewTarget;

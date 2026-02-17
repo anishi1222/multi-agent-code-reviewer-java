@@ -3,6 +3,7 @@ package dev.logicojp.reviewer.report.summary;
 import dev.logicojp.reviewer.report.util.ReportFileUtils;
 
 import dev.logicojp.reviewer.report.core.ReviewResult;
+import dev.logicojp.reviewer.report.formatter.SummaryFinalReportFormatter;
 
 import com.github.copilot.sdk.CopilotClient;
 import com.github.copilot.sdk.CopilotSession;

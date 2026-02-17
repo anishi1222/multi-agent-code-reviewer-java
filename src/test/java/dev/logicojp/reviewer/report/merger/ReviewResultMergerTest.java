@@ -1,5 +1,6 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.merger;
 
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.report.finding.AggregatedFinding;
 import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
 import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;

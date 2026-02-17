@@ -1,6 +1,6 @@
 package dev.logicojp.reviewer.agent;
 
-import dev.logicojp.reviewer.report.ReviewResult;
+import dev.logicojp.reviewer.report.core.ReviewResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

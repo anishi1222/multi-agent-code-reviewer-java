@@ -1,5 +1,6 @@
-package dev.logicojp.reviewer.report;
+package dev.logicojp.reviewer.report.factory;
 
+import dev.logicojp.reviewer.report.core.ReportGenerator;
 import dev.logicojp.reviewer.report.finding.AggregatedFinding;
 import dev.logicojp.reviewer.report.finding.ReviewFindingParser;
 import dev.logicojp.reviewer.report.finding.ReviewFindingSimilarity;
