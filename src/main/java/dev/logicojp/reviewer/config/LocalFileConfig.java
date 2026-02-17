@@ -71,52 +71,26 @@ public record LocalFileConfig(
     public static final List<String> DEFAULT_SENSITIVE_FILE_PATTERNS = FALLBACK_SENSITIVE_FILE_PATTERNS;
     public static final List<String> DEFAULT_SENSITIVE_EXTENSIONS = FALLBACK_SENSITIVE_EXTENSIONS;
 
-    /// Lazily loaded resource-based defaults, resolved on first constructor invocation.
-    /// Avoids I/O during static class loading for GraalVM Native Image compatibility.
-    private static volatile List<String> resourceIgnoredDirs;
-    private static volatile List<String> resourceSourceExts;
-    private static volatile List<String> resourceSensitivePatterns;
-    private static volatile List<String> resourceSensitiveExts;
-
-    private static List<String> resolvedIgnoredDirectories() {
-        if (resourceIgnoredDirs == null) {
-            resourceIgnoredDirs = ConfigDefaults.loadListFromResource(
-                "defaults/ignored-directories.txt", FALLBACK_IGNORED_DIRECTORIES);
-        }
-        return resourceIgnoredDirs;
-    }
-
-    private static List<String> resolvedSourceExtensions() {
-        if (resourceSourceExts == null) {
-            resourceSourceExts = ConfigDefaults.loadListFromResource(
-                "defaults/source-extensions.txt", FALLBACK_SOURCE_EXTENSIONS);
-        }
-        return resourceSourceExts;
-    }
-
-    private static List<String> resolvedSensitiveFilePatterns() {
-        if (resourceSensitivePatterns == null) {
-            resourceSensitivePatterns = ConfigDefaults.loadListFromResource(
-                "defaults/sensitive-file-patterns.txt", FALLBACK_SENSITIVE_FILE_PATTERNS);
-        }
-        return resourceSensitivePatterns;
-    }
-
-    private static List<String> resolvedSensitiveExtensions() {
-        if (resourceSensitiveExts == null) {
-            resourceSensitiveExts = ConfigDefaults.loadListFromResource(
-                "defaults/sensitive-extensions.txt", FALLBACK_SENSITIVE_EXTENSIONS);
-        }
-        return resourceSensitiveExts;
+    /// Initialization-on-demand holder for thread-safe lazy loading of resource-based defaults.
+    /// Defers I/O until first access, avoiding class-load side effects (GraalVM Native Image safe).
+    static final class DefaultsHolder {
+        static final List<String> IGNORED_DIRS = ConfigDefaults.loadListFromResource(
+            "defaults/ignored-directories.txt", FALLBACK_IGNORED_DIRECTORIES);
+        static final List<String> SOURCE_EXTS = ConfigDefaults.loadListFromResource(
+            "defaults/source-extensions.txt", FALLBACK_SOURCE_EXTENSIONS);
+        static final List<String> SENSITIVE_PATTERNS = ConfigDefaults.loadListFromResource(
+            "defaults/sensitive-file-patterns.txt", FALLBACK_SENSITIVE_FILE_PATTERNS);
+        static final List<String> SENSITIVE_EXTS = ConfigDefaults.loadListFromResource(
+            "defaults/sensitive-extensions.txt", FALLBACK_SENSITIVE_EXTENSIONS);
     }
 
     public LocalFileConfig {
         maxFileSize = ConfigDefaults.defaultIfNonPositive(maxFileSize, DEFAULT_MAX_FILE_SIZE);
         maxTotalSize = ConfigDefaults.defaultIfNonPositive(maxTotalSize, DEFAULT_MAX_TOTAL_SIZE);
-        ignoredDirectories = ConfigDefaults.defaultListIfEmpty(ignoredDirectories, resolvedIgnoredDirectories());
-        sourceExtensions = ConfigDefaults.defaultListIfEmpty(sourceExtensions, resolvedSourceExtensions());
-        sensitiveFilePatterns = ConfigDefaults.defaultListIfEmpty(sensitiveFilePatterns, resolvedSensitiveFilePatterns());
-        sensitiveExtensions = ConfigDefaults.defaultListIfEmpty(sensitiveExtensions, resolvedSensitiveExtensions());
+        ignoredDirectories = ConfigDefaults.defaultListIfEmpty(ignoredDirectories, DefaultsHolder.IGNORED_DIRS);
+        sourceExtensions = ConfigDefaults.defaultListIfEmpty(sourceExtensions, DefaultsHolder.SOURCE_EXTS);
+        sensitiveFilePatterns = ConfigDefaults.defaultListIfEmpty(sensitiveFilePatterns, DefaultsHolder.SENSITIVE_PATTERNS);
+        sensitiveExtensions = ConfigDefaults.defaultListIfEmpty(sensitiveExtensions, DefaultsHolder.SENSITIVE_EXTS);
     }
 
     public LocalFileConfig(long maxFileSize, long maxTotalSize) {

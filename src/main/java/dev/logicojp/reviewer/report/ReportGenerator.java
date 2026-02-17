@@ -10,8 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /// Generates markdown report files for individual agent reviews.
 public class ReportGenerator {
@@ -48,19 +48,22 @@ public class ReportGenerator {
     /// @return List of paths to generated report files
     public List<Path> generateReports(List<ReviewResult> results) throws IOException {
         ensureOutputDirectory();
-        
-        return results.stream()
-            .map(result -> {
-                try {
-                    return generateReport(result);
-                } catch (IOException e) {
-                    logger.error("Failed to generate report for {}: {}", 
-                        result.agentConfig().name(), e.getMessage());
-                    return null;
-                }
-            })
-            .filter(Objects::nonNull)
-            .toList();
+
+        List<Path> paths = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
+        for (ReviewResult result : results) {
+            try {
+                paths.add(generateReport(result));
+            } catch (IOException e) {
+                String agentName = result.agentConfig().name();
+                logger.error("Failed to generate report for {}: {}", agentName, e.getMessage());
+                failures.add(agentName);
+            }
+        }
+        if (!failures.isEmpty()) {
+            logger.warn("Failed to generate reports for {} agent(s): {}", failures.size(), failures);
+        }
+        return List.copyOf(paths);
     }
 
     private Path createReportPath(AgentConfig config, String date) throws IOException {

@@ -28,7 +28,7 @@ public record ReviewResult(
         return new Builder();
     }
 
-    public static class Builder {
+    public static final class Builder {
         private AgentConfig agentConfig;
         private String repository;
         private String content;

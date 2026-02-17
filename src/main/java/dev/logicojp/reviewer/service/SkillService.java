@@ -18,11 +18,12 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -54,7 +55,7 @@ public class SkillService {
         this.executionConfig = executionConfig;
         this.featureFlags = featureFlags;
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
-        this.executorCache = new ConcurrentHashMap<>();
+        this.executorCache = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     }
 
     /// Registers all skills from an agent configuration.
@@ -125,27 +126,32 @@ public class SkillService {
             secureHash(githubToken),
             model
         );
-        return executorCache.computeIfAbsent(key, ignored -> {
-            evictIfNecessary();
-            return new SkillExecutor(
-                copilotService.getClient(),
-                githubToken,
-                githubMcpConfig,
-                model,
-                executionConfig.skillTimeoutMinutes(),
-                executorService,
-                false,
-                featureFlags.structuredConcurrencySkills()
-            );
-        });
+        synchronized (executorCache) {
+            return executorCache.computeIfAbsent(key, ignored -> {
+                evictIfNecessary();
+                return new SkillExecutor(
+                    copilotService.getClient(),
+                    githubToken,
+                    githubMcpConfig,
+                    model,
+                    executionConfig.skillTimeoutMinutes(),
+                    executorService,
+                    false,
+                    featureFlags.structuredConcurrencySkills()
+                );
+            });
+        }
     }
 
     private void evictIfNecessary() {
-        while (executorCache.size() >= MAX_EXECUTOR_CACHE_SIZE) {
-            var oldest = executorCache.keySet().iterator().next();
-            SkillExecutor removed = executorCache.remove(oldest);
-            if (removed != null) {
-                removed.shutdown();
+        synchronized (executorCache) {
+            while (executorCache.size() >= MAX_EXECUTOR_CACHE_SIZE) {
+                var it = executorCache.entrySet().iterator();
+                if (it.hasNext()) {
+                    var entry = it.next();
+                    it.remove();
+                    entry.getValue().close();
+                }
             }
         }
     }
@@ -172,10 +178,12 @@ public class SkillService {
 
     @PreDestroy
     public void shutdown() {
-        for (SkillExecutor executor : executorCache.values()) {
-            executor.shutdown();
+        synchronized (executorCache) {
+            for (SkillExecutor executor : executorCache.values()) {
+                executor.close();
+            }
+            executorCache.clear();
         }
-        executorCache.clear();
         ExecutorUtils.shutdownGracefully(executorService, 60);
     }
 }

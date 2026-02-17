@@ -103,15 +103,26 @@ public record GithubMcpConfig(
     /// Builds a type-safe MCP server configuration, then converts to Map for SDK compatibility.
     /// The returned Map wraps toString() to mask sensitive headers, preventing token leakage
     /// via SDK/framework debug logging.
+    /// Map wrapper that delegates toString() to McpServerConfig for token masking.
+    /// Prevents token leakage via SDK/framework debug logging of Map.toString().
+    private static final class MaskedToStringMap extends AbstractMap<String, Object> {
+        private final Map<String, Object> delegate;
+        private final String maskedString;
+
+        MaskedToStringMap(Map<String, Object> delegate, String maskedString) {
+            this.delegate = Map.copyOf(delegate);
+            this.maskedString = maskedString;
+        }
+
+        @Override public Set<Entry<String, Object>> entrySet() { return delegate.entrySet(); }
+        @Override public String toString() { return maskedString; }
+    }
+
     public Map<String, Object> toMcpServer(String token) {
         Map<String, String> combinedHeaders = new HashMap<>(headers != null ? headers : Map.of());
         applyAuthHeader(token, combinedHeaders);
         McpServerConfig config = new McpServerConfig(type, url, tools, combinedHeaders);
-        return Collections.unmodifiableMap(new AbstractMap<>() {
-            private final Map<String, Object> delegate = config.toMap();
-            @Override public Set<Entry<String, Object>> entrySet() { return delegate.entrySet(); }
-            @Override public String toString() { return config.toString(); }
-        });
+        return Collections.unmodifiableMap(new MaskedToStringMap(config.toMap(), config.toString()));
     }
 
     private void applyAuthHeader(String token, Map<String, String> combinedHeaders) {

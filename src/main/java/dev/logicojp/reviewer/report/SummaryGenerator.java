@@ -97,17 +97,15 @@ public class SummaryGenerator {
         this.timeoutMinutes = timeoutMinutes;
         this.templateService = templateService;
         SummaryCollaborators defaults = SummaryCollaborators.defaults(templateService, summaryConfig, this);
-        if (collaborators == null) {
-            collaborators = defaults;
-        }
-        this.summaryPromptBuilder = collaborators.summaryPromptBuilder() != null
-            ? collaborators.summaryPromptBuilder() : defaults.summaryPromptBuilder();
-        this.fallbackSummaryBuilder = collaborators.fallbackSummaryBuilder() != null
-            ? collaborators.fallbackSummaryBuilder() : defaults.fallbackSummaryBuilder();
-        this.summaryFinalReportFormatter = collaborators.summaryFinalReportFormatter() != null
-            ? collaborators.summaryFinalReportFormatter() : defaults.summaryFinalReportFormatter();
-        this.aiSummaryBuilder = collaborators.aiSummaryBuilder() != null
-            ? collaborators.aiSummaryBuilder() : defaults.aiSummaryBuilder();
+        var effective = collaborators != null ? collaborators : defaults;
+        this.summaryPromptBuilder = effective.summaryPromptBuilder() != null
+            ? effective.summaryPromptBuilder() : defaults.summaryPromptBuilder();
+        this.fallbackSummaryBuilder = effective.fallbackSummaryBuilder() != null
+            ? effective.fallbackSummaryBuilder() : defaults.fallbackSummaryBuilder();
+        this.summaryFinalReportFormatter = effective.summaryFinalReportFormatter() != null
+            ? effective.summaryFinalReportFormatter() : defaults.summaryFinalReportFormatter();
+        this.aiSummaryBuilder = effective.aiSummaryBuilder() != null
+            ? effective.aiSummaryBuilder() : defaults.aiSummaryBuilder();
     }
     
     /// Generates an executive summary from all review results.

@@ -69,20 +69,35 @@ public class CustomInstructionLoader {
     private final boolean loadPrompts;
 
     @Inject
+    public CustomInstructionLoader(PromptLoader promptLoader, ScopedInstructionLoader scopedInstructionLoader) {
+        this(null, true, promptLoader, scopedInstructionLoader);
+    }
+
     public CustomInstructionLoader() {
-        this(null, true);
+        this(null, true,
+            new PromptLoader(),
+            new ScopedInstructionLoader());
     }
 
     public CustomInstructionLoader(List<Path> additionalInstructionPaths) {
-        this(additionalInstructionPaths, true);
+        this(additionalInstructionPaths, true,
+            new PromptLoader(),
+            new ScopedInstructionLoader(INSTRUCTIONS_DIRECTORY, INSTRUCTIONS_EXTENSION));
     }
 
     public CustomInstructionLoader(List<Path> additionalInstructionPaths, boolean loadPrompts) {
+        this(additionalInstructionPaths, loadPrompts,
+            new PromptLoader(),
+            new ScopedInstructionLoader(INSTRUCTIONS_DIRECTORY, INSTRUCTIONS_EXTENSION));
+    }
+
+    CustomInstructionLoader(List<Path> additionalInstructionPaths, boolean loadPrompts,
+                            PromptLoader promptLoader, ScopedInstructionLoader scopedInstructionLoader) {
         this.additionalInstructionPaths = additionalInstructionPaths != null 
             ? List.copyOf(additionalInstructionPaths) 
             : List.of();
-        this.promptLoader = new PromptLoader();
-        this.scopedInstructionLoader = new ScopedInstructionLoader(INSTRUCTIONS_DIRECTORY, INSTRUCTIONS_EXTENSION);
+        this.promptLoader = promptLoader;
+        this.scopedInstructionLoader = scopedInstructionLoader;
         this.loadPrompts = loadPrompts;
     }
 

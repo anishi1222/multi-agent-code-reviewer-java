@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.instruction;
 
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
 ///
 /// Loaded prompts are converted to [CustomInstruction] records and injected
 /// into the agent system prompt alongside regular instructions.
+@Singleton
 public class PromptLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(PromptLoader.class);

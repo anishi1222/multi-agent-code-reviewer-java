@@ -35,28 +35,29 @@ final class ConfigDefaults {
     }
 
     static List<String> loadListFromResource(String resourcePath, List<String> fallback) {
-        InputStream stream = ConfigDefaults.class.getClassLoader().getResourceAsStream(resourcePath);
-        if (stream == null) {
-            logger.debug("Default config resource not found: {}", resourcePath);
-            return List.copyOf(fallback);
-        }
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            List<String> values = new ArrayList<>();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if (!trimmed.isEmpty() && !trimmed.startsWith("#")) {
-                    values.add(trimmed);
-                }
-            }
-
-            if (values.isEmpty()) {
-                logger.debug("Default config resource is empty: {}", resourcePath);
+        try (InputStream stream = ConfigDefaults.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (stream == null) {
+                logger.debug("Default config resource not found: {}", resourcePath);
                 return List.copyOf(fallback);
             }
 
-            return List.copyOf(values);
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                List<String> values = new ArrayList<>();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String trimmed = line.trim();
+                    if (!trimmed.isEmpty() && !trimmed.startsWith("#")) {
+                        values.add(trimmed);
+                    }
+                }
+
+                if (values.isEmpty()) {
+                    logger.debug("Default config resource is empty: {}", resourcePath);
+                    return List.copyOf(fallback);
+                }
+
+                return List.copyOf(values);
+            }
         } catch (IOException e) {
             logger.debug("Failed to read default config resource '{}': {}", resourcePath, e.getMessage());
             return List.copyOf(fallback);

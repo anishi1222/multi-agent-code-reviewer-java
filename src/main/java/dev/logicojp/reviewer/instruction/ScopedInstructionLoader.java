@@ -1,5 +1,6 @@
 package dev.logicojp.reviewer.instruction;
 
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,12 +12,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+@Singleton
 final class ScopedInstructionLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(ScopedInstructionLoader.class);
 
     private final String instructionsDirectory;
     private final String instructionsExtension;
+
+    ScopedInstructionLoader() {
+        this(".github/instructions", ".instructions.md");
+    }
 
     ScopedInstructionLoader(String instructionsDirectory, String instructionsExtension) {
         this.instructionsDirectory = instructionsDirectory;

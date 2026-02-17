@@ -67,7 +67,10 @@ public sealed interface ReviewTarget permits ReviewTarget.LocalTarget, ReviewTar
 
     /// Returns true if this target is a local directory.
     default boolean isLocal() {
-        return this instanceof LocalTarget;
+        return switch (this) {
+            case LocalTarget _ -> true;
+            case GitHubTarget _ -> false;
+        };
     }
 
     /// Returns the local path if this is a local target, empty otherwise.

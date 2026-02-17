@@ -11,6 +11,11 @@ public final class CliValidationException extends RuntimeException {
         this.showUsage = showUsage;
     }
 
+    public CliValidationException(String message, boolean showUsage, Throwable cause) {
+        super(normalizeMessage(message), cause);
+        this.showUsage = showUsage;
+    }
+
     private static String normalizeMessage(String message) {
         return message == null ? "" : message;
     }

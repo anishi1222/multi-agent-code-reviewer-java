@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /// Executes skills using the Copilot SDK.
-public class SkillExecutor {
+public class SkillExecutor implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(SkillExecutor.class);
 
@@ -143,9 +143,16 @@ public class SkillExecutor {
     }
 
     /// Shuts down the internally-owned executor, if any.
-    public void shutdown() {
+    @Override
+    public void close() {
         if (ownsExecutor && executor instanceof ExecutorService es) {
             dev.logicojp.reviewer.util.ExecutorUtils.shutdownGracefully(es, 30);
         }
+    }
+
+    /// @deprecated Use {@link #close()} instead. Retained for backward compatibility.
+    @Deprecated(forRemoval = true)
+    public void shutdown() {
+        close();
     }
 }
