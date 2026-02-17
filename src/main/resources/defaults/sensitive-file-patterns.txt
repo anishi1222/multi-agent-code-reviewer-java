@@ -29,3 +29,9 @@ kubeconfig
 .kube/config
 htpasswd
 shadow
+# Generic config files that may contain secrets
+application.yml
+application.yaml
+config.json
+settings.json
+settings.yaml

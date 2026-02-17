@@ -51,7 +51,9 @@ public final class ContentSanitizer {
     private static final Pattern DANGEROUS_HTML_PATTERN = Pattern.compile(
         "<\\s*(script|iframe|object|embed|form|input|base|link|meta|style)\\b[^>]*>.*?</\\s*\\1\\s*>|" +
         "<\\s*(script|iframe|object|embed|form|input|base|link|meta|style)\\b[^>]*/?>|" +
-        "\\bon\\w+\\s*=",
+        "\\bon\\w+\\s*=|" +
+        "javascript\\s*:|" +
+        "data\\s*:[^,]*;base64",
         Pattern.DOTALL | Pattern.CASE_INSENSITIVE
     );
 

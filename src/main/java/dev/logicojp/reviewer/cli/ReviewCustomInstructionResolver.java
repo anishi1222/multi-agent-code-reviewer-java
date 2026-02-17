@@ -101,7 +101,16 @@ public class ReviewCustomInstructionResolver {
         output.println("⚠  --trust enabled: loading custom instructions from the review target.");
         CustomInstructionLoader targetLoader = resolveTargetLoader(options);
         List<CustomInstruction> targetInstructions = targetLoader.loadForTarget(target);
+        logTrustAuditTrail(targetInstructions);
         addTargetInstructions(targetInstructions, instructions);
+    }
+
+    private void logTrustAuditTrail(List<CustomInstruction> instructions) {
+        for (CustomInstruction instruction : instructions) {
+            logger.info("[TRUST AUDIT] Loaded instruction from: {} (size: {} bytes)",
+                instruction.sourcePath(),
+                instruction.content() != null ? instruction.content().length() : 0);
+        }
     }
 
     private boolean canLoadTargetInstructions(ReviewTarget target) {

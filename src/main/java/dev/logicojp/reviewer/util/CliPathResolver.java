@@ -69,7 +69,12 @@ public final class CliPathResolver {
     }
 
     private static boolean hasAllowedName(Path path, String... allowedNames) {
-        String fileName = path.getFileName().toString();
-        return Arrays.stream(allowedNames).anyMatch(fileName::equals);
+        String fileName = path.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+        return Arrays.stream(allowedNames).anyMatch(name -> {
+            String lowerName = name.toLowerCase(java.util.Locale.ROOT);
+            return fileName.equals(lowerName)
+                || fileName.equals(lowerName + ".exe")
+                || fileName.equals(lowerName + ".cmd");
+        });
     }
 }
