@@ -34,9 +34,11 @@ class ReviewOrchestratorTest {
             List.of(),
             "high",
             null,
-            "focus guidance",
-            "local source header",
-            "local result request"
+            new ReviewOrchestrator.PromptTexts(
+                "focus guidance",
+                "local source header",
+                "local result request"
+            )
         );
 
         AgentConfig agentConfig = new AgentConfig(

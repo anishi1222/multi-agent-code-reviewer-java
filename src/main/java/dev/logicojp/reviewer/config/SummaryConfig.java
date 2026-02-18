@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.config;
 
 import io.micronaut.context.annotation.ConfigurationProperties;
 
+/// Configuration for executive summary generation settings.
 @ConfigurationProperties("reviewer.summary")
 public record SummaryConfig(
     int maxContentPerAgent,

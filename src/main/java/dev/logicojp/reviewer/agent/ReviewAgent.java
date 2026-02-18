@@ -271,15 +271,15 @@ public class ReviewAgent {
             )),
             handler -> session.on(AssistantMessageEvent.class, event -> {
                 var data = event.getData();
-                int toolCalls = data.getToolRequests() != null ? data.getToolRequests().size() : 0;
-                handler.accept(new ReviewSessionEvents.EventData("assistant", data.getContent(), toolCalls, null));
+                int toolCalls = data.toolRequests() != null ? data.toolRequests().size() : 0;
+                handler.accept(new ReviewSessionEvents.EventData("assistant", data.content(), toolCalls, null));
             }),
             handler -> session.on(SessionIdleEvent.class, _ ->
                 handler.accept(new ReviewSessionEvents.EventData("idle", null, 0, null))),
             handler -> session.on(SessionErrorEvent.class, event -> {
                 var data = event.getData();
                 handler.accept(new ReviewSessionEvents.EventData(
-                    "error", null, 0, data != null ? data.getMessage() : "session error"
+                    "error", null, 0, data != null ? data.message() : "session error"
                 ));
             }),
             trace -> logger.trace("{}", trace)

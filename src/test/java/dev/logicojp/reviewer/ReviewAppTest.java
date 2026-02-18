@@ -8,6 +8,8 @@ import dev.logicojp.reviewer.cli.SkillCommand;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,32 +17,37 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("ReviewApp")
 class ReviewAppTest {
 
+    private static final CliOutput NULL_OUTPUT = new CliOutput(
+        new PrintStream(OutputStream.nullOutputStream()),
+        new PrintStream(OutputStream.nullOutputStream())
+    );
+
     @Test
     @DisplayName("runサブコマンドをReviewCommandに委譲する")
     void delegatesRunCommand() {
         AtomicInteger runCalled = new AtomicInteger();
 
-        ReviewCommand reviewCommand = new ReviewCommand(null, null, null, null, null, null, null, null, new CliOutput()) {
+        ReviewCommand reviewCommand = new ReviewCommand(null, null, null, null, null, null, null, null, NULL_OUTPUT) {
             @Override
             public int execute(String[] args) {
                 runCalled.incrementAndGet();
                 return 42;
             }
         };
-        ListAgentsCommand listCommand = new ListAgentsCommand(null, new CliOutput()) {
+        ListAgentsCommand listCommand = new ListAgentsCommand(null, NULL_OUTPUT) {
             @Override
             public int execute(String[] args) {
                 return 0;
             }
         };
-        SkillCommand skillCommand = new SkillCommand(null, null, null, null, null, null, new CliOutput()) {
+        SkillCommand skillCommand = new SkillCommand(null, null, null, null, null, null, NULL_OUTPUT) {
             @Override
             public int execute(String[] args) {
                 return 0;
             }
         };
 
-        ReviewApp app = new ReviewApp(reviewCommand, listCommand, skillCommand, new CliOutput());
+        ReviewApp app = new ReviewApp(reviewCommand, listCommand, skillCommand, NULL_OUTPUT);
         int exit = app.execute(new String[]{"run"});
 
         assertThat(exit).isEqualTo(42);
@@ -50,26 +57,26 @@ class ReviewAppTest {
     @Test
     @DisplayName("未知コマンドではUSAGEを返す")
     void returnsUsageForUnknownCommand() {
-        ReviewCommand reviewCommand = new ReviewCommand(null, null, null, null, null, null, null, null, new CliOutput()) {
+        ReviewCommand reviewCommand = new ReviewCommand(null, null, null, null, null, null, null, null, NULL_OUTPUT) {
             @Override
             public int execute(String[] args) {
                 return 0;
             }
         };
-        ListAgentsCommand listCommand = new ListAgentsCommand(null, new CliOutput()) {
+        ListAgentsCommand listCommand = new ListAgentsCommand(null, NULL_OUTPUT) {
             @Override
             public int execute(String[] args) {
                 return 0;
             }
         };
-        SkillCommand skillCommand = new SkillCommand(null, null, null, null, null, null, new CliOutput()) {
+        SkillCommand skillCommand = new SkillCommand(null, null, null, null, null, null, NULL_OUTPUT) {
             @Override
             public int execute(String[] args) {
                 return 0;
             }
         };
 
-        ReviewApp app = new ReviewApp(reviewCommand, listCommand, skillCommand, new CliOutput());
+        ReviewApp app = new ReviewApp(reviewCommand, listCommand, skillCommand, NULL_OUTPUT);
         int exit = app.execute(new String[]{"unknown"});
 
         assertThat(exit).isEqualTo(ExitCodes.USAGE);

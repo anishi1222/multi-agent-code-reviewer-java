@@ -35,11 +35,7 @@ public record ExecutionConfig(
         skillTimeoutMinutes = ConfigDefaults.defaultIfNonPositive(skillTimeoutMinutes, DEFAULT_SKILL_TIMEOUT_MINUTES);
         summaryTimeoutMinutes = ConfigDefaults.defaultIfNonPositive(summaryTimeoutMinutes, DEFAULT_SUMMARY_TIMEOUT_MINUTES);
         ghAuthTimeoutSeconds = ConfigDefaults.defaultIfNonPositive(ghAuthTimeoutSeconds, DEFAULT_GH_AUTH_TIMEOUT_SECONDS);
-        maxRetries = defaultIfNegative(maxRetries, DEFAULT_MAX_RETRIES);
-    }
-
-    private static int defaultIfNegative(int value, int defaultValue) {
-        return value < 0 ? defaultValue : value;
+        maxRetries = ConfigDefaults.defaultIfNegative(maxRetries, DEFAULT_MAX_RETRIES);
     }
 
     /// Returns a copy of this config with the parallelism value replaced.

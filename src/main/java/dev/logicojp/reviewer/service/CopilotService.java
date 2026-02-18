@@ -27,7 +27,6 @@ public class CopilotService {
     private final CopilotStartupErrorFormatter startupErrorFormatter;
     private final CopilotClientStarter clientStarter;
     private volatile CopilotClient client;
-    private volatile boolean initialized = false;
 
     @Inject
     public CopilotService(CopilotCliPathResolver cliPathResolver,
@@ -57,11 +56,11 @@ public class CopilotService {
 
     /// Initializes the Copilot client.
     private void initialize(String githubToken) throws ExecutionException, InterruptedException {
-        if (initialized) {
+        if (client != null) {
             return;
         }
         synchronized (lock) {
-            if (initialized) {
+            if (client != null) {
                 return;
             }
             logger.info("Initializing Copilot client...");
@@ -70,7 +69,6 @@ public class CopilotService {
             long timeoutSeconds = resolveStartTimeoutSeconds();
             startClient(createdClient, timeoutSeconds);
             client = createdClient;
-            initialized = true;
             logger.info("Copilot client initialized");
         }
     }
@@ -134,7 +132,7 @@ public class CopilotService {
     /// @throws IllegalStateException if not initialized
     public CopilotClient getClient() {
         CopilotClient localClient = client;
-        if (!initialized || localClient == null) {
+        if (localClient == null) {
             throw new IllegalStateException("CopilotService not initialized. Call initialize() first.");
         }
         return localClient;
@@ -142,7 +140,7 @@ public class CopilotService {
     
     /// Checks if the service is initialized.
     public boolean isInitialized() {
-        return initialized;
+        return client != null;
     }
     
     /// Shuts down the Copilot client.
@@ -158,7 +156,6 @@ public class CopilotService {
                     logger.warn("Error shutting down Copilot client: {}", e.getMessage());
                 } finally {
                     client = null;
-                    initialized = false;
                 }
             }
         }

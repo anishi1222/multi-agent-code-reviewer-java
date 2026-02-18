@@ -1,5 +1,7 @@
 package dev.logicojp.reviewer.cli;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import java.io.PrintStream;
@@ -11,11 +13,8 @@ public class CliOutput {
     private final PrintStream out;
     private final PrintStream err;
 
-    public CliOutput() {
-        this(System.out, System.err);
-    }
-
-    CliOutput(PrintStream out, PrintStream err) {
+    @Inject
+    public CliOutput(@Named("stdout") PrintStream out, @Named("stderr") PrintStream err) {
         this.out = out;
         this.err = err;
     }

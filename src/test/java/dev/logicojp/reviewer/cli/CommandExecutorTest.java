@@ -17,6 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CommandExecutorTest {
 
     private static final Logger logger = LoggerFactory.getLogger(CommandExecutorTest.class);
+    private static final CliOutput NULL_OUTPUT = new CliOutput(
+        new PrintStream(OutputStream.nullOutputStream()),
+        new PrintStream(OutputStream.nullOutputStream())
+    );
 
     @Nested
     @DisplayName("execute")
@@ -30,7 +34,8 @@ class CommandExecutorTest {
                 _ -> Optional.empty(),
                 _ -> ExitCodes.SOFTWARE,
                 _ -> {},
-                logger
+                logger,
+                NULL_OUTPUT
             );
             assertThat(result).isEqualTo(ExitCodes.OK);
         }
@@ -43,7 +48,8 @@ class CommandExecutorTest {
                 _ -> Optional.of("parsed"),
                 _ -> ExitCodes.OK,
                 _ -> {},
-                logger
+                logger,
+                NULL_OUTPUT
             );
             assertThat(result).isEqualTo(ExitCodes.OK);
         }
@@ -56,7 +62,8 @@ class CommandExecutorTest {
                 _ -> { throw new CliValidationException("bad option", true); },
                 _ -> ExitCodes.OK,
                 _ -> {},
-                logger
+                logger,
+                NULL_OUTPUT
             );
             assertThat(result).isEqualTo(ExitCodes.USAGE);
         }
@@ -69,7 +76,8 @@ class CommandExecutorTest {
                 _ -> Optional.of("parsed"),
                 _ -> { throw new RuntimeException("fail"); },
                 _ -> {},
-                logger
+                logger,
+                NULL_OUTPUT
             );
             assertThat(result).isEqualTo(ExitCodes.SOFTWARE);
         }

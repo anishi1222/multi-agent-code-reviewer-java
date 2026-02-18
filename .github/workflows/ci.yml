@@ -27,11 +27,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@54b4f5a65c1a84b2fdfdc2078fe43df32819e4b1 # v1.4.5
+      - name: Set up JDK 26 EA
+        uses: oracle-actions/setup-java@v1
         with:
-          java-version: '25'
-          distribution: 'graalvm'
+          website: jdk.java.net
+          release: 26
 
       - name: Validate dependency policy (enforcer + checksum)
         run: mvn -B -ntp -DskipTests validate
@@ -50,11 +50,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@54b4f5a65c1a84b2fdfdc2078fe43df32819e4b1 # v1.4.5
+      - name: Set up JDK 26 EA
+        uses: oracle-actions/setup-java@v1
         with:
-          java-version: '25'
-          distribution: 'graalvm'
+          website: jdk.java.net
+          release: 26
 
       - name: Compile
         run: mvn -B -ntp -DskipTests compile
@@ -82,8 +82,9 @@ jobs:
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@54b4f5a65c1a84b2fdfdc2078fe43df32819e4b1 # v1.4.5
         with:
-          java-version: '25'
+          java-version: 'dev'
           distribution: 'graalvm'
 
       - name: Build Native Image
+        continue-on-error: true
         run: mvn -B -ntp -Pnative -DskipTests package

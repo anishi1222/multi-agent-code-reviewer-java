@@ -31,8 +31,8 @@ class ContentCollector {
     private final String agentName;
     private final LongSupplier clockMillisSupplier;
 
-    private String joinedCache;
-    private long joinedCacheVersion;
+    private volatile String joinedCache;
+    private volatile long joinedCacheVersion;
 
     ContentCollector(String agentName) {
         this(agentName, System::currentTimeMillis);

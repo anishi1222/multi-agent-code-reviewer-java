@@ -5,6 +5,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+
 /// Shared utility for parsing YAML frontmatter from Markdown files.
 ///
 /// Frontmatter is delimited by `---` lines at the start of the file:
@@ -127,13 +131,36 @@ public final class FrontmatterParser {
         return matcher.group(1);
     }
 
-    /// Parses top-level key-value fields from frontmatter text.
-    /// Skips list items (lines starting with '-') and indented sub-keys.
+    /// Parses top-level key-value fields from frontmatter text using SnakeYAML.
+    /// Falls back to manual line-based parsing when the frontmatter contains
+    /// YAML special characters (e.g. unquoted glob patterns like {@code **/*.py}).
+    @SuppressWarnings("unchecked")
     private static Map<String, String> parseFields(String frontmatter) {
+        try {
+            var yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
+            Map<String, Object> parsed = yaml.load(frontmatter);
+            if (parsed == null) {
+                return Map.of();
+            }
+            Map<String, String> fields = new HashMap<>();
+            for (var entry : parsed.entrySet()) {
+                if (entry.getValue() instanceof String s) {
+                    fields.put(entry.getKey(), s);
+                } else if (entry.getValue() != null) {
+                    fields.put(entry.getKey(), entry.getValue().toString());
+                }
+            }
+            return fields;
+        } catch (Exception _) {
+            return parseFieldsManually(frontmatter);
+        }
+    }
+
+    /// Manual line-based fallback for frontmatter that SnakeYAML cannot parse.
+    private static Map<String, String> parseFieldsManually(String frontmatter) {
         Map<String, String> fields = new HashMap<>();
 
         for (String line : frontmatter.lines().toList()) {
-            // Skip blank lines, list items, and indented lines (sub-keys)
             if (line.isBlank() || line.trim().startsWith("-")
                     || line.startsWith(" ") || line.startsWith("\t")) {
                 continue;
@@ -145,7 +172,6 @@ public final class FrontmatterParser {
             String key = line.substring(0, colonIdx).trim();
             String value = stripQuotes(line.substring(colonIdx + 1).trim());
 
-            // Skip keys that start list/nested blocks (empty value after colon)
             if (value.isEmpty()) continue;
 
             fields.put(key, value);

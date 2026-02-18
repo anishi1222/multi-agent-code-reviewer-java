@@ -24,6 +24,9 @@ final class ReviewExecutionModeRunner {
     private record ExecutionParams(int reviewPasses, int totalTasks, long timeoutMinutes, long perAgentTimeoutMinutes) {
     }
 
+    private record SubtaskWithConfig(StructuredTaskScope.Subtask<ReviewResult> subtask, AgentConfig config) {
+    }
+
     @FunctionalInterface
     interface AgentPassExecutor {
         ReviewResult execute(AgentConfig config,
@@ -84,13 +87,13 @@ final class ReviewExecutionModeRunner {
                                          ReviewContext sharedContext,
                                          AgentPassExecutor agentPassExecutor) {
         ExecutionParams params = executionParams(agents.size());
-        List<StructuredTaskScope.Subtask<ReviewResult>> tasks = new ArrayList<>(params.totalTasks());
+        List<SubtaskWithConfig> tasks = new ArrayList<>(params.totalTasks());
         try (var scope = StructuredTaskScope.<ReviewResult>open()) {
             forEachAgentPass(agents, params.reviewPasses(), (config, passNumber) ->
-                tasks.add(scope.fork(() -> {
+                tasks.add(new SubtaskWithConfig(scope.fork(() -> {
                     logPassStart(config, passNumber, params.reviewPasses(), true);
                     return agentPassExecutor.execute(config, target, sharedContext, params.perAgentTimeoutMinutes());
-                }))
+                }), config))
             );
 
             joinStructuredWithTimeout(scope, params.timeoutMinutes());
@@ -116,22 +119,23 @@ final class ReviewExecutionModeRunner {
         return executionConfig.agentTimeoutMinutes() * (executionConfig.maxRetries() + 1L);
     }
 
-    private ReviewResult summarizeTaskResult(StructuredTaskScope.Subtask<ReviewResult> task,
+    private ReviewResult summarizeTaskResult(SubtaskWithConfig taskWithConfig,
                                              ReviewTarget target,
                                              long perAgentTimeoutMinutes) {
-        return switch (task.state()) {
-            case SUCCESS -> task.get();
+        return switch (taskWithConfig.subtask().state()) {
+            case SUCCESS -> taskWithConfig.subtask().get();
             case FAILED -> {
-                Throwable cause = task.exception();
-                yield failedResult(target, "Review failed: " + (cause != null ? cause.getMessage() : "unknown"));
+                Throwable cause = taskWithConfig.subtask().exception();
+                yield failedResult(taskWithConfig.config(), target,
+                    "Review failed: " + (cause != null ? cause.getMessage() : "unknown"));
             }
-            case UNAVAILABLE -> failedResult(target,
+            case UNAVAILABLE -> failedResult(taskWithConfig.config(), target,
                 "Review cancelled after " + perAgentTimeoutMinutes + " minutes");
         };
     }
 
     private List<ReviewResult> collectStructuredResults(
-            List<StructuredTaskScope.Subtask<ReviewResult>> tasks,
+            List<SubtaskWithConfig> tasks,
             ReviewTarget target,
             long perAgentTimeoutMinutes) {
         List<ReviewResult> results = new ArrayList<>(tasks.size());
@@ -207,9 +211,5 @@ final class ReviewExecutionModeRunner {
             .success(false)
             .errorMessage(errorMessage)
             .build();
-    }
-
-    private ReviewResult failedResult(ReviewTarget target, String errorMessage) {
-        return failedResult(null, target, errorMessage);
     }
 }

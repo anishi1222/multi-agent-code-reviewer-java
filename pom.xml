@@ -19,16 +19,16 @@
     <description>Multiple AI agents review code and generate executive summary</description>
 
     <properties>
-        <jdk.version>25</jdk.version>
-        <release.version>25</release.version>
+        <jdk.version>26</jdk.version>
+        <release.version>26</release.version>
         <micronaut.version>4.10.8</micronaut.version>
         <micronaut.runtime>none</micronaut.runtime>
         <exec.mainClass>dev.logicojp.reviewer.ReviewApp</exec.mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Application dependencies -->
-        <copilot.sdk.version>1.0.8</copilot.sdk.version>
-        <graalvm.version>25.0.2</graalvm.version>
+        <copilot.sdk.version>1.0.9</copilot.sdk.version>
+        <graalvm.version>26</graalvm.version>
     </properties>
 
     <repositories>
@@ -159,6 +159,7 @@
                     </annotationProcessorPaths>
                     <compilerArgs>
                         <arg>--enable-preview</arg>
+                        <arg>-Xlint:preview</arg>
                         <arg>-Amicronaut.processing.group=dev.logicojp</arg>
                         <arg>-Amicronaut.processing.module=multi-agent-reviewer</arg>
                     </compilerArgs>

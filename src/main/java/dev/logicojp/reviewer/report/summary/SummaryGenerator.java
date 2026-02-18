@@ -158,7 +158,7 @@ public class SummaryGenerator {
             var response = session
                 .sendAndWait(new MessageOptions().setPrompt(prompt), timeoutMs)
                 .get(timeoutMinutes, TimeUnit.MINUTES);
-            String content = response.getData().getContent();
+            String content = response.getData().content();
             if (content == null || content.isBlank()) {
                 return fallbackSummary(results, "AI summary response was empty");
             }
