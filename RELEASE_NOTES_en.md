@@ -9,6 +9,34 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
 4. Update `README_en.md` and `README_ja.md` with release references and URLs.
 
+## 2026-02-19
+
+### Summary
+- Addressed the performance finding on multi-pass review session reuse by ensuring passes for the same agent reuse a single `CopilotSession`.
+- Refactored orchestration from pass-granular execution to agent-granular execution while preserving multi-pass merge behavior.
+- Added regression tests to verify single reviewer instance reuse and updated orchestrator tests for the new multi-pass contract.
+- Merged all changes via PR #67.
+
+### Highlights
+
+#### PR #67: Multi-Pass Session Reuse and Orchestrator Refactor
+- Added `ReviewAgent.reviewPasses(...)` to execute multiple passes with one shared session per agent.
+- Updated `ReviewExecutionModeRunner` to execute one task per agent and collect per-pass results from that task.
+- Updated `AgentReviewExecutor` to execute `reviewPasses(...)` with timeout handling and per-pass failure mapping.
+- Updated `ReviewOrchestrator` wiring to use the new pass-aware reviewer execution flow.
+- Added/updated tests:
+  - `AgentReviewExecutorTest`: verifies single reviewer instance + single `reviewPasses` call for multi-pass
+  - `ReviewExecutionModeRunnerTest`: validates async/structured collection with new list-based pass executor contract
+
+### Validation
+- CI checks passed on PR #67: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+- Local compile validation: `mvn -q -DskipTests compile` succeeded
+
+### Merged PRs
+- [#67](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/67): reuse `CopilotSession` across passes and sync related updates
+
+---
+
 ## 2026-02-18
 
 ### Summary

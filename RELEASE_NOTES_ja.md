@@ -9,6 +9,34 @@
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。
 4. `README_en.md` と `README_ja.md` にリリース参照とURLを追記する。
 
+## 2026-02-19
+
+### 概要
+- マルチパスレビュー時の性能指摘に対応し、同一エージェント内の複数パスで単一の `CopilotSession` を再利用するよう改善しました。
+- 実行モデルを「パス単位」から「エージェント単位（内部で複数パス実行）」へリファクタし、マルチパスマージの挙動を維持しました。
+- 単一 reviewer インスタンス再利用を検証する回帰テストを追加し、新しいマルチパス実行契約に合わせてオーケストレータテストを更新しました。
+- 変更を PR #67 で `main` にマージしました。
+
+### 主な変更
+
+#### PR #67: マルチパスのセッション再利用とオーケストレータ改善
+- `ReviewAgent.reviewPasses(...)` を追加し、同一エージェントの複数パスを1セッションで実行。
+- `ReviewExecutionModeRunner` を1エージェント1タスク実行に変更し、タスク内でパス結果を収集。
+- `AgentReviewExecutor` を `reviewPasses(...)` ベースに更新し、タイムアウト・失敗時のパス結果整形を実装。
+- `ReviewOrchestrator` の実行経路を新しいパス対応フローへ更新。
+- テスト追加・更新:
+  - `AgentReviewExecutorTest`: マルチパスで reviewer 生成1回・`reviewPasses` 呼び出し1回を検証
+  - `ReviewExecutionModeRunnerTest`: async/structured 実行の新しい list ベース契約を検証
+
+### 検証
+- PR #67 のCI必須チェック合格: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+- ローカルコンパイル検証: `mvn -q -DskipTests compile` 成功
+
+### マージ済み PR
+- [#67](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/67): `CopilotSession` のマルチパス再利用と関連更新
+
+---
+
 ## 2026-02-18
 
 ### 概要
