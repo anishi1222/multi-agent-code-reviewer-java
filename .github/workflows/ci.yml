@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up JDK 26 EA
-        uses: oracle-actions/setup-java@d80031af3e19d1a4fcfaf2e5a1cf0b4b47ddd6fa # v1.4.1
+        uses: oracle-actions/setup-java@v1
         with:
           website: oracle.com
           release: EA
@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up JDK 26 EA
-        uses: oracle-actions/setup-java@d80031af3e19d1a4fcfaf2e5a1cf0b4b47ddd6fa # v1.4.1
+        uses: oracle-actions/setup-java@v1
         with:
           website: oracle.com
           release: EA
