@@ -2,7 +2,7 @@
 name: waf-security
 description: Azure Well-Architected Frameworkのセキュリティの柱に基づきレビューします。マネージドID、Key Vault、ゼロトラスト原則、RBAC最小権限設計を確認します。
 metadata:
-  agent: azure-waf
+  agent: waf-security
 ---
 
 # セキュリティ（Security）レビュー

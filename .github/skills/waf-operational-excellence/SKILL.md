@@ -2,7 +2,7 @@
 name: waf-operational-excellence
 description: Azure Well-Architected Frameworkのオペレーショナルエクセレンスの柱に基づきレビューします。IaC、CI/CD、構造化ログ、Application Insights計装を確認します。
 metadata:
-  agent: azure-waf
+  agent: waf-operational-excellence
 ---
 
 # オペレーショナルエクセレンス（Operational Excellence）レビュー

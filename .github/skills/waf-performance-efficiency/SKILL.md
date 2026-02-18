@@ -2,7 +2,7 @@
 name: waf-performance-efficiency
 description: Azure Well-Architected Frameworkのパフォーマンス効率の柱に基づきレビューします。キャッシュ戦略、非同期メッセージング、コネクションプーリング、クエリ最適化を確認します。
 metadata:
-  agent: azure-waf
+  agent: waf-performance-efficiency
 ---
 
 # パフォーマンス効率（Performance Efficiency）レビュー

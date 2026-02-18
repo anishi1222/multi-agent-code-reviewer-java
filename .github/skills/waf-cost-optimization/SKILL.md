@@ -2,7 +2,7 @@
 name: waf-cost-optimization
 description: Azure Well-Architected Frameworkのコスト最適化の柱に基づきレビューします。SKU選択、自動スケーリング、アイドルリソース、サーバーレス活用を確認します。
 metadata:
-  agent: azure-waf
+  agent: waf-cost-optimization
 ---
 
 # コスト最適化（Cost Optimization）レビュー

@@ -2,7 +2,7 @@
 name: waf-reliability
 description: Azure Well-Architected Frameworkの信頼性の柱に基づきレビューします。リトライ/指数バックオフ、サーキットブレーカー、タイムアウト設定、障害復旧戦略を確認します。
 metadata:
-  agent: azure-waf
+  agent: waf-reliability
 ---
 
 # 信頼性（Reliability）レビュー
