@@ -21,6 +21,7 @@ import dev.logicojp.reviewer.service.CopilotCliException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -78,6 +79,7 @@ public class SummaryGenerator {
     private final String reasoningEffort;
     private final long timeoutMinutes;
     private final TemplateService templateService;
+    private final Clock clock;
     private final SummaryPromptBuilder summaryPromptBuilder;
     private final FallbackSummaryBuilder fallbackSummaryBuilder;
     private final SummaryFinalReportFormatter summaryFinalReportFormatter;
@@ -92,7 +94,7 @@ public class SummaryGenerator {
             TemplateService templateService,
             SummaryConfig summaryConfig) {
         this(outputDirectory, client, summaryModel, reasoningEffort, timeoutMinutes, templateService,
-            summaryConfig, null);
+            summaryConfig, null, Clock.systemDefaultZone());
     }
 
     /// Full-parameter constructor for testing — all collaborators are injectable.
@@ -104,13 +106,15 @@ public class SummaryGenerator {
             long timeoutMinutes,
             TemplateService templateService,
             SummaryConfig summaryConfig,
-            SummaryCollaborators collaborators) {
+            SummaryCollaborators collaborators,
+            Clock clock) {
         this.outputDirectory = outputDirectory;
         this.client = client;
         this.summaryModel = summaryModel;
         this.reasoningEffort = reasoningEffort;
         this.timeoutMinutes = timeoutMinutes;
         this.templateService = templateService;
+        this.clock = clock;
         SummaryCollaborators defaults = SummaryCollaborators.defaults(templateService, summaryConfig, this);
         var effective = (collaborators != null ? collaborators : defaults).withDefaults(defaults);
         this.summaryPromptBuilder = effective.summaryPromptBuilder();
@@ -200,7 +204,7 @@ public class SummaryGenerator {
     }
 
     private String currentDate() {
-        return LocalDate.now().format(DATE_FORMATTER);
+        return LocalDate.now(clock).format(DATE_FORMATTER);
     }
     
     private void ensureOutputDirectory() throws IOException {

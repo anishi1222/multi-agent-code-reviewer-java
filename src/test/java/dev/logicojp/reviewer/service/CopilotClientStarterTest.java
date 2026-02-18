@@ -28,13 +28,13 @@ class CopilotClientStarterTest {
     }
 
     @Test
-    @DisplayName("TimeoutException時はExecutionExceptionへ変換しcloseする")
+    @DisplayName("TimeoutException時はCopilotCliExceptionへ変換しcloseする")
     void wrapsTimeoutExceptionAndCloses() {
         var client = new StubStartableClient();
         client.timeoutException = new TimeoutException("timeout");
 
         assertThatThrownBy(() -> starter.start(client, 30, formatter))
-            .isInstanceOf(ExecutionException.class)
+            .isInstanceOf(CopilotCliException.class)
             .hasMessageContaining("timed out after 30s");
         assertThat(client.closed.get()).isTrue();
     }
@@ -46,7 +46,7 @@ class CopilotClientStarterTest {
         client.executionException = new ExecutionException(new TimeoutException("protocol timeout"));
 
         assertThatThrownBy(() -> starter.start(client, 10, formatter))
-            .isInstanceOf(ExecutionException.class)
+            .isInstanceOf(CopilotCliException.class)
             .hasMessageContaining("Copilot CLI ping timed out");
         assertThat(client.closed.get()).isTrue();
     }
@@ -58,7 +58,7 @@ class CopilotClientStarterTest {
         client.executionException = new ExecutionException(new IllegalStateException("boom"));
 
         assertThatThrownBy(() -> starter.start(client, 10, formatter))
-            .isInstanceOf(ExecutionException.class)
+            .isInstanceOf(CopilotCliException.class)
             .hasMessageContaining("Copilot client start failed: boom");
         assertThat(client.closed.get()).isTrue();
     }

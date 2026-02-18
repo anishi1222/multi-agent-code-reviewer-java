@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +32,7 @@ class ReportContentFormatterTest {
             .repository("owner/repo")
             .content("review body")
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
 
         String content = formatter.format(result, "2026-02-16");
@@ -57,7 +57,7 @@ class ReportContentFormatterTest {
             .repository("owner/repo")
             .success(false)
             .errorMessage("timeout")
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
 
         String content = formatter.format(result, "2026-02-16");

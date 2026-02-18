@@ -179,17 +179,12 @@ class AgentMarkdownParser {
     }
 
     private List<String> parseBulletItems(String text) {
-        List<String> items = new ArrayList<>();
-        for (String line : text.lines().toList()) {
-            line = line.trim();
-            if (line.startsWith("-") || line.startsWith("*")) {
-                String item = line.substring(1).trim();
-                if (!item.isEmpty()) {
-                    items.add(item);
-                }
-            }
-        }
-        return List.copyOf(items);
+        return text.lines()
+            .map(String::trim)
+            .filter(line -> line.startsWith("-") || line.startsWith("*"))
+            .map(line -> line.substring(1).trim())
+            .filter(item -> !item.isEmpty())
+            .toList();
     }
 
     private Map<String, String> extractSections(String body) {

@@ -211,7 +211,7 @@ public class AgentConfigLoader {
     }
 
     private boolean isAgentFile(Path path) {
-        String filename = path.getFileName().toString().toLowerCase();
+        String filename = path.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
         return filename.endsWith(".agent.md");
     }
     
@@ -230,7 +230,7 @@ public class AgentConfigLoader {
             }
         }
         
-        return new ArrayList<>(agentNames);
+        return List.copyOf(agentNames);
     }
 
     private List<Path> listAgentFiles(Path directory) throws IOException {

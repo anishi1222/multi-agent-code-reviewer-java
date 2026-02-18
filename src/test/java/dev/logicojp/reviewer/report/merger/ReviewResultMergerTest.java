@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -55,7 +55,7 @@ class ReviewResultMergerTest {
             .repository("test/repo")
             .content(content)
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
     }
 
@@ -65,7 +65,7 @@ class ReviewResultMergerTest {
             .repository("test/repo")
             .success(false)
             .errorMessage(error)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
     }
 

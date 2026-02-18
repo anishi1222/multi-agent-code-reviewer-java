@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -53,8 +53,8 @@ class ReviewOutputFormatterTest {
 
         AgentConfig config = new AgentConfig("security", "Security", "model", "system", "instruction", null, List.of(), List.of());
         List<ReviewResult> results = List.of(
-            ReviewResult.builder().agentConfig(config).repository("owner/repo").content("ok").success(true).timestamp(LocalDateTime.now()).build(),
-            ReviewResult.builder().agentConfig(config).repository("owner/repo").success(false).errorMessage("failed").timestamp(LocalDateTime.now()).build()
+            ReviewResult.builder().agentConfig(config).repository("owner/repo").content("ok").success(true).timestamp(Instant.now()).build(),
+            ReviewResult.builder().agentConfig(config).repository("owner/repo").success(false).errorMessage("failed").timestamp(Instant.now()).build()
         );
 
         formatter.printCompletionSummary(results, java.nio.file.Path.of("reports/owner/repo"));

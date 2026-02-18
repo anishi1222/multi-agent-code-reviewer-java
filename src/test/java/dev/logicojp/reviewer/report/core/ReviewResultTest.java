@@ -5,7 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,7 +61,7 @@ class ReviewResultTest {
         @Test
         @DisplayName("timestampをカスタム値で設定できる")
         void customTimestamp() {
-            LocalDateTime ts = LocalDateTime.of(2025, 6, 15, 12, 0);
+            Instant ts = Instant.parse("2025-06-15T12:00:00Z");
             ReviewResult result = ReviewResult.builder()
                 .agentConfig(createAgent("a"))
                 .repository("r")
@@ -77,12 +77,12 @@ class ReviewResultTest {
     class Constructor {
 
         @Test
-        @DisplayName("nullのtimestampはLocalDateTime.nowに設定される")
+        @DisplayName("nullのtimestampはInstant.nowに設定される")
         void nullTimestampDefaultsToNow() {
             ReviewResult result = new ReviewResult(
                 createAgent("a"), "repo", "content", null, true, null);
             assertThat(result.timestamp()).isNotNull();
-            assertThat(result.timestamp()).isBeforeOrEqualTo(LocalDateTime.now());
+            assertThat(result.timestamp()).isBeforeOrEqualTo(Instant.now());
         }
     }
 

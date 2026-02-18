@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -55,7 +54,7 @@ public class SkillService {
         this.executionConfig = executionConfig;
         this.featureFlags = featureFlags;
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
-        this.executorCache = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
+        this.executorCache = new LinkedHashMap<>(16, 0.75f, true);
     }
 
     /// Registers all skills from an agent configuration.

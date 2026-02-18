@@ -43,7 +43,8 @@ class SummaryGeneratorTest {
                 null,
                 null,
                 (results, repository) -> "AI summary content"
-            )
+            ),
+            java.time.Clock.systemDefaultZone()
         );
 
         List<ReviewResult> results = List.of(

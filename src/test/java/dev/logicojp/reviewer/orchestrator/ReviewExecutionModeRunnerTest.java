@@ -8,7 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -49,7 +49,7 @@ class ReviewExecutionModeRunnerTest {
                         | **該当箇所** | src/A.java L10 |
                         """)
                     .success(true)
-                    .timestamp(LocalDateTime.now())
+                    .timestamp(Instant.now())
                     .build()
             );
 
@@ -76,7 +76,7 @@ class ReviewExecutionModeRunnerTest {
                 .repository(target.displayName())
                 .content("ok")
                 .success(true)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build()
         );
 

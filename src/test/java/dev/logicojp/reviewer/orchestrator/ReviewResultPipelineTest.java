@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -32,7 +32,7 @@ class ReviewResultPipelineTest {
             .repository("owner/repo")
             .content("ok")
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
 
         List<ReviewResult> input = new ArrayList<>();
@@ -61,7 +61,7 @@ class ReviewResultPipelineTest {
                 | **該当箇所** | src/A.java L10 |
                 """)
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
         var pass2 = ReviewResult.builder()
             .agentConfig(agent("security"))
@@ -76,7 +76,7 @@ class ReviewResultPipelineTest {
                 | **該当箇所** | src/A.java L10 |
                 """)
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
 
         List<ReviewResult> finalized = pipeline.finalizeResults(List.of(pass1, pass2), 2);
@@ -94,7 +94,7 @@ class ReviewResultPipelineTest {
             .repository("owner/repo")
             .content("ok")
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
 
         List<ReviewResult> collected = pipeline.collectFromFutures(

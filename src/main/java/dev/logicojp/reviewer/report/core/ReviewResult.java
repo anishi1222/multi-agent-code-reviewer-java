@@ -3,33 +3,49 @@ package dev.logicojp.reviewer.report.core;
 import dev.logicojp.reviewer.agent.AgentConfig;
 import io.micronaut.core.annotation.Nullable;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
 
 /// Holds the result of a review performed by an agent.
 public record ReviewResult(
     @Nullable AgentConfig agentConfig,
     @Nullable String repository,
     @Nullable String content,
-    LocalDateTime timestamp,
+    Instant timestamp,
     boolean success,
     @Nullable String errorMessage
 ) {
 
     public ReviewResult {
-        timestamp = (timestamp == null) ? LocalDateTime.now() : timestamp;
+        timestamp = (timestamp == null) ? Instant.now() : timestamp;
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
+    /// Creates a builder with a custom clock for testability.
+    public static Builder builder(Clock clock) {
+        return new Builder(clock);
+    }
+
     public static final class Builder {
+        private final Clock clock;
         private AgentConfig agentConfig;
         private String repository;
         private String content;
-        private LocalDateTime timestamp = LocalDateTime.now();
+        private Instant timestamp;
         private boolean success = true;
         private String errorMessage;
+
+        Builder() {
+            this(Clock.systemUTC());
+        }
+
+        Builder(Clock clock) {
+            this.clock = clock;
+            this.timestamp = Instant.now(clock);
+        }
 
         public Builder agentConfig(AgentConfig agentConfig) {
             this.agentConfig = agentConfig;
@@ -46,7 +62,7 @@ public record ReviewResult(
             return this;
         }
 
-        public Builder timestamp(LocalDateTime timestamp) {
+        public Builder timestamp(Instant timestamp) {
             this.timestamp = timestamp;
             return this;
         }

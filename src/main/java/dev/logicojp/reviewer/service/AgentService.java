@@ -54,7 +54,7 @@ public class AgentService {
             dirs.add(Path.of(agentPathConfig.directories().getFirst()));
         }
         
-        return dirs;
+        return List.copyOf(dirs);
     }
     
     /// Loads all agents from the specified directories.
