@@ -12,6 +12,7 @@ import com.github.copilot.sdk.json.SessionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +35,13 @@ public class ReviewAgent {
         ReviewSessionConfigFactory reviewSessionConfigFactory,
         ReviewResultFactory reviewResultFactory
     ) {
+        AgentCollaborators {
+            Objects.requireNonNull(reviewTargetInstructionResolver);
+            Objects.requireNonNull(reviewSessionMessageSender);
+            Objects.requireNonNull(reviewRetryExecutor);
+            Objects.requireNonNull(reviewSessionConfigFactory);
+            Objects.requireNonNull(reviewResultFactory);
+        }
     }
 
     public record PromptTemplates(
@@ -41,6 +49,12 @@ public class ReviewAgent {
         String localSourceHeader,
         String localReviewResultPrompt
     ) {
+        public PromptTemplates {
+            focusAreasGuidance = focusAreasGuidance != null ? focusAreasGuidance : "";
+            localSourceHeader = localSourceHeader != null ? localSourceHeader : "";
+            localReviewResultPrompt = localReviewResultPrompt != null ? localReviewResultPrompt : "";
+        }
+
         static final PromptTemplates DEFAULTS = new PromptTemplates(
             AgentPromptBuilder.DEFAULT_FOCUS_AREAS_GUIDANCE,
             AgentPromptBuilder.DEFAULT_LOCAL_SOURCE_HEADER,

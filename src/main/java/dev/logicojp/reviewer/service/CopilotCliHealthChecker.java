@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/// Verifies the health and authentication status of the Copilot CLI binary.
 @Singleton
 public class CopilotCliHealthChecker {
 
@@ -69,13 +70,16 @@ public class CopilotCliHealthChecker {
                 } catch (IOException _) {
                 }
             });
-            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            if (!finished) {
-                handleTimeout(process, drainThread, timeoutSeconds, timeoutMessage, remediationMessage);
-            }
-            drainThread.join();
-            if (process.exitValue() != 0) {
-                throw exitFailure(exitMessage, process.exitValue(), remediationMessage);
+            try {
+                boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                if (!finished) {
+                    handleTimeout(process, drainThread, timeoutSeconds, timeoutMessage, remediationMessage);
+                }
+                if (process.exitValue() != 0) {
+                    throw exitFailure(exitMessage, process.exitValue(), remediationMessage);
+                }
+            } finally {
+                drainThread.join();
             }
         } catch (IOException e) {
             throw new CopilotCliException(ioMessage + e.getMessage(), e);

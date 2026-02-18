@@ -66,10 +66,10 @@ public record LocalFileConfig(
         "pem", "key", "p12", "pfx", "jks", "keystore", "cert"
     );
 
-    public static final List<String> DEFAULT_IGNORED_DIRECTORIES = FALLBACK_IGNORED_DIRECTORIES;
-    public static final List<String> DEFAULT_SOURCE_EXTENSIONS = FALLBACK_SOURCE_EXTENSIONS;
-    public static final List<String> DEFAULT_SENSITIVE_FILE_PATTERNS = FALLBACK_SENSITIVE_FILE_PATTERNS;
-    public static final List<String> DEFAULT_SENSITIVE_EXTENSIONS = FALLBACK_SENSITIVE_EXTENSIONS;
+    public static final List<String> DEFAULT_IGNORED_DIRECTORIES = DefaultsHolder.IGNORED_DIRS;
+    public static final List<String> DEFAULT_SOURCE_EXTENSIONS = DefaultsHolder.SOURCE_EXTS;
+    public static final List<String> DEFAULT_SENSITIVE_FILE_PATTERNS = DefaultsHolder.SENSITIVE_PATTERNS;
+    public static final List<String> DEFAULT_SENSITIVE_EXTENSIONS = DefaultsHolder.SENSITIVE_EXTS;
 
     /// Initialization-on-demand holder for thread-safe lazy loading of resource-based defaults.
     /// Defers I/O until first access, avoiding class-load side effects (GraalVM Native Image safe).

@@ -74,6 +74,43 @@ public record ExecutionConfig(
 
         public Builder parallelism(int parallelism) { this.parallelism = parallelism; return this; }
 
+        public Builder reviewPasses(int reviewPasses) { this.reviewPasses = reviewPasses; return this; }
+
+        public Builder orchestratorTimeoutMinutes(long orchestratorTimeoutMinutes) {
+            this.orchestratorTimeoutMinutes = orchestratorTimeoutMinutes;
+            return this;
+        }
+
+        public Builder agentTimeoutMinutes(long agentTimeoutMinutes) {
+            this.agentTimeoutMinutes = agentTimeoutMinutes;
+            return this;
+        }
+
+        public Builder idleTimeoutMinutes(long idleTimeoutMinutes) {
+            this.idleTimeoutMinutes = idleTimeoutMinutes;
+            return this;
+        }
+
+        public Builder skillTimeoutMinutes(long skillTimeoutMinutes) {
+            this.skillTimeoutMinutes = skillTimeoutMinutes;
+            return this;
+        }
+
+        public Builder summaryTimeoutMinutes(long summaryTimeoutMinutes) {
+            this.summaryTimeoutMinutes = summaryTimeoutMinutes;
+            return this;
+        }
+
+        public Builder ghAuthTimeoutSeconds(long ghAuthTimeoutSeconds) {
+            this.ghAuthTimeoutSeconds = ghAuthTimeoutSeconds;
+            return this;
+        }
+
+        public Builder maxRetries(int maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
         public ExecutionConfig build() {
             return new ExecutionConfig(parallelism, reviewPasses, orchestratorTimeoutMinutes,
                 agentTimeoutMinutes, idleTimeoutMinutes, skillTimeoutMinutes,

@@ -39,13 +39,23 @@ class ReviewOptionsParser {
     private ReviewCommand.ParsedOptions toParsedOptions(ParseState state) {
         ReviewCommand.TargetSelection target = validateTargetSelection(state.repository, state.localDirectory);
         ReviewCommand.AgentSelection agents = validateAgentSelection(state.allAgents, state.agentNames);
-        return new ReviewCommand.ParsedOptions(
-            target, agents, state.outputDirectory, List.copyOf(state.additionalAgentDirs),
-            state.githubToken, state.parallelism, state.noSummary,
-            state.reviewModel, state.reportModel, state.summaryModel, state.defaultModel,
-            List.copyOf(state.instructionPaths), state.noInstructions, state.noPrompts,
-            state.trustTarget
-        );
+        return ReviewCommand.ParsedOptions.builder()
+            .target(target)
+            .agents(agents)
+            .outputDirectory(state.outputDirectory)
+            .additionalAgentDirs(state.additionalAgentDirs)
+            .githubToken(state.githubToken)
+            .parallelism(state.parallelism)
+            .noSummary(state.noSummary)
+            .reviewModel(state.reviewModel)
+            .reportModel(state.reportModel)
+            .summaryModel(state.summaryModel)
+            .defaultModel(state.defaultModel)
+            .instructionPaths(state.instructionPaths)
+            .noInstructions(state.noInstructions)
+            .noPrompts(state.noPrompts)
+            .trustTarget(state.trustTarget)
+            .build();
     }
 
     private static class ParseState {

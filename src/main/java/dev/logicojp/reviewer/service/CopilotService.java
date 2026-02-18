@@ -19,6 +19,7 @@ public class CopilotService {
     private static final Logger logger = LoggerFactory.getLogger(CopilotService.class);
     private static final long DEFAULT_START_TIMEOUT_SECONDS = 60;
     private static final String START_TIMEOUT_ENV = "COPILOT_START_TIMEOUT_SECONDS";
+    private static final String UNRESOLVED_TOKEN_PLACEHOLDER = "${GITHUB_TOKEN}";
 
     private final Object lock = new Object();
     private final CopilotCliPathResolver cliPathResolver;
@@ -116,7 +117,7 @@ public class CopilotService {
     private boolean shouldUseToken(String githubToken) {
         return githubToken != null
             && !githubToken.isBlank()
-            && !githubToken.equals("${GITHUB_TOKEN}");
+            && !githubToken.equals(UNRESOLVED_TOKEN_PLACEHOLDER);
     }
 
     private void applyAuthOptions(CopilotClientOptions options, String githubToken, boolean useToken) {

@@ -27,12 +27,7 @@ public final class CliParsing {
         if (args == null) {
             return false;
         }
-        for (String arg : args) {
-            if (isHelpOption(arg)) {
-                return true;
-            }
-        }
-        return false;
+        return Arrays.stream(args).anyMatch(CliParsing::isHelpOption);
     }
 
      static OptionValue readSingleValue(String arg, String[] args, int index, String optionName) {

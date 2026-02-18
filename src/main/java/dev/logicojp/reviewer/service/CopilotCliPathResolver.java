@@ -5,6 +5,7 @@ import jakarta.inject.Singleton;
 
 import java.nio.file.Path;
 
+/// Resolves the filesystem path to the Copilot CLI binary.
 @Singleton
 public class CopilotCliPathResolver {
 

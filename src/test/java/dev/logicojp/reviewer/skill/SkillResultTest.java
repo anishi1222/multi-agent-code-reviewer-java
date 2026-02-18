@@ -4,7 +4,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,6 +37,28 @@ class SkillResultTest {
             assertThat(result.content()).isNull();
             assertThat(result.errorMessage()).isEqualTo("timeout");
         }
+
+        @Test
+        @DisplayName("clock指定のsuccessは固定時刻を使う")
+        void successWithClockUsesGivenTime() {
+            Instant fixed = Instant.parse("2025-01-01T00:00:00Z");
+            Clock clock = Clock.fixed(fixed, ZoneOffset.UTC);
+
+            SkillResult result = SkillResult.success("skill-1", "content", clock);
+
+            assertThat(result.timestamp()).isEqualTo(fixed);
+        }
+
+        @Test
+        @DisplayName("clock指定のfailureは固定時刻を使う")
+        void failureWithClockUsesGivenTime() {
+            Instant fixed = Instant.parse("2025-01-01T00:00:00Z");
+            Clock clock = Clock.fixed(fixed, ZoneOffset.UTC);
+
+            SkillResult result = SkillResult.failure("skill-1", "error", clock);
+
+            assertThat(result.timestamp()).isEqualTo(fixed);
+        }
     }
 
     @Nested
@@ -42,17 +66,17 @@ class SkillResultTest {
     class Constructor {
 
         @Test
-        @DisplayName("timestampがnullの場合はLocalDateTime.nowが設定される")
+        @DisplayName("timestampがnullの場合はInstant.nowが設定される")
         void nullTimestampDefaultsToNow() {
             SkillResult result = new SkillResult("s1", true, "c", null, null);
             assertThat(result.timestamp()).isNotNull();
-            assertThat(result.timestamp()).isBeforeOrEqualTo(LocalDateTime.now());
+            assertThat(result.timestamp()).isBeforeOrEqualTo(Instant.now());
         }
 
         @Test
         @DisplayName("timestampが指定された場合はそのまま保持される")
         void specifiedTimestampIsPreserved() {
-            LocalDateTime ts = LocalDateTime.of(2025, 1, 1, 0, 0);
+            Instant ts = Instant.parse("2025-01-01T00:00:00Z");
             SkillResult result = new SkillResult("s1", true, "c", null, ts);
             assertThat(result.timestamp()).isEqualTo(ts);
         }

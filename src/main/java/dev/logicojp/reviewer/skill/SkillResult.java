@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.skill;
 
-import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
 
 /// Result of a skill execution.
 public record SkillResult(
@@ -8,20 +9,30 @@ public record SkillResult(
     boolean success,
     String content,
     String errorMessage,
-    LocalDateTime timestamp
+    Instant timestamp
 ) {
 
     public SkillResult {
-        timestamp = (timestamp == null) ? LocalDateTime.now() : timestamp;
+        timestamp = (timestamp == null) ? Instant.now() : timestamp;
     }
 
     /// Creates a successful result.
     public static SkillResult success(String skillId, String content) {
-        return new SkillResult(skillId, true, content, null, LocalDateTime.now());
+        return success(skillId, content, Clock.systemUTC());
+    }
+
+    /// Creates a successful result with a custom clock.
+    public static SkillResult success(String skillId, String content, Clock clock) {
+        return new SkillResult(skillId, true, content, null, Instant.now(clock));
     }
 
     /// Creates a failure result.
     public static SkillResult failure(String skillId, String errorMessage) {
-        return new SkillResult(skillId, false, null, errorMessage, LocalDateTime.now());
+        return failure(skillId, errorMessage, Clock.systemUTC());
+    }
+
+    /// Creates a failure result with a custom clock.
+    public static SkillResult failure(String skillId, String errorMessage, Clock clock) {
+        return new SkillResult(skillId, false, null, errorMessage, Instant.now(clock));
     }
 }

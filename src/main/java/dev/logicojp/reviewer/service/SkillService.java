@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -41,7 +40,7 @@ public class SkillService {
     private final ExecutionConfig executionConfig;
     private final FeatureFlags featureFlags;
     private final ExecutorService executorService;
-    private final Map<ExecutorCacheKey, SkillExecutor> executorCache;
+    private final LinkedHashMap<ExecutorCacheKey, SkillExecutor> executorCache;
 
     @Inject
     public SkillService(SkillRegistry skillRegistry,
@@ -55,7 +54,16 @@ public class SkillService {
         this.executionConfig = executionConfig;
         this.featureFlags = featureFlags;
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
-        this.executorCache = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
+        this.executorCache = new LinkedHashMap<>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<ExecutorCacheKey, SkillExecutor> eldest) {
+                if (size() > MAX_EXECUTOR_CACHE_SIZE) {
+                    eldest.getValue().close();
+                    return true;
+                }
+                return false;
+            }
+        };
     }
 
     /// Registers all skills from an agent configuration.
@@ -131,7 +139,6 @@ public class SkillService {
             if (existing != null) {
                 return existing;
             }
-            evictIfNecessary();
             var executor = new SkillExecutor(
                 copilotService.getClient(),
                 githubToken,
@@ -144,17 +151,6 @@ public class SkillService {
             );
             executorCache.put(key, executor);
             return executor;
-        }
-    }
-
-    private void evictIfNecessary() {
-        while (executorCache.size() >= MAX_EXECUTOR_CACHE_SIZE) {
-            var it = executorCache.entrySet().iterator();
-            if (it.hasNext()) {
-                var entry = it.next();
-                it.remove();
-                entry.getValue().close();
-            }
         }
     }
 

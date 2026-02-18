@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
+/// Skill command that executes individual agent skills.
 @Singleton
 public class SkillCommand {
     private static final Logger logger = LoggerFactory.getLogger(SkillCommand.class);

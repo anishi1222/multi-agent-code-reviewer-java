@@ -91,7 +91,7 @@ class ContentCollector {
 
     void onError(String message) {
         if (!future.isDone()) {
-            future.completeExceptionally(new RuntimeException("Session error: " + message));
+            future.completeExceptionally(new SessionEventException("Session error: " + message));
         }
     }
 

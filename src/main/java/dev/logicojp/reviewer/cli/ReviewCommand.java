@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /// Main review command that executes the multi-agent code review.
@@ -66,7 +67,133 @@ public class ReviewCommand {
         boolean noInstructions,
         boolean noPrompts,
         boolean trustTarget
-    ) {}
+    ) {
+        ParsedOptions {
+            additionalAgentDirs = additionalAgentDirs != null ? List.copyOf(additionalAgentDirs) : List.of();
+            instructionPaths = instructionPaths != null ? List.copyOf(instructionPaths) : List.of();
+            outputDirectory = outputDirectory != null ? outputDirectory : Path.of("./reports");
+            parallelism = parallelism > 0 ? parallelism : 1;
+            Objects.requireNonNull(target, "target must not be null");
+            Objects.requireNonNull(agents, "agents must not be null");
+        }
+
+        static Builder builder() {
+            return new Builder();
+        }
+
+        static final class Builder {
+            private TargetSelection target;
+            private AgentSelection agents;
+            private Path outputDirectory = Path.of("./reports");
+            private List<Path> additionalAgentDirs = List.of();
+            private String githubToken;
+            private int parallelism = 1;
+            private boolean noSummary;
+            private String reviewModel;
+            private String reportModel;
+            private String summaryModel;
+            private String defaultModel;
+            private List<Path> instructionPaths = List.of();
+            private boolean noInstructions;
+            private boolean noPrompts;
+            private boolean trustTarget;
+
+            Builder target(TargetSelection target) {
+                this.target = target;
+                return this;
+            }
+
+            Builder agents(AgentSelection agents) {
+                this.agents = agents;
+                return this;
+            }
+
+            Builder outputDirectory(Path outputDirectory) {
+                this.outputDirectory = outputDirectory;
+                return this;
+            }
+
+            Builder additionalAgentDirs(List<Path> additionalAgentDirs) {
+                this.additionalAgentDirs = additionalAgentDirs;
+                return this;
+            }
+
+            Builder githubToken(String githubToken) {
+                this.githubToken = githubToken;
+                return this;
+            }
+
+            Builder parallelism(int parallelism) {
+                this.parallelism = parallelism;
+                return this;
+            }
+
+            Builder noSummary(boolean noSummary) {
+                this.noSummary = noSummary;
+                return this;
+            }
+
+            Builder reviewModel(String reviewModel) {
+                this.reviewModel = reviewModel;
+                return this;
+            }
+
+            Builder reportModel(String reportModel) {
+                this.reportModel = reportModel;
+                return this;
+            }
+
+            Builder summaryModel(String summaryModel) {
+                this.summaryModel = summaryModel;
+                return this;
+            }
+
+            Builder defaultModel(String defaultModel) {
+                this.defaultModel = defaultModel;
+                return this;
+            }
+
+            Builder instructionPaths(List<Path> instructionPaths) {
+                this.instructionPaths = instructionPaths;
+                return this;
+            }
+
+            Builder noInstructions(boolean noInstructions) {
+                this.noInstructions = noInstructions;
+                return this;
+            }
+
+            Builder noPrompts(boolean noPrompts) {
+                this.noPrompts = noPrompts;
+                return this;
+            }
+
+            Builder trustTarget(boolean trustTarget) {
+                this.trustTarget = trustTarget;
+                return this;
+            }
+
+            ParsedOptions build() {
+                return new ParsedOptions(
+                    target,
+                    agents,
+                    outputDirectory,
+                    additionalAgentDirs,
+                    githubToken,
+                    parallelism,
+                    noSummary,
+                    reviewModel,
+                    reportModel,
+                    summaryModel,
+                    defaultModel,
+                    instructionPaths,
+                    noInstructions,
+                    noPrompts,
+                    trustTarget
+                );
+            }
+        }
+    }
 
     @Inject
     public ReviewCommand(
