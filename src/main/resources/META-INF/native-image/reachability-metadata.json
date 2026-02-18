@@ -910,6 +910,13 @@
           "parameterTypes": []
         },
         {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String"
+          ]
+        },
+        {
           "name": "setCode",
           "parameterTypes": [
             "java.lang.String"
