@@ -20,8 +20,6 @@ public class SkillRegistry {
 
     private final Map<String, SkillDefinition> skills = new ConcurrentHashMap<>();
 
-    public SkillRegistry() {}
-
     /// Registers a skill definition.
     public void register(SkillDefinition skill) {
         skills.put(skill.id(), skill);
@@ -29,10 +27,8 @@ public class SkillRegistry {
     }
 
     /// Registers multiple skill definitions.
-     void registerAll(Collection<SkillDefinition> skillDefinitions) {
-        for (SkillDefinition skill : skillDefinitions) {
-            register(skill);
-        }
+    void registerAll(Collection<SkillDefinition> skillDefinitions) {
+        skillDefinitions.forEach(this::register);
     }
 
     /// Gets a skill by ID.
@@ -41,7 +37,7 @@ public class SkillRegistry {
     }
 
     /// Gets all registered skills.
-     public List<SkillDefinition> getAll() {
+    public List<SkillDefinition> getAll() {
         return List.copyOf(skills.values());
     }
 

@@ -55,7 +55,7 @@ public class CopilotClientStarter {
         try {
             client.close();
         } catch (Exception e) {
-            logger.debug("Failed to close Copilot client after startup failure: {}", e.getMessage());
+            logger.debug("Failed to close Copilot client after startup failure: {}", e.getMessage(), e);
         }
     }
 }

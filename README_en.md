@@ -719,8 +719,10 @@ flowchart TB
         end
 
         ReviewRunExecutor --> ReportService
-        ReportService --> ReportGenerator
-        ReportService --> SummaryGenerator["SummaryGenerator
+        ReportService --> ReportGeneratorFactory["ReportGeneratorFactory
+        Report/summary generator factory"]
+        ReportGeneratorFactory --> ReportGenerator
+        ReportGeneratorFactory --> SummaryGenerator["SummaryGenerator
         AI-powered summary"]
     end
 
@@ -848,6 +850,7 @@ multi-agent-reviewer/
 │   ├── report.md
 │   └── ...
 └── src/main/java/dev/logicojp/reviewer/
+    ├── LogbackLevelSwitcher.java        # Runtime log level switching
     ├── ReviewApp.java                   # CLI entry point
     ├── agent/
     │   ├── AgentConfig.java             # Config model
@@ -867,9 +870,11 @@ multi-agent-reviewer/
     │   ├── ReviewSessionEvents.java     # Session event management
     │   ├── ReviewSessionMessageSender.java # Session message sender
     │   ├── ReviewSystemPromptFormatter.java # System prompt formatter
-    │   └── ReviewTargetInstructionResolver.java # Target instruction resolver
+    │   ├── ReviewTargetInstructionResolver.java # Target instruction resolver
+    │   └── SessionEventException.java   # Session event exception
     ├── cli/
     │   ├── CliOutput.java               # CLI output utilities
+    │   ├── CliOutputFactory.java        # CLI output factory
     │   ├── CliParsing.java              # CLI option parsing
     │   ├── CliUsage.java                # Help / usage display
     │   ├── CliValidationException.java  # CLI input validation exception
@@ -920,27 +925,35 @@ multi-agent-reviewer/
     │   ├── ReviewOrchestratorFactory.java # Orchestrator factory
     │   └── ReviewResultPipeline.java    # Result pipeline
     ├── report/
-    │   ├── AggregatedFinding.java       # Aggregated finding
-    │   ├── ContentSanitizationPipeline.java # Sanitization pipeline
-    │   ├── ContentSanitizationRule.java # Sanitization rule
-    │   ├── ContentSanitizer.java        # LLM preamble / CoT removal
-    │   ├── FallbackSummaryBuilder.java  # Fallback summary builder
-    │   ├── FindingsExtractor.java       # Findings extraction
-    │   ├── FindingsParser.java          # Findings parser
-    │   ├── FindingsSummaryFormatter.java # Findings summary formatter
-    │   ├── ReportContentFormatter.java  # Report content formatter
-    │   ├── ReportFileUtils.java         # Report file utilities
-    │   ├── ReportFilenameUtils.java     # Safe report filename helper
-    │   ├── ReportGenerator.java         # Individual report generation
-    │   ├── ReportGeneratorFactory.java  # Report generator factory
-    │   ├── ReviewFindingParser.java     # Review finding parser
-    │   ├── ReviewFindingSimilarity.java # Duplicate finding similarity
-    │   ├── ReviewMergedContentFormatter.java # Merged content formatter
-    │   ├── ReviewResult.java            # Result model
-    │   ├── ReviewResultMerger.java      # Multi-pass result merger
-    │   ├── SummaryFinalReportFormatter.java # Summary final formatter
-    │   ├── SummaryGenerator.java        # Summary generation
-    │   └── SummaryPromptBuilder.java    # Summary prompt builder
+    │   ├── core/
+    │   │   ├── ReportGenerator.java      # Individual report generation
+    │   │   └── ReviewResult.java         # Result model
+    │   ├── factory/
+    │   │   └── ReportGeneratorFactory.java # Report/summary generator factory
+    │   ├── finding/
+    │   │   ├── AggregatedFinding.java    # Aggregated finding
+    │   │   ├── FindingsExtractor.java    # Findings extraction
+    │   │   ├── FindingsParser.java       # Findings parser
+    │   │   ├── ReviewFindingParser.java  # Review finding parser
+    │   │   └── ReviewFindingSimilarity.java # Duplicate finding similarity
+    │   ├── formatter/
+    │   │   ├── FindingsSummaryFormatter.java # Findings summary formatter
+    │   │   ├── ReportContentFormatter.java # Report content formatter
+    │   │   ├── ReviewMergedContentFormatter.java # Merged content formatter
+    │   │   └── SummaryFinalReportFormatter.java # Summary final formatter
+    │   ├── merger/
+    │   │   └── ReviewResultMerger.java   # Multi-pass result merger
+    │   ├── sanitize/
+    │   │   ├── ContentSanitizationPipeline.java # Sanitization pipeline
+    │   │   ├── ContentSanitizationRule.java # Sanitization rule
+    │   │   └── ContentSanitizer.java     # LLM preamble / CoT removal
+    │   ├── summary/
+    │   │   ├── FallbackSummaryBuilder.java # Fallback summary builder
+    │   │   ├── SummaryGenerator.java     # Summary generation
+    │   │   └── SummaryPromptBuilder.java # Summary prompt builder
+    │   └── util/
+    │       ├── ReportFileUtils.java      # Report file utilities
+    │       └── ReportFilenameUtils.java  # Safe report filename helper
     ├── service/
     │   ├── AgentService.java            # Agent management
     │   ├── CopilotClientStarter.java    # Copilot client starter

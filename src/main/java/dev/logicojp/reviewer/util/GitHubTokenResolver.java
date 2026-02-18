@@ -1,6 +1,7 @@
 package dev.logicojp.reviewer.util;
 
 import dev.logicojp.reviewer.config.ExecutionConfig;
+import io.micronaut.core.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -35,7 +36,7 @@ public final class GitHubTokenResolver {
         this(executionConfig.ghAuthTimeoutSeconds());
     }
 
-    public Optional<String> resolve(String providedToken) {
+    public Optional<String> resolve(@Nullable String providedToken) {
         String normalized = normalizeToken(providedToken);
         if (normalized != null) {
             return Optional.of(normalized);
@@ -44,7 +45,7 @@ public final class GitHubTokenResolver {
         return resolveFromGhAuth();
     }
 
-    private String normalizeToken(String token) {
+    private @Nullable String normalizeToken(@Nullable String token) {
         if (token == null) {
             return null;
         }

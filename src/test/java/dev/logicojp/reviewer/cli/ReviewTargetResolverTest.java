@@ -74,4 +74,30 @@ class ReviewTargetResolverTest {
             .isInstanceOf(CliValidationException.class)
             .hasMessageContaining("Path is not a directory");
     }
+
+    @Test
+    @DisplayName("local target は指定トークンがあっても resolvedToken は null")
+    void localTargetAlwaysResolvesNullToken() {
+        var resolver = new ReviewTargetResolver(new GitHubTokenResolver(new dev.logicojp.reviewer.config.ExecutionConfig(0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0)));
+
+        ReviewTargetResolver.TargetAndToken result = resolver.resolve(
+            new ReviewCommand.TargetSelection.LocalDirectory(tempDir),
+            "ghp_token"
+        );
+
+        assertThat(result.resolvedToken()).isNull();
+    }
+
+    @Test
+    @DisplayName("TargetAndToken の toString はトークン値を露出しない")
+    void targetAndTokenToStringRedactsTokenValue() {
+        var targetAndToken = new ReviewTargetResolver.TargetAndToken(
+            dev.logicojp.reviewer.target.ReviewTarget.gitHub("owner/repo"),
+            "ghp_secret"
+        );
+
+        assertThat(targetAndToken.toString())
+            .contains("resolvedToken=***")
+            .doesNotContain("ghp_secret");
+    }
 }

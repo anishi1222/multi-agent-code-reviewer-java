@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("EventSubscriptions")
 class EventSubscriptionsTest {
@@ -69,6 +70,16 @@ class EventSubscriptionsTest {
             assertThat(subscriptions.messages()).isSameAs(b);
             assertThat(subscriptions.idle()).isSameAs(c);
             assertThat(subscriptions.error()).isSameAs(d);
+        }
+
+        @Test
+        @DisplayName("コンストラクタはnullサブスクリプションを拒否する")
+        void rejectsNullSubscription() {
+            AutoCloseable noOp = () -> {};
+
+            assertThatThrownBy(() -> new EventSubscriptions(null, noOp, noOp, noOp))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("allEvents must not be null");
         }
     }
 }

@@ -719,8 +719,10 @@ flowchart TB
         end
 
         ReviewRunExecutor --> ReportService
-        ReportService --> ReportGenerator
-        ReportService --> SummaryGenerator["SummaryGenerator
+        ReportService --> ReportGeneratorFactory["ReportGeneratorFactory
+        レポート/サマリー生成ファクトリ"]
+        ReportGeneratorFactory --> ReportGenerator
+        ReportGeneratorFactory --> SummaryGenerator["SummaryGenerator
         AI要約生成"]
     end
 
@@ -848,6 +850,7 @@ multi-agent-reviewer/
 │   ├── report.md
 │   └── ...
 └── src/main/java/dev/logicojp/reviewer/
+    ├── LogbackLevelSwitcher.java        # ログレベル動的切替
     ├── ReviewApp.java                   # CLIエントリポイント
     ├── agent/
     │   ├── AgentConfig.java             # 設定モデル
@@ -867,9 +870,11 @@ multi-agent-reviewer/
     │   ├── ReviewSessionEvents.java     # セッションイベント管理
     │   ├── ReviewSessionMessageSender.java # セッションメッセージ送信
     │   ├── ReviewSystemPromptFormatter.java # システムプロンプト整形
-    │   └── ReviewTargetInstructionResolver.java # ターゲットインストラクション解決
+    │   ├── ReviewTargetInstructionResolver.java # ターゲットインストラクション解決
+    │   └── SessionEventException.java   # セッションイベント例外
     ├── cli/
     │   ├── CliOutput.java               # CLI出力ユーティリティ
+    │   ├── CliOutputFactory.java        # CLI出力ファクトリ
     │   ├── CliParsing.java              # CLIオプション解析
     │   ├── CliUsage.java                # ヘルプ・使い方表示
     │   ├── CliValidationException.java  # CLI入力バリデーション例外
@@ -920,27 +925,35 @@ multi-agent-reviewer/
     │   ├── ReviewOrchestratorFactory.java # オーケストレータファクトリ
     │   └── ReviewResultPipeline.java    # 結果パイプライン
     ├── report/
-    │   ├── AggregatedFinding.java       # 集約された指摘
-    │   ├── ContentSanitizationPipeline.java # サニタイズパイプライン
-    │   ├── ContentSanitizationRule.java # サニタイズルール
-    │   ├── ContentSanitizer.java        # LLM前置き文/CoT除去
-    │   ├── FallbackSummaryBuilder.java  # フォールバックサマリー構築
-    │   ├── FindingsExtractor.java       # 指摘事項抽出
-    │   ├── FindingsParser.java          # 指摘事項パーサー
-    │   ├── FindingsSummaryFormatter.java # 指摘サマリー整形
-    │   ├── ReportContentFormatter.java  # レポートコンテンツ整形
-    │   ├── ReportFileUtils.java         # レポートファイルユーティリティ
-    │   ├── ReportFilenameUtils.java     # 安全なレポートファイル名ヘルパー
-    │   ├── ReportGenerator.java         # 個別レポート生成
-    │   ├── ReportGeneratorFactory.java  # レポートジェネレータファクトリ
-    │   ├── ReviewFindingParser.java     # レビュー指摘パーサー
-    │   ├── ReviewFindingSimilarity.java # 重複指摘類似度判定
-    │   ├── ReviewMergedContentFormatter.java # マージコンテンツ整形
-    │   ├── ReviewResult.java            # 結果モデル
-    │   ├── ReviewResultMerger.java      # マルチパス結果マージ
-    │   ├── SummaryFinalReportFormatter.java # サマリー最終整形
-    │   ├── SummaryGenerator.java        # サマリー生成
-    │   └── SummaryPromptBuilder.java    # サマリープロンプト構築
+    │   ├── core/
+    │   │   ├── ReportGenerator.java      # 個別レポート生成
+    │   │   └── ReviewResult.java         # 結果モデル
+    │   ├── factory/
+    │   │   └── ReportGeneratorFactory.java # レポート/サマリージェネレータファクトリ
+    │   ├── finding/
+    │   │   ├── AggregatedFinding.java    # 集約された指摘
+    │   │   ├── FindingsExtractor.java    # 指摘事項抽出
+    │   │   ├── FindingsParser.java       # 指摘事項パーサー
+    │   │   ├── ReviewFindingParser.java  # レビュー指摘パーサー
+    │   │   └── ReviewFindingSimilarity.java # 重複指摘類似度判定
+    │   ├── formatter/
+    │   │   ├── FindingsSummaryFormatter.java # 指摘サマリー整形
+    │   │   ├── ReportContentFormatter.java # レポートコンテンツ整形
+    │   │   ├── ReviewMergedContentFormatter.java # マージコンテンツ整形
+    │   │   └── SummaryFinalReportFormatter.java # サマリー最終整形
+    │   ├── merger/
+    │   │   └── ReviewResultMerger.java   # マルチパス結果マージ
+    │   ├── sanitize/
+    │   │   ├── ContentSanitizationPipeline.java # サニタイズパイプライン
+    │   │   ├── ContentSanitizationRule.java # サニタイズルール
+    │   │   └── ContentSanitizer.java     # LLM前置き文/CoT除去
+    │   ├── summary/
+    │   │   ├── FallbackSummaryBuilder.java # フォールバックサマリー構築
+    │   │   ├── SummaryGenerator.java     # サマリー生成
+    │   │   └── SummaryPromptBuilder.java # サマリープロンプト構築
+    │   └── util/
+    │       ├── ReportFileUtils.java      # レポートファイルユーティリティ
+    │       └── ReportFilenameUtils.java  # 安全なレポートファイル名ヘルパー
     ├── service/
     │   ├── AgentService.java            # エージェント管理
     │   ├── CopilotClientStarter.java    # Copilotクライアント起動

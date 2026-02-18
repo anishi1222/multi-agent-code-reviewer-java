@@ -33,7 +33,6 @@ public class ReviewService {
     
     private static final Logger logger = LoggerFactory.getLogger(ReviewService.class);
     
-    private final ReviewOrchestratorFactory orchestratorFactory;
     private final ExecutionConfig executionConfig;
     private final TemplateService templateService;
     private final OrchestratorRunner orchestratorRunner;
@@ -64,7 +63,6 @@ public class ReviewService {
                   ExecutionConfig executionConfig,
                   TemplateService templateService,
                   OrchestratorRunner orchestratorRunner) {
-        this.orchestratorFactory = orchestratorFactory;
         this.executionConfig = executionConfig;
         this.templateService = templateService;
         this.orchestratorRunner = orchestratorRunner;
@@ -106,7 +104,7 @@ public class ReviewService {
     private List<CustomInstruction> resolveEffectiveInstructions(List<CustomInstruction> customInstructions,
                                                                  ReviewTarget target) {
         if (customInstructions != null) {
-            return customInstructions;
+            return List.copyOf(customInstructions);
         }
         logger.debug("No explicit custom instructions supplied; skipping auto-load for target {}", target.displayName());
         return List.of();

@@ -14,12 +14,14 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("ReviewService")
 class ReviewServiceTest {
@@ -103,5 +105,43 @@ class ReviewServiceTest {
 
         assertThat(invocationCount.get()).isEqualTo(1);
         assertThat(capturedInstructions.get()).isEqualTo(instructions);
+    }
+
+    @Test
+    @DisplayName("明示されたcustom instructionsは防御的コピーされる")
+    void defensivelyCopiesExplicitCustomInstructions() throws IOException {
+        Files.writeString(tempDir.resolve("output-constraints.md"), "constraint-text");
+        TemplateService templateService = new TemplateService(new TemplateConfig(tempDir.toString(),
+            null, null, null, "output-constraints.md", null, null, null));
+
+        ExecutionConfig executionConfig = new ExecutionConfig(4, 1, 5, 5, 1, 5, 5, 5, 1, 0, 0, 0);
+        AtomicReference<List<CustomInstruction>> capturedInstructions = new AtomicReference<>();
+
+        ReviewService service = new ReviewService(
+            null,
+            executionConfig,
+            templateService,
+            (agentConfigs, target, githubToken, overriddenConfig, customInstructions, reasoningEffort, outputConstraints) -> {
+                capturedInstructions.set(customInstructions);
+                return List.of();
+            }
+        );
+
+        List<CustomInstruction> instructions = new ArrayList<>();
+        instructions.add(new CustomInstruction("p", "c", InstructionSource.LOCAL_FILE, null, null));
+
+        service.executeReviews(
+            Map.of(),
+            ReviewTarget.gitHub("o/r"),
+            "token",
+            4,
+            instructions,
+            null
+        );
+
+        assertThat(capturedInstructions.get()).isNotSameAs(instructions);
+        assertThatThrownBy(() -> capturedInstructions.get().add(
+            new CustomInstruction("x", "y", InstructionSource.LOCAL_FILE, null, null)
+        )).isInstanceOf(UnsupportedOperationException.class);
     }
 }

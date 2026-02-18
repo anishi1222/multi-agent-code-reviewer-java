@@ -63,11 +63,37 @@ class CopilotClientStarterTest {
         assertThat(client.closed.get()).isTrue();
     }
 
+    @Test
+    @DisplayName("ExecutionExceptionのcauseがnullなら汎用start失敗メッセージに変換")
+    void wrapsExecutionExceptionWithoutCause() {
+        var client = new StubStartableClient();
+        client.executionException = new ExecutionException((Throwable) null);
+
+        assertThatThrownBy(() -> starter.start(client, 10, formatter))
+            .isInstanceOf(CopilotCliException.class)
+            .hasMessageContaining("Copilot client start failed");
+        assertThat(client.closed.get()).isTrue();
+    }
+
+    @Test
+    @DisplayName("close時例外は握りつぶして元の起動失敗を返す")
+    void ignoresCloseExceptionAndReturnsOriginalStartupFailure() {
+        var client = new StubStartableClient();
+        client.timeoutException = new TimeoutException("timeout");
+        client.closeException = new RuntimeException("close failed");
+
+        assertThatThrownBy(() -> starter.start(client, 7, formatter))
+            .isInstanceOf(CopilotCliException.class)
+            .hasMessageContaining("timed out after 7s");
+        assertThat(client.closed.get()).isTrue();
+    }
+
     private static class StubStartableClient implements CopilotClientStarter.StartableClient {
         boolean started;
         AtomicBoolean closed = new AtomicBoolean(false);
         TimeoutException timeoutException;
         ExecutionException executionException;
+        RuntimeException closeException;
 
         @Override
         public void start(long timeoutSeconds) throws ExecutionException, TimeoutException {
@@ -83,6 +109,9 @@ class CopilotClientStarterTest {
         @Override
         public void close() {
             closed.set(true);
+            if (closeException != null) {
+                throw closeException;
+            }
         }
     }
 }
