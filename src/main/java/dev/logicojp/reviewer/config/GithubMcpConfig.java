@@ -5,7 +5,6 @@ import io.micronaut.core.annotation.Nullable;
 
 import java.net.URI;
 import java.util.AbstractMap;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +117,9 @@ public record GithubMcpConfig(
         }
 
         @Override public Set<Entry<String, Object>> entrySet() { return delegate.entrySet(); }
+        @Override public Object get(Object key) { return delegate.get(key); }
+        @Override public int size() { return delegate.size(); }
+        @Override public boolean containsKey(Object key) { return delegate.containsKey(key); }
         @Override public String toString() { return maskedString; }
     }
 
@@ -125,7 +127,7 @@ public record GithubMcpConfig(
         Map<String, String> combinedHeaders = new HashMap<>(headers != null ? headers : Map.of());
         applyAuthHeader(token, combinedHeaders);
         McpServerConfig config = new McpServerConfig(type, url, tools, combinedHeaders);
-        return Collections.unmodifiableMap(new MaskedToStringMap(config.toMap(), config.toString()));
+        return new MaskedToStringMap(config.toMap(), config.toString());
     }
 
     private void applyAuthHeader(String token, Map<String, String> combinedHeaders) {

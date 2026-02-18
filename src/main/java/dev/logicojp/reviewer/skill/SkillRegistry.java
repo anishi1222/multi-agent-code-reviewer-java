@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.skill;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import java.util.Collection;
@@ -19,6 +20,9 @@ public class SkillRegistry {
     private static final Logger logger = LoggerFactory.getLogger(SkillRegistry.class);
 
     private final Map<String, SkillDefinition> skills = new ConcurrentHashMap<>();
+
+    @Inject
+    public SkillRegistry() {}
 
     /// Registers a skill definition.
     public void register(SkillDefinition skill) {

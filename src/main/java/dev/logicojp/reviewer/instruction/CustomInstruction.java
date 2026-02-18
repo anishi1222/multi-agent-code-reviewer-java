@@ -23,9 +23,9 @@ public record CustomInstruction(
 
     /// Checks if this instruction has no meaningful content.
     ///
-    /// @return true if content is null or blank
+    /// @return true if content is blank
     public boolean isEmpty() {
-        return content == null || content.isBlank();
+        return content.isBlank();
     }
     
     /// Returns true if this instruction has scope metadata (applyTo or description).

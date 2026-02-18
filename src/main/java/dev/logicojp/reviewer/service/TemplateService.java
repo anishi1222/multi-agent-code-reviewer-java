@@ -24,6 +24,8 @@ public class TemplateService {
     private static final Logger logger = LoggerFactory.getLogger(TemplateService.class);
 
     private final TemplateConfig config;
+    /// Template cache — unbounded, suitable for CLI's single-run lifecycle.
+    /// If reused in a long-lived process, consider size limits or TTL.
     private final Map<String, String> templateCache = new ConcurrentHashMap<>();
     private static final Pattern TEMPLATE_NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+\\.md");
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");

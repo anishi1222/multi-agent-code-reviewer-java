@@ -12,8 +12,6 @@ import java.util.function.Function;
 /// handling {@link CliValidationException}, and returning exit codes.
 final class CommandExecutor {
 
-    private static final CliOutput DEFAULT_CLI_OUTPUT = new CliOutput();
-
     private CommandExecutor() {
         // Utility class — not instantiable
     }
@@ -90,14 +88,5 @@ final class CommandExecutor {
 
     private static String formatUnexpectedErrorMessage(Exception e) {
         return "Error: " + e.getMessage();
-    }
-
-    public static <T> int execute(
-            String[] args,
-            Function<String[], Optional<T>> parser,
-            Function<T, Integer> executor,
-            Consumer<CliOutput> usagePrinter,
-            Logger logger) {
-        return execute(args, parser, executor, usagePrinter, logger, DEFAULT_CLI_OUTPUT);
     }
 }

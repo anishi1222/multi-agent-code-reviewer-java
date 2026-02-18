@@ -52,7 +52,7 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 
 ## Requirements
 
-- **GraalVM 25.0.2** (Java 25)
+- **GraalVM 26** (Java 26)
 - GitHub Copilot CLI 0.0.407 or later
 - GitHub token (for repository access)
 

@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -108,7 +109,7 @@ public class AgentConfigLoader {
     /// @param filter If null, loads all agents; otherwise only agents with names in the set
     /// @return Map of agent name to AgentConfig
     private Map<String, AgentConfig> loadAgentsInternal(Set<String> filter) throws IOException {
-        Map<String, AgentConfig> agents = new HashMap<>();
+        Map<String, AgentConfig> agents = new LinkedHashMap<>();
         List<SkillDefinition> globalSkills = loadGlobalSkills();
 
         for (Path directory : agentDirectories) {

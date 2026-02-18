@@ -129,7 +129,7 @@ public class SkillExecutor implements AutoCloseable {
                 .sendAndWait(new MessageOptions().setPrompt(prompt), timeoutMs)
                 .get(timeoutMinutes, TimeUnit.MINUTES);
 
-            String content = response.getData().getContent();
+            String content = response.getData().content();
             
             if (content == null || content.isBlank()) {
                 logger.warn("Skill {} returned empty content", skill.id());

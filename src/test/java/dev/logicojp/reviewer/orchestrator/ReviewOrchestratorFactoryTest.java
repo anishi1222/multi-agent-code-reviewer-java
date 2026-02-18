@@ -71,9 +71,9 @@ class ReviewOrchestratorFactoryTest {
             "constraints"
         )) {
             assertThat(captured.get()).isNotNull();
-            assertThat(captured.get().focusAreasGuidance()).isEqualTo(AgentPromptBuilder.DEFAULT_FOCUS_AREAS_GUIDANCE);
-            assertThat(captured.get().localSourceHeader()).isEqualTo(AgentPromptBuilder.DEFAULT_LOCAL_SOURCE_HEADER);
-            assertThat(captured.get().localReviewResultRequest())
+            assertThat(captured.get().promptTexts().focusAreasGuidance()).isEqualTo(AgentPromptBuilder.DEFAULT_FOCUS_AREAS_GUIDANCE);
+            assertThat(captured.get().promptTexts().localSourceHeader()).isEqualTo(AgentPromptBuilder.DEFAULT_LOCAL_SOURCE_HEADER);
+            assertThat(captured.get().promptTexts().localReviewResultRequest())
                 .isEqualTo("ソースコードを読み込んだ内容に基づいて、指定された出力形式でレビュー結果を返してください。");
         }
     }

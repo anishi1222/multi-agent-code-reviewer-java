@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 
 /// Holds the result of a review performed by an agent.
 public record ReviewResult(
-    AgentConfig agentConfig,
-    String repository,
+    @Nullable AgentConfig agentConfig,
+    @Nullable String repository,
     @Nullable String content,
     LocalDateTime timestamp,
     boolean success,

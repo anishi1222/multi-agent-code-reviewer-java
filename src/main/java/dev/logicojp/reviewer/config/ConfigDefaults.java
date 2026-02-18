@@ -15,18 +15,27 @@ final class ConfigDefaults {
     private ConfigDefaults() {
     }
 
+    /// Returns {@code defaultValue} when {@code value} is null or blank.
     static String defaultIfBlank(String value, String defaultValue) {
         return (value == null || value.isBlank()) ? defaultValue : value;
     }
 
+    /// Returns {@code defaultValue} when {@code value} is zero or negative.
     static int defaultIfNonPositive(int value, int defaultValue) {
         return value <= 0 ? defaultValue : value;
     }
 
+    /// Returns {@code defaultValue} when {@code value} is zero or negative.
     static long defaultIfNonPositive(long value, long defaultValue) {
         return value <= 0 ? defaultValue : value;
     }
 
+    /// Returns {@code defaultValue} when {@code value} is negative (zero is allowed).
+    static int defaultIfNegative(int value, int defaultValue) {
+        return value < 0 ? defaultValue : value;
+    }
+
+    /// Returns {@code defaultValues} when {@code values} is null or empty.
     static <T> List<T> defaultListIfEmpty(List<T> values, List<T> defaultValues) {
         return values == null || values.isEmpty() ? defaultValues : List.copyOf(values);
     }

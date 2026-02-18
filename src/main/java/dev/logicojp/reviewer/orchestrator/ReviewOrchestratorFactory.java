@@ -110,9 +110,11 @@ public class ReviewOrchestratorFactory {
             customInstructions,
             reasoningEffort,
             outputConstraints,
-            promptTexts.focusAreasGuidance(),
-            promptTexts.localSourceHeader(),
-            promptTexts.localReviewResultRequest()
+            new ReviewOrchestrator.PromptTexts(
+                promptTexts.focusAreasGuidance(),
+                promptTexts.localSourceHeader(),
+                promptTexts.localReviewResultRequest()
+            )
         );
     }
 

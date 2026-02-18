@@ -27,8 +27,18 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 
 /// Orchestrates parallel execution of multiple review agents.
-/// <p>This class is NOT managed by Micronaut DI — callers must ensure
-/// {@link #close()} is called (preferably via try-with-resources).</p>
+///
+/// **Lifecycle**: This class is intentionally NOT managed by Micronaut DI
+/// because it owns per-invocation resources (`ExecutorService`, `ScheduledExecutorService`)
+/// whose lifecycle must be bound to a single review execution.
+/// Always use via try-with-resources:
+/// ```java
+/// try (var orchestrator = factory.create(...)) {
+///     orchestrator.executeReviews(agents, target);
+/// }
+/// ```
+///
+/// Created by {@link ReviewOrchestratorFactory} which handles DI of shared services.
 public class ReviewOrchestrator implements AutoCloseable {
 
     private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 60;
@@ -99,6 +109,19 @@ public class ReviewOrchestrator implements AutoCloseable {
     private final ReviewContextFactory reviewContextFactory;
     private final LocalSourcePrecomputer localSourcePrecomputer;
 
+    /// Immutable grouping of prompt template texts used by agents.
+    public record PromptTexts(
+        String focusAreasGuidance,
+        String localSourceHeader,
+        String localReviewResultRequest
+    ) {
+        public PromptTexts {
+            focusAreasGuidance = focusAreasGuidance != null ? focusAreasGuidance : "";
+            localSourceHeader = localSourceHeader != null ? localSourceHeader : "";
+            localReviewResultRequest = localReviewResultRequest != null ? localReviewResultRequest : "";
+        }
+    }
+
     public record OrchestratorConfig(
         @Nullable String githubToken,
         @Nullable GithubMcpConfig githubMcpConfig,
@@ -108,18 +131,14 @@ public class ReviewOrchestrator implements AutoCloseable {
         List<CustomInstruction> customInstructions,
         @Nullable String reasoningEffort,
         @Nullable String outputConstraints,
-        String focusAreasGuidance,
-        String localSourceHeader,
-        String localReviewResultRequest
+        PromptTexts promptTexts
     ) {
         public OrchestratorConfig {
             executionConfig = Objects.requireNonNull(executionConfig, "executionConfig must not be null");
             featureFlags = Objects.requireNonNull(featureFlags, "featureFlags must not be null");
             localFileConfig = localFileConfig != null ? localFileConfig : new LocalFileConfig();
             customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
-            focusAreasGuidance = focusAreasGuidance != null ? focusAreasGuidance : "";
-            localSourceHeader = localSourceHeader != null ? localSourceHeader : "";
-            localReviewResultRequest = localReviewResultRequest != null ? localReviewResultRequest : "";
+            promptTexts = promptTexts != null ? promptTexts : new PromptTexts(null, null, null);
         }
 
         @Override
@@ -185,14 +204,19 @@ public class ReviewOrchestrator implements AutoCloseable {
         boolean structuredConcurrencyEnabled = orchestratorConfig.featureFlags().structuredConcurrency();
         ExecutorService executorService = structuredConcurrencyEnabled
             ? null
-            : Executors.newVirtualThreadPerTaskExecutor();
+            : Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual().name("review-orchestrator-", 0).factory());
         ExecutorService agentExecutionExecutor = null;
         ScheduledExecutorService sharedScheduler = null;
         try {
             Semaphore concurrencyLimit = new Semaphore(orchestratorConfig.executionConfig().parallelism());
-            agentExecutionExecutor = Executors.newVirtualThreadPerTaskExecutor();
-            sharedScheduler = Executors.newSingleThreadScheduledExecutor(
-                Thread.ofVirtual().name("idle-timeout-shared", 0).factory());
+            agentExecutionExecutor = Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual().name("agent-execution-", 0).factory());
+            sharedScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "idle-timeout-shared");
+                t.setDaemon(true);
+                return t;
+            });
             Map<String, Object> cachedMcpServers = GithubMcpConfig.buildMcpServers(
                 orchestratorConfig.githubToken(),
                 orchestratorConfig.githubMcpConfig()
@@ -251,9 +275,9 @@ public class ReviewOrchestrator implements AutoCloseable {
                 config,
                 context,
                 new ReviewAgent.PromptTemplates(
-                    orchestratorConfig.focusAreasGuidance(),
-                    orchestratorConfig.localSourceHeader(),
-                    orchestratorConfig.localReviewResultRequest()
+                    orchestratorConfig.promptTexts().focusAreasGuidance(),
+                    orchestratorConfig.promptTexts().localSourceHeader(),
+                    orchestratorConfig.promptTexts().localReviewResultRequest()
                 )
             );
             return agent::review;
