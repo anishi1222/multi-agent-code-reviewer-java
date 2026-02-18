@@ -66,9 +66,8 @@ jobs:
     - name: Set up JDK 26 EA
       uses: oracle-actions/setup-java@v1
       with:
-        website: oracle.com
-        release: EA
-        version: 26
+        website: jdk.java.net
+        release: 26
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
