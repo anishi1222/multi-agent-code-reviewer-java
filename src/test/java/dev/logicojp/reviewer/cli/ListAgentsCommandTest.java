@@ -25,7 +25,7 @@ class ListAgentsCommandTest {
         CliOutput output = new CliOutput(new PrintStream(out), new PrintStream(err));
 
         AgentService service = new AgentService(
-            new SkillConfig(null, null),
+            SkillConfig.defaults(),
             new TemplateService(new dev.logicojp.reviewer.config.TemplateConfig("templates", null, null, null, null, null, null, null)),
             new AgentPathConfig(List.of("."))
         ) {
@@ -58,7 +58,7 @@ class ListAgentsCommandTest {
         CliOutput output = new CliOutput(new PrintStream(out), new PrintStream(err));
 
         AgentService service = new AgentService(
-            new SkillConfig(null, null),
+            SkillConfig.defaults(),
             new TemplateService(new dev.logicojp.reviewer.config.TemplateConfig("templates", null, null, null, null, null, null, null)),
             new AgentPathConfig(List.of("."))
         );

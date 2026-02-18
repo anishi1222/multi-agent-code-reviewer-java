@@ -17,6 +17,9 @@ reviewer:
     summary-timeout-minutes: 20
     gh-auth-timeout-seconds: 30
     max-retries: 2
+    max-accumulated-size: 4194304
+    initial-accumulated-capacity: 4096
+    instruction-buffer-extra-capacity: 32
   feature-flags:
     structured-concurrency: ${REVIEWER_STRUCTURED_CONCURRENCY:false}
     structured-concurrency-skills: ${REVIEWER_STRUCTURED_CONCURRENCY_SKILLS:${REVIEWER_STRUCTURED_CONCURRENCY:false}}
@@ -38,6 +41,12 @@ reviewer:
   skills:
     filename: SKILL.md
     directory: .github/skills
+    max-parameter-value-length: 10000
+    max-executor-cache-size: 16
+    executor-cache-initial-capacity: 16
+    executor-cache-load-factor: 0.75
+    service-shutdown-timeout-seconds: 60
+    executor-shutdown-timeout-seconds: 30
   mcp:
     github:
       type: http
@@ -60,3 +69,6 @@ reviewer:
     max-content-per-agent: 50000
     max-total-prompt-content: 200000
     fallback-excerpt-length: 180
+    average-result-content-estimate: 8192
+    initial-buffer-margin: 4096
+    excerpt-normalization-multiplier: 3

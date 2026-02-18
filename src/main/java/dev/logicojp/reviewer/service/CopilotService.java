@@ -2,12 +2,14 @@ package dev.logicojp.reviewer.service;
 
 import com.github.copilot.sdk.CopilotClient;
 import com.github.copilot.sdk.json.CopilotClientOptions;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -19,15 +21,16 @@ public class CopilotService {
     private static final Logger logger = LoggerFactory.getLogger(CopilotService.class);
     private static final long DEFAULT_START_TIMEOUT_SECONDS = 60;
     private static final String START_TIMEOUT_ENV = "COPILOT_START_TIMEOUT_SECONDS";
+    private static final String GITHUB_TOKEN_ENV = "GITHUB_TOKEN";
     private static final String UNRESOLVED_TOKEN_PLACEHOLDER = "${GITHUB_TOKEN}";
 
-    private final Object lock = new Object();
     private final CopilotCliPathResolver cliPathResolver;
     private final CopilotCliHealthChecker cliHealthChecker;
     private final CopilotTimeoutResolver timeoutResolver;
     private final CopilotStartupErrorFormatter startupErrorFormatter;
     private final CopilotClientStarter clientStarter;
     private volatile CopilotClient client;
+    private volatile String initializedToken;
 
     @Inject
     public CopilotService(CopilotCliPathResolver cliPathResolver,
@@ -41,12 +44,23 @@ public class CopilotService {
         this.startupErrorFormatter = startupErrorFormatter;
         this.clientStarter = clientStarter;
     }
+
+    /// Attempts eager initialization during bean startup using GITHUB_TOKEN when available.
+    /// Falls back to lazy/explicit initialization if startup prerequisites are not met.
+    @PostConstruct
+    void initializeAtStartup() {
+        try {
+            initializeOrThrow(System.getenv(GITHUB_TOKEN_ENV));
+        } catch (CopilotCliException e) {
+            logger.debug("Skipping eager Copilot initialization at startup: {}", e.getMessage(), e);
+        }
+    }
     
     /// Initializes the Copilot client, wrapping checked exceptions as RuntimeException.
     /// Convenience method for callers that cannot handle checked exceptions.
     public void initializeOrThrow(String githubToken) {
         try {
-            initialize(githubToken);
+            initialize(normalizeToken(githubToken));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new CopilotCliException("Failed to initialize Copilot service", e);
@@ -54,25 +68,23 @@ public class CopilotService {
     }
 
     /// Initializes the Copilot client.
-    /// Double-checked locking with volatile is intentional for safe lazy initialization.
-    /// While the CLI currently calls this from a single thread, DCL is retained for
-    /// correctness if this service is later reused in multi-threaded contexts.
-    private void initialize(String githubToken) throws InterruptedException {
-        if (client != null) {
+    private synchronized void initialize(String githubToken) throws InterruptedException {
+        if (client != null && Objects.equals(initializedToken, githubToken)) {
             return;
         }
-        synchronized (lock) {
-            if (client != null) {
-                return;
-            }
-            logger.info("Initializing Copilot client...");
-            CopilotClientOptions options = buildClientOptions(githubToken);
-            CopilotClient createdClient = new CopilotClient(options);
-            long timeoutSeconds = resolveStartTimeoutSeconds();
-            startClient(createdClient, timeoutSeconds);
-            client = createdClient;
-            logger.info("Copilot client initialized");
+
+        if (client != null) {
+            closeCurrentClient();
         }
+
+        logger.info("Initializing Copilot client...");
+        CopilotClientOptions options = buildClientOptions(githubToken);
+        CopilotClient createdClient = new CopilotClient(options);
+        long timeoutSeconds = resolveStartTimeoutSeconds();
+        startClient(createdClient, timeoutSeconds);
+        client = createdClient;
+        initializedToken = githubToken;
+        logger.info("Copilot client initialized");
     }
 
     private CopilotClientOptions buildClientOptions(String githubToken) throws InterruptedException {
@@ -120,6 +132,10 @@ public class CopilotService {
             && !githubToken.equals(UNRESOLVED_TOKEN_PLACEHOLDER);
     }
 
+    private String normalizeToken(String githubToken) {
+        return shouldUseToken(githubToken) ? githubToken : null;
+    }
+
     private void applyAuthOptions(CopilotClientOptions options, String githubToken, boolean useToken) {
         if (useToken) {
             options.setGithubToken(githubToken);
@@ -147,19 +163,22 @@ public class CopilotService {
     
     /// Shuts down the Copilot client.
     @PreDestroy
-    public void shutdown() {
-        synchronized (lock) {
-            if (client != null) {
-                try {
-                    logger.info("Shutting down Copilot client...");
-                    client.close();
-                    logger.info("Copilot client shut down");
-                } catch (Exception e) {
-                    logger.warn("Error shutting down Copilot client: {}", e.getMessage());
-                } finally {
-                    client = null;
-                }
-            }
+    public synchronized void shutdown() {
+        if (client != null) {
+            closeCurrentClient();
+        }
+    }
+
+    private void closeCurrentClient() {
+        try {
+            logger.info("Shutting down Copilot client...");
+            client.close();
+            logger.info("Copilot client shut down");
+        } catch (Exception e) {
+            logger.warn("Error shutting down Copilot client: {}", e.getMessage(), e);
+        } finally {
+            client = null;
+            initializedToken = null;
         }
     }
 }

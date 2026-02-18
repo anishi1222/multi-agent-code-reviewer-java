@@ -99,18 +99,27 @@ class SkillExecutionCoordinator {
     }
 
     private static final class SkillRunExecutionException extends RuntimeException {
+        @java.io.Serial
+        private static final long serialVersionUID = 1L;
+
         private SkillRunExecutionException(ExecutionException cause) {
             super(cause);
         }
     }
 
     private static final class SkillRunTimeoutException extends RuntimeException {
+        @java.io.Serial
+        private static final long serialVersionUID = 1L;
+
         private SkillRunTimeoutException(TimeoutException cause) {
             super(cause);
         }
     }
 
     private static final class SkillRunInterruptedException extends RuntimeException {
+        @java.io.Serial
+        private static final long serialVersionUID = 1L;
+
         private SkillRunInterruptedException(InterruptedException cause) {
             super(cause);
         }

@@ -8,6 +8,7 @@ import dev.logicojp.reviewer.service.CopilotService;
 import dev.logicojp.reviewer.service.TemplateService;
 import dev.logicojp.reviewer.util.FeatureFlags;
 import com.github.copilot.sdk.CopilotClient;
+import io.micronaut.core.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -79,11 +80,11 @@ public class ReviewOrchestratorFactory {
     /// @param reasoningEffort    Reasoning effort level for reasoning models (nullable)
     /// @param outputConstraints  Output constraints template content (nullable)
     /// @return A new ReviewOrchestrator ready to execute reviews
-    public ReviewOrchestrator create(String githubToken,
+    public ReviewOrchestrator create(@Nullable String githubToken,
                                      ExecutionConfig executionConfig,
                                      List<CustomInstruction> customInstructions,
-                                     String reasoningEffort,
-                                     String outputConstraints) {
+                                     @Nullable String reasoningEffort,
+                                     @Nullable String outputConstraints) {
         var orchestratorConfig = buildOrchestratorConfig(
             githubToken,
             executionConfig,

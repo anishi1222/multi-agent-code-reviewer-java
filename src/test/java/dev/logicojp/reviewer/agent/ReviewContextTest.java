@@ -34,7 +34,8 @@ class ReviewContextTest {
                     null,
                     new ReviewContext.CachedResources(null, null),
                     new LocalFileConfig(),
-                    scheduler);
+                    scheduler,
+                    null);
 
                 String result = context.toString();
 
@@ -65,7 +66,8 @@ class ReviewContextTest {
                     null,
                     new ReviewContext.CachedResources(null, null),
                     new LocalFileConfig(),
-                    scheduler);
+                    scheduler,
+                    null);
 
                 assertThat(context.customInstructions()).isEmpty();
             } finally {

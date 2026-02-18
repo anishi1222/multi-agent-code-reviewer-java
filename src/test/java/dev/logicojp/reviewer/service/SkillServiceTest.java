@@ -3,6 +3,7 @@ package dev.logicojp.reviewer.service;
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
+import dev.logicojp.reviewer.config.SkillConfig;
 import dev.logicojp.reviewer.skill.SkillDefinition;
 import dev.logicojp.reviewer.util.FeatureFlags;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +34,8 @@ class SkillServiceTest {
             new dev.logicojp.reviewer.skill.SkillRegistry(),
             newCopilotService(),
             new GithubMcpConfig(null, null, null, null, null, null),
-            new ExecutionConfig(1, 1, 1, 1, 1, 1, 1, 1, 0),
+            new ExecutionConfig(1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0),
+            SkillConfig.defaults(),
             new FeatureFlags(false, false)
         );
 
@@ -50,7 +52,8 @@ class SkillServiceTest {
             new dev.logicojp.reviewer.skill.SkillRegistry(),
             newCopilotService(),
             new GithubMcpConfig(null, null, null, null, null, null),
-            new ExecutionConfig(1, 1, 1, 1, 1, 1, 1, 1, 0),
+            new ExecutionConfig(1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0),
+            SkillConfig.defaults(),
             new FeatureFlags(false, false)
         );
 

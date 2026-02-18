@@ -13,7 +13,10 @@ public record ExecutionConfig(
     long skillTimeoutMinutes,
     long summaryTimeoutMinutes,
     long ghAuthTimeoutSeconds,
-    int maxRetries
+    int maxRetries,
+    int maxAccumulatedSize,
+    int initialAccumulatedCapacity,
+    int instructionBufferExtraCapacity
 ) {
 
     public static final int DEFAULT_MAX_RETRIES = 2;
@@ -25,6 +28,9 @@ public record ExecutionConfig(
     private static final long DEFAULT_SKILL_TIMEOUT_MINUTES = 5;
     private static final long DEFAULT_SUMMARY_TIMEOUT_MINUTES = 5;
     private static final long DEFAULT_GH_AUTH_TIMEOUT_SECONDS = 10;
+    public static final int DEFAULT_MAX_ACCUMULATED_SIZE = 4 * 1024 * 1024;
+    public static final int DEFAULT_INITIAL_ACCUMULATED_CAPACITY = 4096;
+    public static final int DEFAULT_INSTRUCTION_BUFFER_EXTRA_CAPACITY = 32;
 
     public ExecutionConfig {
         parallelism = ConfigDefaults.defaultIfNonPositive(parallelism, DEFAULT_PARALLELISM);
@@ -36,6 +42,9 @@ public record ExecutionConfig(
         summaryTimeoutMinutes = ConfigDefaults.defaultIfNonPositive(summaryTimeoutMinutes, DEFAULT_SUMMARY_TIMEOUT_MINUTES);
         ghAuthTimeoutSeconds = ConfigDefaults.defaultIfNonPositive(ghAuthTimeoutSeconds, DEFAULT_GH_AUTH_TIMEOUT_SECONDS);
         maxRetries = ConfigDefaults.defaultIfNegative(maxRetries, DEFAULT_MAX_RETRIES);
+        maxAccumulatedSize = ConfigDefaults.defaultIfNonPositive(maxAccumulatedSize, DEFAULT_MAX_ACCUMULATED_SIZE);
+        initialAccumulatedCapacity = ConfigDefaults.defaultIfNonPositive(initialAccumulatedCapacity, DEFAULT_INITIAL_ACCUMULATED_CAPACITY);
+        instructionBufferExtraCapacity = ConfigDefaults.defaultIfNonPositive(instructionBufferExtraCapacity, DEFAULT_INSTRUCTION_BUFFER_EXTRA_CAPACITY);
     }
 
     /// Returns a copy of this config with the parallelism value replaced.
@@ -57,6 +66,9 @@ public record ExecutionConfig(
         private long summaryTimeoutMinutes;
         private long ghAuthTimeoutSeconds;
         private int maxRetries;
+        private int maxAccumulatedSize;
+        private int initialAccumulatedCapacity;
+        private int instructionBufferExtraCapacity;
 
         public static Builder from(ExecutionConfig source) {
             var b = new Builder();
@@ -69,6 +81,9 @@ public record ExecutionConfig(
             b.summaryTimeoutMinutes = source.summaryTimeoutMinutes;
             b.ghAuthTimeoutSeconds = source.ghAuthTimeoutSeconds;
             b.maxRetries = source.maxRetries;
+            b.maxAccumulatedSize = source.maxAccumulatedSize;
+            b.initialAccumulatedCapacity = source.initialAccumulatedCapacity;
+            b.instructionBufferExtraCapacity = source.instructionBufferExtraCapacity;
             return b;
         }
 
@@ -111,10 +126,26 @@ public record ExecutionConfig(
             return this;
         }
 
+        public Builder maxAccumulatedSize(int maxAccumulatedSize) {
+            this.maxAccumulatedSize = maxAccumulatedSize;
+            return this;
+        }
+
+        public Builder initialAccumulatedCapacity(int initialAccumulatedCapacity) {
+            this.initialAccumulatedCapacity = initialAccumulatedCapacity;
+            return this;
+        }
+
+        public Builder instructionBufferExtraCapacity(int instructionBufferExtraCapacity) {
+            this.instructionBufferExtraCapacity = instructionBufferExtraCapacity;
+            return this;
+        }
+
         public ExecutionConfig build() {
             return new ExecutionConfig(parallelism, reviewPasses, orchestratorTimeoutMinutes,
                 agentTimeoutMinutes, idleTimeoutMinutes, skillTimeoutMinutes,
-                summaryTimeoutMinutes, ghAuthTimeoutSeconds, maxRetries);
+                summaryTimeoutMinutes, ghAuthTimeoutSeconds, maxRetries,
+                maxAccumulatedSize, initialAccumulatedCapacity, instructionBufferExtraCapacity);
         }
     }
 }

@@ -134,7 +134,7 @@ public class TemplateService {
             logger.debug("Loading template from file: {}", templatePath);
             return Files.readString(templatePath);
         } catch (IOException e) {
-            logger.warn("Failed to read template file {}: {}", templatePath, e.getMessage());
+            logger.warn("Failed to read template file {}: {}", templatePath, e.getMessage(), e);
             return null;
         }
     }
@@ -150,7 +150,7 @@ public class TemplateService {
                 return new String(is.readAllBytes(), StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
-            logger.warn("Failed to read template from classpath {}: {}", resourcePath, e.getMessage());
+            logger.warn("Failed to read template from classpath {}: {}", resourcePath, e.getMessage(), e);
         }
         return null;
     }

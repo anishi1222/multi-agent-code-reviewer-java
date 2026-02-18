@@ -111,7 +111,7 @@ final class ReviewRetryExecutor {
 
     private void logExceptionRetry(int attempt, int totalAttempts, Exception e) {
         logger.warn("Agent {} threw exception on attempt {}/{}: {}. Retrying...",
-            agentName, attempt, totalAttempts, e.getMessage());
+            agentName, attempt, totalAttempts, e.getMessage(), e);
     }
 
     private void logExceptionFinal(int attempt, int totalAttempts, Exception e) {

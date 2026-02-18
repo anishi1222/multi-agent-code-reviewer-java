@@ -80,13 +80,15 @@ public class ReviewAgent {
     /// objects whose lifecycle is bound to a single review execution — not shared singletons.
     /// For testing, use the full-parameter constructor to inject custom collaborators.
     static AgentCollaborators defaultCollaborators(AgentConfig config, ReviewContext ctx) {
+        var tuning = ctx.agentTuningConfig();
         return new AgentCollaborators(
             new ReviewTargetInstructionResolver(
                 config,
                 ctx.localFileConfig(),
                 () -> logger.debug("Computed source content locally for agent: {}", config.name())
             ),
-            new ReviewSessionMessageSender(config.name()),
+            new ReviewSessionMessageSender(config.name(),
+                tuning.maxAccumulatedSize(), tuning.initialAccumulatedCapacity()),
             new ReviewRetryExecutor(config.name(), ctx.timeoutConfig().maxRetries()),
             new ReviewSessionConfigFactory(),
             new ReviewResultFactory()
@@ -243,7 +245,8 @@ public class ReviewAgent {
             config.name(),
             FOLLOWUP_PROMPT,
             localSourceHeaderPrompt,
-            localReviewResultPrompt
+            localReviewResultPrompt,
+            ctx.agentTuningConfig().instructionBufferExtraCapacity()
         );
     }
 

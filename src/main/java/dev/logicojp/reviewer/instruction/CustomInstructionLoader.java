@@ -176,7 +176,7 @@ public class CustomInstructionLoader {
                 null
             ));
         } catch (IOException e) {
-            logger.warn("Failed to read instruction file {}: {}", path, e.getMessage());
+            logger.warn("Failed to read instruction file {}: {}", path, e.getMessage(), e);
             return Optional.empty();
         }
     }

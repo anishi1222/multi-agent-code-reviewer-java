@@ -44,7 +44,7 @@ public class AgentConfigLoader {
 
     public static final class Builder {
         private final List<Path> agentDirectories;
-        private SkillConfig skillConfig = new SkillConfig(null, null);
+        private SkillConfig skillConfig = SkillConfig.defaults();
         private String defaultOutputFormat;
 
         private Builder(List<Path> agentDirectories) {
@@ -52,7 +52,7 @@ public class AgentConfigLoader {
         }
 
         public Builder skillConfig(SkillConfig skillConfig) {
-            this.skillConfig = skillConfig != null ? skillConfig : new SkillConfig(null, null);
+            this.skillConfig = skillConfig != null ? skillConfig : SkillConfig.defaults();
             return this;
         }
 
@@ -68,7 +68,7 @@ public class AgentConfigLoader {
     
     /// Creates a loader with a single agents directory and default skill settings.
     public AgentConfigLoader(Path agentsDirectory) {
-        this(List.of(agentsDirectory), new SkillConfig(null, null), null);
+        this(List.of(agentsDirectory), SkillConfig.defaults(), null);
     }
 
     /// Creates a loader with multiple agent directories, skill configuration,
@@ -136,7 +136,7 @@ public class AgentConfigLoader {
                         logger.info("Loaded agent: {} from {}", config.name(), file.getFileName());
                     }
                 } catch (IOException | IllegalArgumentException | UncheckedIOException e) {
-                    logger.error("Failed to load agent from {}: {}", file, e.getMessage());
+                    logger.error("Failed to load agent from {}: {}", file, e.getMessage(), e);
                 }
             }
         }
@@ -202,7 +202,7 @@ public class AgentConfigLoader {
                 logger.info("Loaded global skill: {} from {}", skill.id(),
                     skillFile.getParent().getFileName());
             } catch (IOException | IllegalArgumentException | UncheckedIOException e) {
-                logger.error("Failed to load skill from {}: {}", skillFile, e.getMessage());
+                logger.error("Failed to load skill from {}: {}", skillFile, e.getMessage(), e);
             }
         }
 

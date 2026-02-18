@@ -5,7 +5,7 @@ package dev.logicojp.reviewer.service;
 ///
 /// Replaces improper usage of {@link java.util.concurrent.ExecutionException}
 /// in CLI validation paths, providing clear semantics for CLI-related failures.
-public class CopilotCliException extends RuntimeException {
+public final class CopilotCliException extends RuntimeException {
     @java.io.Serial
     private static final long serialVersionUID = 1L;
 

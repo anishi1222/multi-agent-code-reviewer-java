@@ -52,6 +52,10 @@ final class ReviewContextFactory {
             .cachedSourceContent(cachedSourceContent)
             .localFileConfig(localFileConfig)
             .sharedScheduler(sharedScheduler)
+            .agentTuningConfig(new ReviewContext.AgentTuningConfig(
+                executionConfig.maxAccumulatedSize(),
+                executionConfig.initialAccumulatedCapacity(),
+                executionConfig.instructionBufferExtraCapacity()))
             .build();
     }
 }

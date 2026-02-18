@@ -17,7 +17,7 @@ class ReviewSessionMessageSenderTest {
     @Test
     @DisplayName("送信結果を正常に収集して返す")
     void returnsCollectedContent() throws Exception {
-        var sender = new ReviewSessionMessageSender("security");
+        var sender = new ReviewSessionMessageSender("security", 4 * 1024 * 1024, 4096);
         var collectorRef = new AtomicReference<ContentCollector>();
 
         String result = sender.sendWithActivityTimeout(
@@ -41,7 +41,7 @@ class ReviewSessionMessageSenderTest {
     @Test
     @DisplayName("最大タイムアウト時は蓄積コンテンツを返す")
     void returnsAccumulatedContentOnTimeout() throws Exception {
-        var sender = new ReviewSessionMessageSender("security");
+        var sender = new ReviewSessionMessageSender("security", 4 * 1024 * 1024, 4096);
         var collectorRef = new AtomicReference<ContentCollector>();
 
         String result = sender.sendWithActivityTimeout(
@@ -62,7 +62,7 @@ class ReviewSessionMessageSenderTest {
     @Test
     @DisplayName("タイムアウトかつ蓄積なしならTimeoutExceptionを送出する")
     void throwsTimeoutWhenNoAccumulatedContent() {
-        var sender = new ReviewSessionMessageSender("security");
+        var sender = new ReviewSessionMessageSender("security", 4 * 1024 * 1024, 4096);
         var collectorRef = new AtomicReference<ContentCollector>();
 
         assertThatThrownBy(() -> sender.sendWithActivityTimeout(
@@ -82,7 +82,7 @@ class ReviewSessionMessageSenderTest {
     @Test
     @DisplayName("例外時でもidleTaskとsubscriptionをクリーンアップする")
     void cleansUpOnFailure() {
-        var sender = new ReviewSessionMessageSender("security");
+        var sender = new ReviewSessionMessageSender("security", 4 * 1024 * 1024, 4096);
         AtomicBoolean canceled = new AtomicBoolean(false);
         AtomicInteger closedCount = new AtomicInteger(0);
 

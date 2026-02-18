@@ -28,7 +28,7 @@ class FallbackSummaryBuilderTest {
     @DisplayName("成功と失敗の結果をテンプレートに従って組み立てる")
     void buildsFallbackSummaryWithSuccessAndFailure() throws IOException {
         TemplateService templateService = createTemplateService();
-        var builder = new FallbackSummaryBuilder(templateService, 10);
+        var builder = new FallbackSummaryBuilder(templateService, 10, 3);
 
         var success = new ReviewResult(
             agent("code", "Code"),

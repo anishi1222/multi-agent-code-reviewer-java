@@ -28,7 +28,7 @@ class SummaryPromptBuilderTest {
     @DisplayName("成功結果は最大サイズまで連結され超過分は切り詰められる")
     void truncatesAndLimitsPromptContent() throws IOException {
         TemplateService templateService = createTemplateService();
-        var builder = new SummaryPromptBuilder(templateService, 20, 25);
+        var builder = new SummaryPromptBuilder(templateService, 20, 25, 8192, 4096);
 
         var result1 = successResult("A", "123456789012345678901234567890");
         var result2 = successResult("B", "abcdefghij");
@@ -45,7 +45,7 @@ class SummaryPromptBuilderTest {
     @DisplayName("失敗結果はエントリとして出力される")
     void includesErrorEntries() throws IOException {
         TemplateService templateService = createTemplateService();
-        var builder = new SummaryPromptBuilder(templateService, 50, 200);
+        var builder = new SummaryPromptBuilder(templateService, 50, 200, 8192, 4096);
 
         var errorResult = new ReviewResult(
             agent("security", "Security"),

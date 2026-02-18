@@ -147,7 +147,7 @@ class SkillDefinitionTest {
                 List.of(param), Map.of()
             );
 
-            String result = skill.buildPrompt(Map.of("language", "Java"));
+            String result = skill.buildPrompt(Map.of("language", "Java"), 10_000);
 
             assertThat(result).isEqualTo("Analyze code in Java");
         }
@@ -163,7 +163,7 @@ class SkillDefinitionTest {
                 List.of(param1, param2), Map.of()
             );
 
-            String result = skill.buildPrompt(Map.of("language", "Python", "scope", "module"));
+            String result = skill.buildPrompt(Map.of("language", "Python", "scope", "module"), 10_000);
 
             assertThat(result).isEqualTo("Check Python code in module");
         }
@@ -178,7 +178,7 @@ class SkillDefinitionTest {
                 List.of(param), Map.of()
             );
 
-            String result = skill.buildPrompt(Map.of());
+            String result = skill.buildPrompt(Map.of(), 10_000);
 
             assertThat(result).isEqualTo("Output in JSON");
         }
@@ -193,7 +193,7 @@ class SkillDefinitionTest {
                 List.of(param), Map.of()
             );
 
-            String result = skill.buildPrompt(Map.of("format", "XML"));
+            String result = skill.buildPrompt(Map.of("format", "XML"), 10_000);
 
             assertThat(result).isEqualTo("Output in XML");
         }
@@ -205,7 +205,7 @@ class SkillDefinitionTest {
                 VALID_ID, VALID_NAME, VALID_DESCRIPTION, "Simple prompt"
             );
 
-            String result = skill.buildPrompt(Map.of());
+            String result = skill.buildPrompt(Map.of(), 10_000);
 
             assertThat(result).isEqualTo("Simple prompt");
         }

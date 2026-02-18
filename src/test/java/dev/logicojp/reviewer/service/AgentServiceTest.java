@@ -35,7 +35,7 @@ class AgentServiceTest {
         Files.writeString(tempDir.resolve("default-output-format.md"), "## Output");
 
         AgentService service = new AgentService(
-            new SkillConfig(null, null),
+            SkillConfig.defaults(),
             templateService,
             new AgentPathConfig(List.of(configured.toString(), tempDir.resolve("missing").toString()))
         );
@@ -74,7 +74,7 @@ class AgentServiceTest {
         TemplateService templateService = new TemplateService(new TemplateConfig(tempDir.toString(),
             "default-output-format.md", null, null, null, null, null, null));
         AgentService service = new AgentService(
-            new SkillConfig(null, null),
+            SkillConfig.defaults(),
             templateService,
             new AgentPathConfig(List.of(configured.toString()))
         );

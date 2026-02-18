@@ -37,7 +37,7 @@ class SummaryGeneratorTest {
             "high",
             1,
             templateService,
-            new SummaryConfig(0, 0, 0),
+            new SummaryConfig(0, 0, 0, 0, 0, 0),
             new SummaryGenerator.SummaryCollaborators(
                 null,
                 null,

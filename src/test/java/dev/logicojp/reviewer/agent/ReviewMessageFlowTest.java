@@ -18,7 +18,8 @@ class ReviewMessageFlowTest {
             "security",
             "FOLLOWUP",
             "LOCAL_HEADER",
-            "LOCAL_RESULT"
+            "LOCAL_RESULT",
+            32
         );
     }
 

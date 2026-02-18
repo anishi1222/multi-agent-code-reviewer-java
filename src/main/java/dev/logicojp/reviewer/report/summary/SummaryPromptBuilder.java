@@ -12,16 +12,26 @@ final class SummaryPromptBuilder {
     private final TemplateService templateService;
     private final int maxContentPerAgent;
     private final int maxTotalPromptContent;
+    private final int averageResultContentEstimate;
+    private final int initialBufferMargin;
 
-    SummaryPromptBuilder(TemplateService templateService, int maxContentPerAgent, int maxTotalPromptContent) {
+    SummaryPromptBuilder(TemplateService templateService, int maxContentPerAgent,
+                         int maxTotalPromptContent,
+                         int averageResultContentEstimate, int initialBufferMargin) {
         this.templateService = templateService;
         this.maxContentPerAgent = maxContentPerAgent;
         this.maxTotalPromptContent = maxTotalPromptContent;
+        this.averageResultContentEstimate = averageResultContentEstimate;
+        this.initialBufferMargin = initialBufferMargin;
     }
 
     String buildSummaryPrompt(List<ReviewResult> results, String repository) {
         var resultsSection = new StringBuilder(
-            Math.min(results.size() * 8192, maxTotalPromptContent + 4096));
+            Math.min(
+                results.size() * averageResultContentEstimate,
+                maxTotalPromptContent + initialBufferMargin
+            )
+        );
         int totalContentSize = 0;
 
         // Pre-load templates once to avoid per-iteration regex/Matcher overhead

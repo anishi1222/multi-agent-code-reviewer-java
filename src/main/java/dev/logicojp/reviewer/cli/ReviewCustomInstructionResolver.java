@@ -81,7 +81,7 @@ class ReviewCustomInstructionResolver {
                 path.toString(), content.trim(),
                 InstructionSource.LOCAL_FILE, null, null));
         } catch (IOException | SecurityException e) {
-            logger.warn("Failed to read instruction file {}: {}", path, e.getMessage());
+            logger.warn("Failed to read instruction file {}: {}", path, e.getMessage(), e);
             return Optional.empty();
         }
     }

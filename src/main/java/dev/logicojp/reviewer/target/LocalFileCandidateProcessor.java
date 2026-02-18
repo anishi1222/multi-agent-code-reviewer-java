@@ -84,7 +84,7 @@ final class LocalFileCandidateProcessor {
             String relativePath = toRelativePath(path);
             return ProcessedCandidate.included(relativePath, content, size);
         } catch (IOException e) {
-            logger.warn("Failed to read file {}: {}", candidate.path(), e.getMessage());
+            logger.warn("Failed to read file {}: {}", candidate.path(), e.getMessage(), e);
             return ProcessedCandidate.skip();
         }
     }

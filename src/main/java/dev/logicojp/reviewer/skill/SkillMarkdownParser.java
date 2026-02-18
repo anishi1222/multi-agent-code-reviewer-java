@@ -119,7 +119,7 @@ public class SkillMarkdownParser {
                 .sorted()
                 .toList();
         } catch (IOException e) {
-            logger.error("Failed to discover skills in {}: {}", skillsRoot, e.getMessage());
+            logger.error("Failed to discover skills in {}: {}", skillsRoot, e.getMessage(), e);
             return List.of();
         }
     }

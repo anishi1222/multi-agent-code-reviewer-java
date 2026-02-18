@@ -7,6 +7,7 @@ import dev.logicojp.reviewer.orchestrator.ReviewOrchestrator;
 import dev.logicojp.reviewer.orchestrator.ReviewOrchestratorFactory;
 import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.target.ReviewTarget;
+import io.micronaut.core.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -80,10 +81,10 @@ public class ReviewService {
     public List<ReviewResult> executeReviews(
             Map<String, AgentConfig> agentConfigs,
             ReviewTarget target,
-            String githubToken,
+            @Nullable String githubToken,
             int parallelism,
-            List<CustomInstruction> customInstructions,
-            String reasoningEffort) {
+            @Nullable List<CustomInstruction> customInstructions,
+            @Nullable String reasoningEffort) {
         
         logger.info("Executing reviews for {} agents on target: {}", 
             agentConfigs.size(), target.displayName());

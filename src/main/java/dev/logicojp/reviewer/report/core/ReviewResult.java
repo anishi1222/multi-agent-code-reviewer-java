@@ -15,9 +15,10 @@ public record ReviewResult(
     boolean success,
     @Nullable String errorMessage
 ) {
+    private static final Clock DEFAULT_CLOCK = Clock.systemUTC();
 
     public ReviewResult {
-        timestamp = (timestamp == null) ? Instant.now() : timestamp;
+        timestamp = (timestamp == null) ? DEFAULT_CLOCK.instant() : timestamp;
     }
 
     public static Builder builder() {
@@ -39,7 +40,7 @@ public record ReviewResult(
         private String errorMessage;
 
         Builder() {
-            this(Clock.systemUTC());
+            this(DEFAULT_CLOCK);
         }
 
         Builder(Clock clock) {

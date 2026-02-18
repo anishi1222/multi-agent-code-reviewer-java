@@ -66,7 +66,7 @@ public class ReportGenerator {
                 paths.add(generateReport(result));
             } catch (IOException e) {
                 String agentName = result.agentConfig().name();
-                logger.error("Failed to generate report for {}: {}", agentName, e.getMessage());
+                logger.error("Failed to generate report for {}: {}", agentName, e.getMessage(), e);
                 failures.add(agentName);
             }
         }

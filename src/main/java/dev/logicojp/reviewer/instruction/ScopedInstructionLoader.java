@@ -59,11 +59,11 @@ final class ScopedInstructionLoader {
                         logger.info("Loaded scoped instruction from: {} (applyTo: {})",
                             path, parsed.applyTo());
                     } catch (IOException e) {
-                        logger.warn("Failed to read instruction file {}: {}", path, e.getMessage());
+                        logger.warn("Failed to read instruction file {}: {}", path, e.getMessage(), e);
                     }
                 });
         } catch (IOException e) {
-            logger.warn("Failed to scan instructions directory {}: {}", instructionsDir, e.getMessage());
+            logger.warn("Failed to scan instructions directory {}: {}", instructionsDir, e.getMessage(), e);
         }
         return instructions;
     }

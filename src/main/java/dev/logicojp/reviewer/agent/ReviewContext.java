@@ -24,6 +24,7 @@ import java.util.concurrent.ScheduledExecutorService;
 /// @param cachedResources     Pre-computed cached resources for reuse across agents (nullable fields)
 /// @param localFileConfig     Local file collection configuration (used by fallback path)
 /// @param sharedScheduler     Shared ScheduledExecutorService for idle-timeout scheduling
+/// @param agentTuningConfig   Internal tuning parameters for agent execution
 public record ReviewContext(
     CopilotClient client,
     TimeoutConfig timeoutConfig,
@@ -32,7 +33,8 @@ public record ReviewContext(
     @Nullable String outputConstraints,
     CachedResources cachedResources,
     LocalFileConfig localFileConfig,
-    ScheduledExecutorService sharedScheduler
+    ScheduledExecutorService sharedScheduler,
+    AgentTuningConfig agentTuningConfig
 ) {
 
     /// Groups timeout and retry parameters.
@@ -44,12 +46,24 @@ public record ReviewContext(
         @Nullable String sourceContent
     ) {}
 
+    /// Internal tuning parameters for agent execution.
+    public record AgentTuningConfig(
+        int maxAccumulatedSize,
+        int initialAccumulatedCapacity,
+        int instructionBufferExtraCapacity
+    ) {
+        public static final AgentTuningConfig DEFAULTS = new AgentTuningConfig(
+            4 * 1024 * 1024, 4096, 32
+        );
+    }
+
     public ReviewContext {
         Objects.requireNonNull(client, "client must not be null");
         Objects.requireNonNull(sharedScheduler, "sharedScheduler must not be null");
         timeoutConfig = timeoutConfig != null ? timeoutConfig : new TimeoutConfig(0, 0, 0);
         customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
         cachedResources = cachedResources != null ? cachedResources : new CachedResources(null, null);
+        agentTuningConfig = agentTuningConfig != null ? agentTuningConfig : AgentTuningConfig.DEFAULTS;
     }
 
     public static Builder builder() {
@@ -68,6 +82,7 @@ public record ReviewContext(
         private String cachedSourceContent;
         private LocalFileConfig localFileConfig;
         private ScheduledExecutorService sharedScheduler;
+        private AgentTuningConfig agentTuningConfig;
 
         public Builder client(CopilotClient client) {
             this.client = client;
@@ -124,6 +139,11 @@ public record ReviewContext(
             return this;
         }
 
+        public Builder agentTuningConfig(AgentTuningConfig agentTuningConfig) {
+            this.agentTuningConfig = agentTuningConfig;
+            return this;
+        }
+
         public ReviewContext build() {
             Objects.requireNonNull(client, "client must not be null");
             Objects.requireNonNull(sharedScheduler, "sharedScheduler must not be null");
@@ -140,7 +160,8 @@ public record ReviewContext(
                 outputConstraints,
                 new CachedResources(cachedMcpServers, cachedSourceContent),
                 effectiveLocalFileConfig,
-                sharedScheduler
+                sharedScheduler,
+                agentTuningConfig
             );
         }
 

@@ -18,7 +18,6 @@ public record SkillDefinition(
     List<SkillParameter> parameters,
     Map<String, String> metadata
 ) {
-
     public SkillDefinition {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("Skill id is required");
@@ -44,15 +43,15 @@ public record SkillDefinition(
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{(\\w+)}");
 
     /// Builds the prompt with parameter substitution in a single pass.
-    /// Parameter values exceeding 10,000 characters are rejected
+    /// Parameter values exceeding {@code maxParameterValueLength} characters are rejected
     /// to mitigate prompt injection and resource exhaustion.
-    public String buildPrompt(Map<String, String> parameterValues) {
+    public String buildPrompt(Map<String, String> parameterValues, int maxParameterValueLength) {
         // Resolve parameter values
         Map<String, String> resolvedValues = new HashMap<>();
         for (SkillParameter param : parameters) {
             String value = parameterValues.getOrDefault(param.name(), param.defaultValue());
             if (value != null) {
-                if (value.length() > 10_000) {
+                if (value.length() > maxParameterValueLength) {
                     throw new IllegalArgumentException(
                         "Parameter value too long for: " + param.name());
                 }

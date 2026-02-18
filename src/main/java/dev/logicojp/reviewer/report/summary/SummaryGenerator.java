@@ -49,11 +49,13 @@ public class SummaryGenerator {
         static SummaryCollaborators defaults(TemplateService templateService,
                                               SummaryConfig summaryConfig,
                                               SummaryGenerator generator) {
-            SummaryConfig effective = summaryConfig != null ? summaryConfig : new SummaryConfig(0, 0, 0);
+            SummaryConfig effective = summaryConfig != null ? summaryConfig : new SummaryConfig(0, 0, 0, 0, 0, 0);
             return new SummaryCollaborators(
                 new SummaryPromptBuilder(templateService,
-                    effective.maxContentPerAgent(), effective.maxTotalPromptContent()),
-                new FallbackSummaryBuilder(templateService, effective.fallbackExcerptLength()),
+                    effective.maxContentPerAgent(), effective.maxTotalPromptContent(),
+                    effective.averageResultContentEstimate(), effective.initialBufferMargin()),
+                new FallbackSummaryBuilder(templateService, effective.fallbackExcerptLength(),
+                    effective.excerptNormalizationMultiplier()),
                 new SummaryFinalReportFormatter(templateService),
                 generator::buildSummaryWithAI
             );

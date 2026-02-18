@@ -39,7 +39,7 @@ class ReportServiceTest {
             null, null, null, null, null, null, null));
 
         AtomicReference<Path> capturedDir = new AtomicReference<>();
-        ReportGeneratorFactory factory = new ReportGeneratorFactory(templateService, new SummaryConfig(0, 0, 0)) {
+        ReportGeneratorFactory factory = new ReportGeneratorFactory(templateService, new SummaryConfig(0, 0, 0, 0, 0, 0)) {
             @Override
             public ReportGenerator createReportGenerator(Path outputDirectory) {
                 return new ReportGenerator(outputDirectory, templateService) {
@@ -58,7 +58,7 @@ class ReportServiceTest {
                                                            String reasoningEffort,
                                                            long timeoutMinutes) {
                 return new SummaryGenerator(outputDirectory, copilotClient, summaryModel, reasoningEffort, timeoutMinutes,
-                    templateService, new SummaryConfig(0, 0, 0));
+                    templateService, new SummaryConfig(0, 0, 0, 0, 0, 0));
             }
         };
 
@@ -77,7 +77,7 @@ class ReportServiceTest {
 
         ReportService service = new ReportService(
             copilotService,
-            new ExecutionConfig(1, 1, 1, 1, 1, 1, 3, 1, 0),
+            new ExecutionConfig(1, 1, 1, 1, 1, 1, 3, 1, 0, 0, 0, 0),
             factory
         );
 
@@ -95,7 +95,7 @@ class ReportServiceTest {
 
         AtomicReference<Long> capturedTimeout = new AtomicReference<>();
         AtomicReference<String> capturedModel = new AtomicReference<>();
-        ReportGeneratorFactory factory = new ReportGeneratorFactory(templateService, new SummaryConfig(0, 0, 0)) {
+        ReportGeneratorFactory factory = new ReportGeneratorFactory(templateService, new SummaryConfig(0, 0, 0, 0, 0, 0)) {
             @Override
             public ReportGenerator createReportGenerator(Path outputDirectory) {
                 return new ReportGenerator(outputDirectory, templateService);
@@ -108,7 +108,7 @@ class ReportServiceTest {
                                                            String reasoningEffort,
                                                            long timeoutMinutes) {
                 return new SummaryGenerator(outputDirectory, copilotClient, summaryModel, reasoningEffort, timeoutMinutes,
-                    templateService, new SummaryConfig(0, 0, 0)) {
+                    templateService, new SummaryConfig(0, 0, 0, 0, 0, 0)) {
                 @Override
                     public Path generateSummary(List<ReviewResult> results, String repository) {
                         capturedTimeout.set(timeoutMinutes);
@@ -134,7 +134,7 @@ class ReportServiceTest {
 
         ReportService service = new ReportService(
             copilotService,
-            new ExecutionConfig(1, 1, 1, 1, 1, 1, 7, 1, 0),
+            new ExecutionConfig(1, 1, 1, 1, 1, 1, 7, 1, 0, 0, 0, 0),
             factory
         );
 

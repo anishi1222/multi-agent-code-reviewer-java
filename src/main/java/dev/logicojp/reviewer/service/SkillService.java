@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.service;
 
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ExecutionConfig;
+import dev.logicojp.reviewer.config.SkillConfig;
 import dev.logicojp.reviewer.util.FeatureFlags;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.skill.SkillDefinition;
@@ -32,12 +33,12 @@ import java.util.function.Function;
 public class SkillService {
 
     private static final Logger logger = LoggerFactory.getLogger(SkillService.class);
-    private static final int MAX_EXECUTOR_CACHE_SIZE = 16;
 
     private final SkillRegistry skillRegistry;
     private final CopilotService copilotService;
     private final GithubMcpConfig githubMcpConfig;
     private final ExecutionConfig executionConfig;
+    private final SkillConfig skillConfig;
     private final FeatureFlags featureFlags;
     private final ExecutorService executorService;
     private final LinkedHashMap<ExecutorCacheKey, SkillExecutor> executorCache;
@@ -47,17 +48,23 @@ public class SkillService {
                         CopilotService copilotService,
                         GithubMcpConfig githubMcpConfig,
                         ExecutionConfig executionConfig,
+                        SkillConfig skillConfig,
                         FeatureFlags featureFlags) {
         this.skillRegistry = skillRegistry;
         this.copilotService = copilotService;
         this.githubMcpConfig = githubMcpConfig;
         this.executionConfig = executionConfig;
+        this.skillConfig = skillConfig;
         this.featureFlags = featureFlags;
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
-        this.executorCache = new LinkedHashMap<>(16, 0.75f, true) {
+        this.executorCache = new LinkedHashMap<>(
+            skillConfig.executorCacheInitialCapacity(),
+            (float) skillConfig.executorCacheLoadFactor(),
+            true
+        ) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<ExecutorCacheKey, SkillExecutor> eldest) {
-                if (size() > MAX_EXECUTOR_CACHE_SIZE) {
+                if (size() > skillConfig.maxExecutorCacheSize()) {
                     eldest.getValue().close();
                     return true;
                 }
@@ -143,11 +150,15 @@ public class SkillService {
                 copilotService.getClient(),
                 githubToken,
                 githubMcpConfig,
-                model,
-                executionConfig.skillTimeoutMinutes(),
+                new SkillExecutor.SkillExecutorConfig(
+                    model,
+                    executionConfig.skillTimeoutMinutes(),
+                    featureFlags.structuredConcurrencySkills(),
+                    skillConfig.maxParameterValueLength(),
+                    skillConfig.executorShutdownTimeoutSeconds()
+                ),
                 executorService,
-                false,
-                featureFlags.structuredConcurrencySkills()
+                false
             );
             executorCache.put(key, executor);
             return executor;
@@ -182,6 +193,6 @@ public class SkillService {
             }
             executorCache.clear();
         }
-        ExecutorUtils.shutdownGracefully(executorService, 60);
+        ExecutorUtils.shutdownGracefully(executorService, skillConfig.serviceShutdownTimeoutSeconds());
     }
 }

@@ -65,7 +65,7 @@ class ReviewOrchestratorFactoryTest {
 
         try (ReviewOrchestrator ignored = factory.create(
             "token",
-            new ExecutionConfig(2, 1, 5, 5, 1, 5, 5, 5, 1),
+            new ExecutionConfig(2, 1, 5, 5, 1, 5, 5, 5, 1, 0, 0, 0),
             List.of(),
             "high",
             "constraints"

@@ -7,10 +7,12 @@ import com.github.copilot.sdk.SystemMessageMode;
 import com.github.copilot.sdk.json.MessageOptions;
 import com.github.copilot.sdk.json.SessionConfig;
 import com.github.copilot.sdk.json.SystemMessageConfig;
+import io.micronaut.core.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -22,27 +24,43 @@ import java.util.concurrent.TimeoutException;
 public class SkillExecutor implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(SkillExecutor.class);
-
     private final CopilotClient client;
     private final String defaultModel;
     private final long timeoutMinutes;
+    private final int maxParameterValueLength;
+    private final int executorShutdownTimeoutSeconds;
     private final Executor executor;
     private final boolean ownsExecutor;
     private final boolean structuredConcurrencyEnabled;
     private final Map<String, Object> cachedMcpServers;
 
     public SkillExecutor(CopilotClient client, String githubToken,
-                         GithubMcpConfig githubMcpConfig, String defaultModel,
-                         long timeoutMinutes, Executor executor,
-                         boolean ownsExecutor,
-                         boolean structuredConcurrencyEnabled) {
+                         GithubMcpConfig githubMcpConfig,
+                         SkillExecutorConfig config,
+                         Executor executor,
+                         boolean ownsExecutor) {
         this.client = client;
-        this.defaultModel = defaultModel;
-        this.timeoutMinutes = timeoutMinutes;
+        this.defaultModel = config.defaultModel();
+        this.timeoutMinutes = config.timeoutMinutes();
+        this.maxParameterValueLength = config.maxParameterValueLength();
+        this.executorShutdownTimeoutSeconds = config.executorShutdownTimeoutSeconds();
         this.executor = executor;
         this.ownsExecutor = ownsExecutor;
-        this.structuredConcurrencyEnabled = structuredConcurrencyEnabled;
+        this.structuredConcurrencyEnabled = config.structuredConcurrencyEnabled();
         this.cachedMcpServers = GithubMcpConfig.buildMcpServers(githubToken, githubMcpConfig).orElse(Map.of());
+    }
+
+    /// Configuration values for {@link SkillExecutor} behavior.
+    public record SkillExecutorConfig(
+        String defaultModel,
+        long timeoutMinutes,
+        boolean structuredConcurrencyEnabled,
+        int maxParameterValueLength,
+        int executorShutdownTimeoutSeconds
+    ) {
+        public SkillExecutorConfig {
+            defaultModel = Objects.requireNonNull(defaultModel, "defaultModel must not be null");
+        }
     }
 
     /// Executes a skill with the given parameters.
@@ -53,7 +71,7 @@ public class SkillExecutor implements AutoCloseable {
     /// Executes a skill with the given parameters and system prompt.
     public CompletableFuture<SkillResult> execute(SkillDefinition skill,
                                                   Map<String, String> parameters,
-                                                  String systemPrompt) {
+                                                  @Nullable String systemPrompt) {
         return CompletableFuture.supplyAsync(() -> executeSafely(skill, parameters, systemPrompt), executor);
     }
 
@@ -103,7 +121,7 @@ public class SkillExecutor implements AutoCloseable {
         skill.validateParameters(parameters);
 
         // Build the prompt with parameter substitution
-        String prompt = skill.buildPrompt(parameters);
+        String prompt = skill.buildPrompt(parameters, maxParameterValueLength);
 
         // Create session with skill configuration
         var sessionConfigBuilder = new SessionConfig()
@@ -146,7 +164,7 @@ public class SkillExecutor implements AutoCloseable {
     @Override
     public void close() {
         if (ownsExecutor && executor instanceof ExecutorService es) {
-            dev.logicojp.reviewer.util.ExecutorUtils.shutdownGracefully(es, 30);
+            dev.logicojp.reviewer.util.ExecutorUtils.shutdownGracefully(es, executorShutdownTimeoutSeconds);
         }
     }
 }

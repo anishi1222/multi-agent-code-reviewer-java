@@ -31,9 +31,13 @@ final class ReviewSessionMessageSender {
     private static final Logger logger = LoggerFactory.getLogger(ReviewSessionMessageSender.class);
 
     private final String agentName;
+    private final int maxAccumulatedSize;
+    private final int initialAccumulatedCapacity;
 
-    ReviewSessionMessageSender(String agentName) {
+    ReviewSessionMessageSender(String agentName, int maxAccumulatedSize, int initialAccumulatedCapacity) {
         this.agentName = agentName;
+        this.maxAccumulatedSize = maxAccumulatedSize;
+        this.initialAccumulatedCapacity = initialAccumulatedCapacity;
     }
 
     String sendWithActivityTimeout(String prompt,
@@ -41,7 +45,8 @@ final class ReviewSessionMessageSender {
                                    PromptSendAction sendAction,
                                    EventRegistrar eventRegistrar,
                                    IdleTaskScheduler idleTaskScheduler) throws Exception {
-        var collector = new ContentCollector(agentName);
+        var collector = new ContentCollector(agentName, System::currentTimeMillis,
+            maxAccumulatedSize, initialAccumulatedCapacity);
         var subscriptions = eventRegistrar.register(collector);
         var idleTask = idleTaskScheduler.schedule(collector);
         try {

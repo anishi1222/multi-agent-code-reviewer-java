@@ -11,10 +11,13 @@ final class FallbackSummaryBuilder {
 
     private final TemplateService templateService;
     private final int excerptLength;
+    private final int excerptNormalizationMultiplier;
 
-    FallbackSummaryBuilder(TemplateService templateService, int excerptLength) {
+    FallbackSummaryBuilder(TemplateService templateService, int excerptLength,
+                           int excerptNormalizationMultiplier) {
         this.templateService = templateService;
         this.excerptLength = excerptLength;
+        this.excerptNormalizationMultiplier = excerptNormalizationMultiplier;
     }
 
     String buildFallbackSummary(List<ReviewResult> results) {
@@ -68,7 +71,7 @@ final class FallbackSummaryBuilder {
             return "N/A";
         }
         String content = result.content();
-        int prefixLength = Math.min(content.length(), excerptLength * 3);
+        int prefixLength = Math.min(content.length(), excerptLength * excerptNormalizationMultiplier);
         String normalizedPrefix = content.substring(0, prefixLength).replaceAll("\\s+", " ").trim();
         if (normalizedPrefix.length() <= excerptLength) {
             return normalizedPrefix;

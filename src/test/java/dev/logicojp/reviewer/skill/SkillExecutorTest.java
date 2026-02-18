@@ -30,10 +30,8 @@ class SkillExecutorTest {
             null,
             null,
             null,
-            "model",
-            1,
+            new SkillExecutor.SkillExecutorConfig("model", 1, false, 10_000, 30),
             Runnable::run,
-            false,
             false
         );
 
@@ -51,11 +49,9 @@ class SkillExecutorTest {
             null,
             null,
             null,
-            "model",
-            1,
+            new SkillExecutor.SkillExecutorConfig("model", 1, false, 10_000, 30),
             es,
-            true,
-            false
+            true
         );
 
         executor.close();
@@ -71,10 +67,8 @@ class SkillExecutorTest {
             null,
             null,
             null,
-            "model",
-            1,
+            new SkillExecutor.SkillExecutorConfig("model", 1, false, 10_000, 30),
             es,
-            false,
             false
         );
 

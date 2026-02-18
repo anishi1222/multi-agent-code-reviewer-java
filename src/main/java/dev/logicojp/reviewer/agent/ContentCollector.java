@@ -17,10 +17,11 @@ import java.util.function.LongSupplier;
 class ContentCollector {
 
     private static final Logger logger = LoggerFactory.getLogger(ContentCollector.class);
-    private static final int MAX_ACCUMULATED_SIZE = 4 * 1024 * 1024; // 4MB
+    private static final long INVALID_CACHE_VERSION = -1L;
 
+    private final int maxAccumulatedSize;
     private final CompletableFuture<String> future = new CompletableFuture<>();
-    private final StringBuilder accumulatedBuilder = new StringBuilder(4096);
+    private final StringBuilder accumulatedBuilder;
     private final Object accumulatedLock = new Object();
     private int accumulatedSize;
     private long accumulatedVersion;
@@ -35,12 +36,23 @@ class ContentCollector {
     private volatile long joinedCacheVersion;
 
     ContentCollector(String agentName) {
-        this(agentName, System::currentTimeMillis);
+        this(agentName, System::currentTimeMillis,
+            ReviewContext.AgentTuningConfig.DEFAULTS.maxAccumulatedSize(),
+            ReviewContext.AgentTuningConfig.DEFAULTS.initialAccumulatedCapacity());
     }
 
     ContentCollector(String agentName, LongSupplier clockMillisSupplier) {
+        this(agentName, clockMillisSupplier,
+            ReviewContext.AgentTuningConfig.DEFAULTS.maxAccumulatedSize(),
+            ReviewContext.AgentTuningConfig.DEFAULTS.initialAccumulatedCapacity());
+    }
+
+    ContentCollector(String agentName, LongSupplier clockMillisSupplier,
+                     int maxAccumulatedSize, int initialAccumulatedCapacity) {
         this.agentName = agentName;
         this.clockMillisSupplier = clockMillisSupplier;
+        this.maxAccumulatedSize = maxAccumulatedSize;
+        this.accumulatedBuilder = new StringBuilder(initialAccumulatedCapacity);
         this.lastActivityTime = new AtomicLong(clockMillisSupplier.getAsLong());
     }
 
@@ -69,12 +81,12 @@ class ContentCollector {
         lastContent.set(content);
         synchronized (accumulatedLock) {
             int nextSize = accumulatedSize + content.length();
-            if (nextSize <= MAX_ACCUMULATED_SIZE) {
+            if (nextSize <= maxAccumulatedSize) {
                 accumulatedBuilder.append(content);
                 accumulatedSize = nextSize;
                 accumulatedVersion++;
                 joinedCache = null;
-                joinedCacheVersion = -1;
+                joinedCacheVersion = INVALID_CACHE_VERSION;
             }
         }
     }

@@ -82,11 +82,11 @@ class PromptLoader {
                           logger.info("Loaded prompt from: {} (description: {})",
                               path.getFileName(), parsed.description());
                       } catch (IOException e) {
-                          logger.warn("Failed to read prompt file {}: {}", path, e.getMessage());
+                          logger.warn("Failed to read prompt file {}: {}", path, e.getMessage(), e);
                       }
                   });
         } catch (IOException e) {
-            logger.warn("Failed to scan prompts directory {}: {}", promptsDir, e.getMessage());
+            logger.warn("Failed to scan prompts directory {}: {}", promptsDir, e.getMessage(), e);
         }
 
         return prompts;

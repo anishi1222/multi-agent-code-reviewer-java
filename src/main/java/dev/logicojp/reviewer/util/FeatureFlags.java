@@ -8,8 +8,4 @@ import io.micronaut.context.annotation.ConfigurationProperties;
 public record FeatureFlags(
     boolean structuredConcurrency,
     boolean structuredConcurrencySkills
-) {
-    public FeatureFlags {
-        // Explicitly kept for consistency with other @ConfigurationProperties records.
-    }
-}
+) {}

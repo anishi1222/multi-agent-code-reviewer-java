@@ -25,15 +25,18 @@ final class ReviewMessageFlow {
     private final String followUpPrompt;
     private final String localSourceHeaderPrompt;
     private final String localReviewResultPrompt;
+    private final int instructionBufferExtraCapacity;
 
     ReviewMessageFlow(String agentName,
                       String followUpPrompt,
                       String localSourceHeaderPrompt,
-                      String localReviewResultPrompt) {
+                      String localReviewResultPrompt,
+                      int instructionBufferExtraCapacity) {
         this.agentName = agentName;
         this.followUpPrompt = followUpPrompt;
         this.localSourceHeaderPrompt = localSourceHeaderPrompt;
         this.localReviewResultPrompt = localReviewResultPrompt;
+        this.instructionBufferExtraCapacity = instructionBufferExtraCapacity;
     }
 
     String execute(String instruction,
@@ -74,7 +77,9 @@ final class ReviewMessageFlow {
     private String sendForLocalReview(String instruction,
                                       String localSourceContent,
                                       PromptSender promptSender) throws Exception {
-        String instructionPrompt = new StringBuilder(instruction.length() + localSourceHeaderPrompt.length() + 32)
+        String instructionPrompt = new StringBuilder(
+            instruction.length() + localSourceHeaderPrompt.length() + instructionBufferExtraCapacity
+        )
             .append(instruction)
             .append("\n\n")
             .append(localSourceHeaderPrompt)

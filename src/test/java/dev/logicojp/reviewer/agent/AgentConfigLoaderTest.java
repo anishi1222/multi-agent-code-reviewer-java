@@ -53,7 +53,7 @@ class AgentConfigLoaderTest {
         @DisplayName("builder経由でローダーを構築できる")
         void buildsLoaderWithBuilder(@TempDir Path tempDir) {
             var loader = AgentConfigLoader.builder(List.of(tempDir))
-                .skillConfig(new SkillConfig(null, null))
+                .skillConfig(SkillConfig.defaults())
                 .defaultOutputFormat("default")
                 .build();
 

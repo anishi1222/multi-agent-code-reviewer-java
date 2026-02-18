@@ -32,7 +32,12 @@ public class SkillCommand {
         String model,
         List<Path> additionalAgentDirs,
         boolean listSkills
-    ) {}
+    ) {
+        ParsedOptions {
+            paramStrings = paramStrings != null ? List.copyOf(paramStrings) : List.of();
+            additionalAgentDirs = additionalAgentDirs != null ? List.copyOf(additionalAgentDirs) : List.of();
+        }
+    }
 
     @Inject
     public SkillCommand(
