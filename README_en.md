@@ -2,8 +2,6 @@
 
 A parallel code review application using multiple AI agents with GitHub Copilot SDK for Java!
 
-![alt text](image.png)
-
 ## Features
 
 - **Parallel Multi-Agent Execution**: Simultaneous review from security, code quality, performance, and best practices perspectives

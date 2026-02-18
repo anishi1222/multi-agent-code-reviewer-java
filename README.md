@@ -2,6 +2,8 @@
 
 AI-powered parallel code review tool that orchestrates multiple specialized agents using the GitHub Copilot SDK for Java.
 
+![alt text](image.png)
+
 ## Quick Start
 
 ```bash
