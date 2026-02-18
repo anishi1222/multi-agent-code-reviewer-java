@@ -19,11 +19,13 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HexFormat;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -41,7 +43,9 @@ public class SkillService {
     private final SkillConfig skillConfig;
     private final FeatureFlags featureFlags;
     private final ExecutorService executorService;
-    private final LinkedHashMap<ExecutorCacheKey, SkillExecutor> executorCache;
+    private final Map<ExecutorCacheKey, SkillExecutor> executorCache;
+    private final Deque<ExecutorCacheKey> executorCacheOrder;
+    private final Object executorCacheOrderLock;
 
     @Inject
     public SkillService(SkillRegistry skillRegistry,
@@ -57,20 +61,12 @@ public class SkillService {
         this.skillConfig = skillConfig;
         this.featureFlags = featureFlags;
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
-        this.executorCache = new LinkedHashMap<>(
+        this.executorCache = new ConcurrentHashMap<>(
             skillConfig.executorCacheInitialCapacity(),
-            (float) skillConfig.executorCacheLoadFactor(),
-            true
-        ) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<ExecutorCacheKey, SkillExecutor> eldest) {
-                if (size() > skillConfig.maxExecutorCacheSize()) {
-                    eldest.getValue().close();
-                    return true;
-                }
-                return false;
-            }
-        };
+            (float) skillConfig.executorCacheLoadFactor()
+        );
+        this.executorCacheOrder = new ArrayDeque<>(skillConfig.executorCacheInitialCapacity());
+        this.executorCacheOrderLock = new Object();
     }
 
     /// Registers all skills from an agent configuration.
@@ -141,27 +137,58 @@ public class SkillService {
             secureHash(githubToken),
             model
         );
-        synchronized (executorCache) {
-            SkillExecutor existing = executorCache.get(key);
-            if (existing != null) {
-                return existing;
+        SkillExecutor existing = executorCache.get(key);
+        if (existing != null) {
+            touchExecutorCacheOrder(key);
+            return existing;
+        }
+
+        var created = new SkillExecutor(
+            copilotService.getClient(),
+            githubToken,
+            githubMcpConfig,
+            new SkillExecutor.SkillExecutorConfig(
+                model,
+                executionConfig.skillTimeoutMinutes(),
+                featureFlags.structuredConcurrencySkills(),
+                skillConfig.maxParameterValueLength(),
+                skillConfig.executorShutdownTimeoutSeconds()
+            ),
+            executorService,
+            false
+        );
+
+        SkillExecutor raced = executorCache.putIfAbsent(key, created);
+        if (raced != null) {
+            created.close();
+            touchExecutorCacheOrder(key);
+            return raced;
+        }
+
+        touchExecutorCacheOrder(key);
+        evictOverflowExecutors();
+        return created;
+    }
+
+    private void touchExecutorCacheOrder(ExecutorCacheKey key) {
+        synchronized (executorCacheOrderLock) {
+            executorCacheOrder.remove(key);
+            executorCacheOrder.addLast(key);
+        }
+    }
+
+    private void evictOverflowExecutors() {
+        synchronized (executorCacheOrderLock) {
+            while (executorCache.size() > skillConfig.maxExecutorCacheSize()) {
+                ExecutorCacheKey eldest = executorCacheOrder.pollFirst();
+                if (eldest == null) {
+                    return;
+                }
+                SkillExecutor removed = executorCache.remove(eldest);
+                if (removed != null) {
+                    removed.close();
+                }
             }
-            var executor = new SkillExecutor(
-                copilotService.getClient(),
-                githubToken,
-                githubMcpConfig,
-                new SkillExecutor.SkillExecutorConfig(
-                    model,
-                    executionConfig.skillTimeoutMinutes(),
-                    featureFlags.structuredConcurrencySkills(),
-                    skillConfig.maxParameterValueLength(),
-                    skillConfig.executorShutdownTimeoutSeconds()
-                ),
-                executorService,
-                false
-            );
-            executorCache.put(key, executor);
-            return executor;
         }
     }
 
@@ -187,11 +214,12 @@ public class SkillService {
 
     @PreDestroy
     public void shutdown() {
-        synchronized (executorCache) {
-            for (SkillExecutor executor : executorCache.values()) {
-                executor.close();
-            }
-            executorCache.clear();
+        for (SkillExecutor executor : executorCache.values()) {
+            executor.close();
+        }
+        executorCache.clear();
+        synchronized (executorCacheOrderLock) {
+            executorCacheOrder.clear();
         }
         ExecutorUtils.shutdownGracefully(executorService, skillConfig.serviceShutdownTimeoutSeconds());
     }
