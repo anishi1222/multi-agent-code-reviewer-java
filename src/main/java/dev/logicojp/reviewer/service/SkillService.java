@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -40,7 +41,6 @@ public class SkillService {
     private final ExecutionConfig executionConfig;
     private final FeatureFlags featureFlags;
     private final ExecutorService executorService;
-    /// LRU access-order map — all access must be guarded by {@code synchronized(executorCache)}.
     private final Map<ExecutorCacheKey, SkillExecutor> executorCache;
 
     @Inject
@@ -55,7 +55,7 @@ public class SkillService {
         this.executionConfig = executionConfig;
         this.featureFlags = featureFlags;
         this.executorService = Executors.newVirtualThreadPerTaskExecutor();
-        this.executorCache = new LinkedHashMap<>(16, 0.75f, true);
+        this.executorCache = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     }
 
     /// Registers all skills from an agent configuration.
@@ -147,7 +147,6 @@ public class SkillService {
         }
     }
 
-    /// Caller must hold synchronized(executorCache).
     private void evictIfNecessary() {
         while (executorCache.size() >= MAX_EXECUTOR_CACHE_SIZE) {
             var it = executorCache.entrySet().iterator();
