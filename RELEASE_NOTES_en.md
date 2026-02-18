@@ -9,6 +9,73 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
 4. Update `README_en.md` and `README_ja.md` with release references and URLs.
 
+## 2026-02-18
+
+### Summary
+- Executed a third full review cycle (best-practices, multiple rounds) and addressed all findings across PRs #41–#65.
+- Split the monolithic Azure WAF agent (`azure-waf.agent.md`) into 5 pillar-specific agents aligned with the Well-Architected Framework.
+- Refactored the report package into sub-packages for improved modularity and visibility control.
+- Applied StepSecurity hardening and added Dependabot configuration for GitHub Actions.
+- Fixed `SkillService` thread-safety issue by using `Collections.synchronizedMap`.
+- Test count increased from 722 to 730+ with additional nullable/defensive-copy tests.
+
+### Highlights
+
+#### PR #65: WAF Agent Split by Pillar
+- Replaced single `azure-waf.agent.md` with 5 pillar-specific agents:
+  - `waf-reliability.agent.md`, `waf-security.agent.md`, `waf-cost-optimization.agent.md`, `waf-operational-excellence.agent.md`, `waf-performance-efficiency.agent.md`
+- Updated all SKILL.md agent references to point to the corresponding pillar agent
+
+#### PR #44: Report Package Sub-Package Split
+- Split `report/` package into `report/finding/`, `report/summary/`, `report/util/` sub-packages
+- Optimized class visibility across 36 files
+
+#### PRs #42, #43, #46, #47, #48: Best Practices Review Remediation (Rounds 1–5)
+- Unified CLI output via `@Factory` + `@Named` PrintStream beans
+- Added `LinkedHashMap` for stable agent ordering in `AgentConfigLoader`
+- Grouped `OrchestratorConfig` prompt fields into `PromptTexts` record
+- Grouped `ReviewContext` fields into `TimeoutConfig` and `CachedResources` records
+- Added volatile to `ContentCollector` cache fields
+- Added virtual thread name prefixes for observability
+- Narrowed `FrontmatterParser` catch clause; used `loadAs()` for type safety
+- Changed `ReviewResult` timestamp from `LocalDateTime` to `Instant`; injected `Clock` for testability
+- Added `Locale.ROOT` to all `toLowerCase` calls
+- Converted string concatenation to text blocks in `AgentPromptBuilder` and `CustomInstruction`
+- Removed redundant code: unused `CommandExecutor` overload, `CopilotService` initialized flag, empty `FeatureFlags` constructor
+
+#### PRs #61, #62: Best Practices Follow-Up Remediation
+- Added compact constructor + builder to `ReviewCommand.ParsedOptions`
+- Made `SkillService` LRU idiomatic via `LinkedHashMap.removeEldestEntry`
+- Replaced generic `RuntimeException` with `SessionEventException` in `ContentCollector`
+- Migrated `SkillResult` timestamp to `Instant` with `Clock`-based overloads
+- Added `SkillConfig.defaults()` factory method
+- Added exception object as final SLF4J argument in all catch-block logs (14 locations)
+
+#### PR #56: SkillService Thread-Safety Fix
+- Replaced `ConcurrentHashMap` with `Collections.synchronizedMap` for `SkillService.executorCache` to avoid `computeIfAbsent` deadlock risk
+
+#### PR #49: StepSecurity Hardening
+- Pinned GitHub Actions to SHA-based references in CI workflow
+- Added `dependabot.yml` for automated GitHub Actions version updates
+
+#### PR #60: CODEOWNERS and CI Hardening
+- Pinned `oracle-actions/setup-java` in CodeQL workflow
+
+#### PR #63: Missing Unit Tests
+- Added unit tests for nullable and defensive-copy changes across 12 files (+203 insertions)
+
+#### PR #64: README Fix
+- Removed duplicate image reference from README files
+
+### Validation
+- Test count: 730+ tests (116 test classes, 0 failures, 0 errors)
+- CI: All required checks passed on every PR
+
+### Merged PRs
+- [#41](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/41)–[#49](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/49), [#56](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/56), [#60](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/60)–[#65](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/65)
+
+---
+
 ## 2026-02-17 (v2)
 
 ### Summary

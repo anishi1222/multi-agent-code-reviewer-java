@@ -9,6 +9,73 @@
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。
 4. `README_en.md` と `README_ja.md` にリリース参照とURLを追記する。
 
+## 2026-02-18
+
+### 概要
+- 3回目のフルレビューサイクル（best-practices、複数ラウンド）を実施し、PR #41〜#65 で全指摘事項に対応しました。
+- Azure WAF エージェント（`azure-waf.agent.md`）を Well-Architected Framework の5つのピラー別エージェントに分割しました。
+- report パッケージをサブパッケージに分割し、モジュール性と可視性制御を改善しました。
+- StepSecurity による CI セキュリティ強化と GitHub Actions 用 Dependabot 設定を追加しました。
+- `SkillService` のスレッドセーフティ問題を `Collections.synchronizedMap` で修正しました。
+- テスト数が 722 から 730 以上に増加（nullable・防御的コピーのテスト追加）。
+
+### 主な変更
+
+#### PR #65: WAF エージェントのピラー別分割
+- 単一の `azure-waf.agent.md` を5つのピラー別エージェントに分割:
+  - `waf-reliability.agent.md`、`waf-security.agent.md`、`waf-cost-optimization.agent.md`、`waf-operational-excellence.agent.md`、`waf-performance-efficiency.agent.md`
+- 全 SKILL.md のエージェント参照を対応するピラー別エージェントに更新
+
+#### PR #44: Report パッケージのサブパッケージ分割
+- `report/` を `report/finding/`、`report/summary/`、`report/util/` サブパッケージに分割
+- 36ファイルでクラスの可視性を最適化
+
+#### PRs #42, #43, #46, #47, #48: ベストプラクティスレビュー対応（ラウンド1〜5）
+- `@Factory` + `@Named` PrintStream ビーンによる CLI 出力の統一
+- `AgentConfigLoader` に `LinkedHashMap` を使用し安定したエージェント順序を確保
+- `OrchestratorConfig` のプロンプトフィールドを `PromptTexts` レコードにグループ化
+- `ReviewContext` のフィールドを `TimeoutConfig` と `CachedResources` レコードにグループ化
+- `ContentCollector` のキャッシュフィールドに volatile を追加
+- 仮想スレッドに名前プレフィックスを追加（可観測性向上）
+- `FrontmatterParser` の catch 句を縮小、`loadAs()` で型安全性向上
+- `ReviewResult` のタイムスタンプを `LocalDateTime` から `Instant` に変更、テスト容易性のため `Clock` を注入
+- 全 `toLowerCase` 呼び出しに `Locale.ROOT` を追加
+- `AgentPromptBuilder` と `CustomInstruction` の文字列連結をテキストブロックに変換
+- 不要コード削除: 未使用の `CommandExecutor` オーバーロード、`CopilotService` の initialized フラグ、空の `FeatureFlags` コンストラクタ
+
+#### PRs #61, #62: ベストプラクティスフォローアップ対応
+- `ReviewCommand.ParsedOptions` にコンパクトコンストラクタ + ビルダーを追加
+- `SkillService` の LRU を `LinkedHashMap.removeEldestEntry` でイディオマティックに変更
+- `ContentCollector` の汎用 `RuntimeException` を `SessionEventException` に変更
+- `SkillResult` のタイムスタンプを `Instant` に移行、`Clock` ベースのオーバーロードを追加
+- `SkillConfig.defaults()` ファクトリメソッドを追加
+- 全 catch ブロックのログに例外オブジェクトを最終 SLF4J 引数として追加（14箇所）
+
+#### PR #56: SkillService スレッドセーフティ修正
+- `SkillService.executorCache` を `ConcurrentHashMap` から `Collections.synchronizedMap` に変更し `computeIfAbsent` デッドロックリスクを回避
+
+#### PR #49: StepSecurity セキュリティ強化
+- CI ワークフローの GitHub Actions を SHA ベース参照にピン留め
+- GitHub Actions 自動バージョン更新用 `dependabot.yml` を追加
+
+#### PR #60: CODEOWNERS と CI 強化
+- CodeQL ワークフローの `oracle-actions/setup-java` をピン留め
+
+#### PR #63: 不足ユニットテスト追加
+- nullable・防御的コピー変更に対するユニットテストを12ファイルで追加（+203行）
+
+#### PR #64: README 修正
+- README ファイルの重複画像参照を削除
+
+### 検証
+- テスト数: 730 以上（116テストクラス、0失敗、0エラー）
+- CI: 全PR で全必須チェック合格
+
+### マージ済み PR
+- [#41](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/41)〜[#49](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/49)、[#56](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/56)、[#60](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/60)〜[#65](https://github.com/anishi1222/multi-agent-code-reviewer-java/pull/65)
+
+---
+
 ## 2026-02-17 (v2)
 
 ### 概要
