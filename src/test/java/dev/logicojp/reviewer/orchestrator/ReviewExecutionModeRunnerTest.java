@@ -6,9 +6,9 @@ import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -36,21 +36,27 @@ class ReviewExecutionModeRunnerTest {
                 Map.of("security", agent("security")),
                 ReviewTarget.gitHub("owner/repo"),
                 null,
-                (agentConfig, target, context, perAgentTimeoutMinutes) -> ReviewResult.builder()
-                    .agentConfig(agentConfig)
-                    .repository(target.displayName())
-                    .content("""
-                        ### 1. SQLインジェクション
+                (agentConfig, target, context, reviewPasses, perAgentTimeoutMinutes) -> {
+                    var passResults = new ArrayList<ReviewResult>(reviewPasses);
+                    for (int pass = 0; pass < reviewPasses; pass++) {
+                        passResults.add(ReviewResult.builder()
+                            .agentConfig(agentConfig)
+                            .repository(target.displayName())
+                            .content("""
+                                ### 1. SQLインジェクション
 
-                        | 項目 | 内容 |
-                        |------|------|
-                        | **Priority** | High |
-                        | **指摘の概要** | プレースホルダ未使用 |
-                        | **該当箇所** | src/A.java L10 |
-                        """)
-                    .success(true)
-                    .timestamp(Instant.now())
-                    .build()
+                                | 項目 | 内容 |
+                                |------|------|
+                                | **Priority** | High |
+                                | **指摘の概要** | プレースホルダ未使用 |
+                                | **該当箇所** | src/A.java L10 |
+                                """)
+                            .success(true)
+                            .timestamp(Instant.now())
+                            .build());
+                    }
+                    return passResults;
+                }
             );
 
             assertThat(results).hasSize(1);
@@ -71,13 +77,19 @@ class ReviewExecutionModeRunnerTest {
             Map.of("security", agent("security")),
             ReviewTarget.gitHub("owner/repo"),
             null,
-            (agentConfig, target, context, perAgentTimeoutMinutes) -> ReviewResult.builder()
-                .agentConfig(agentConfig)
-                .repository(target.displayName())
-                .content("ok")
-                .success(true)
-                .timestamp(Instant.now())
-                .build()
+            (agentConfig, target, context, reviewPasses, perAgentTimeoutMinutes) -> {
+                var passResults = new ArrayList<ReviewResult>(reviewPasses);
+                for (int pass = 0; pass < reviewPasses; pass++) {
+                    passResults.add(ReviewResult.builder()
+                        .agentConfig(agentConfig)
+                        .repository(target.displayName())
+                        .content("ok")
+                        .success(true)
+                        .timestamp(Instant.now())
+                        .build());
+                }
+                return passResults;
+            }
         );
 
         assertThat(results).hasSize(1);

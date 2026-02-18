@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 /// Executes a code review using the Copilot SDK with a specific agent configuration.
@@ -25,8 +27,6 @@ public class ReviewAgent {
     /// Used as an in-session retry — much faster than a full retry since MCP context is already loaded.
     private static final String FOLLOWUP_PROMPT =
         "Please provide the complete review results in the specified output format.";
-    private static final String DEFAULT_LOCAL_REVIEW_RESULT_PROMPT =
-        AgentPromptBuilder.DEFAULT_LOCAL_REVIEW_RESULT_PROMPT;
 
     record AgentCollaborators(
         ReviewTargetInstructionResolver reviewTargetInstructionResolver,
@@ -145,6 +145,28 @@ public class ReviewAgent {
             e -> reviewResultFactory.fromException(config, target.displayName(), e)
         );
     }
+
+    /// Executes multiple review passes while reusing a single Copilot session for this agent.
+    /// This reduces MCP initialization overhead across passes.
+    public List<ReviewResult> reviewPasses(ReviewTarget target, int reviewPasses) {
+        if (reviewPasses <= 1) {
+            return List.of(review(target));
+        }
+
+        logger.info("Agent {}: reusing one Copilot session for {} passes", config.name(), reviewPasses);
+
+        try {
+            return executeReviewPasses(target, reviewPasses);
+        } catch (Exception e) {
+            logger.error("Agent {}: failed to execute multi-pass session reuse: {}",
+                config.name(), e.getMessage(), e);
+            List<ReviewResult> failures = new ArrayList<>(reviewPasses);
+            for (int pass = 0; pass < reviewPasses; pass++) {
+                failures.add(reviewResultFactory.fromException(config, target.displayName(), e));
+            }
+            return failures;
+        }
+    }
     
     private ReviewResult executeReview(ReviewTarget target) throws Exception {
         logger.info("Starting review with agent: {} for target: {}", 
@@ -158,6 +180,41 @@ public class ReviewAgent {
             resolvedInstruction.localSourceContent(),
             resolvedInstruction.mcpServers()
         );
+    }
+
+    private List<ReviewResult> executeReviewPasses(ReviewTarget target, int reviewPasses) throws Exception {
+        logger.info("Starting {} review passes with shared session for agent: {} on target: {}",
+            reviewPasses, config.name(), target.displayName());
+
+        var resolvedInstruction = resolveTargetInstruction(target);
+        String displayName = target.displayName();
+        String instruction = resolvedInstruction.instruction();
+        String localSourceContent = resolvedInstruction.localSourceContent();
+        Map<String, Object> mcpServers = resolvedInstruction.mcpServers();
+
+        String systemPrompt = buildSystemPromptWithCustomInstruction();
+        SessionConfig sessionConfig = reviewSessionConfigFactory.create(
+            config,
+            ctx,
+            systemPrompt,
+            mcpServers
+        );
+
+        try (var session = ctx.client().createSession(sessionConfig)
+            .get(ctx.timeoutConfig().timeoutMinutes(), TimeUnit.MINUTES)) {
+            List<ReviewResult> results = new ArrayList<>(reviewPasses);
+            for (int pass = 1; pass <= reviewPasses; pass++) {
+                int passNumber = pass;
+                logger.debug("Agent {}: executing pass {}/{} on shared session",
+                    config.name(), passNumber, reviewPasses);
+                ReviewResult result = reviewRetryExecutor.execute(
+                    () -> executeReviewWithSession(displayName, instruction, localSourceContent, mcpServers, session),
+                    e -> reviewResultFactory.fromException(config, displayName, e)
+                );
+                results.add(result);
+            }
+            return results;
+        }
     }
 
     private ReviewTargetInstructionResolver.ResolvedInstruction resolveTargetInstruction(ReviewTarget target) {
@@ -183,17 +240,25 @@ public class ReviewAgent {
 
         try (var session = ctx.client().createSession(sessionConfig)
             .get(ctx.timeoutConfig().timeoutMinutes(), TimeUnit.MINUTES)) {
-            String content = sendAndCollectContent(session, instruction, localSourceContent);
-
-            if (content == null || content.isBlank()) {
-                return reviewResultFactory.emptyContentFailure(config, displayName, mcpServers != null);
-            }
-
-            logger.info("Review completed for agent: {} (content length: {} chars)",
-                config.name(), content.length());
-
-            return reviewResultFactory.success(config, displayName, content);
+            return executeReviewWithSession(displayName, instruction, localSourceContent, mcpServers, session);
         }
+    }
+
+    private ReviewResult executeReviewWithSession(String displayName,
+                                                  String instruction,
+                                                  String localSourceContent,
+                                                  Map<String, Object> mcpServers,
+                                                  CopilotSession session) throws Exception {
+        String content = sendAndCollectContent(session, instruction, localSourceContent);
+
+        if (content == null || content.isBlank()) {
+            return reviewResultFactory.emptyContentFailure(config, displayName, mcpServers != null);
+        }
+
+        logger.info("Review completed for agent: {} (content length: {} chars)",
+            config.name(), content.length());
+
+        return reviewResultFactory.success(config, displayName, content);
     }
     
     /// Sends an instruction asynchronously and collects the response content using

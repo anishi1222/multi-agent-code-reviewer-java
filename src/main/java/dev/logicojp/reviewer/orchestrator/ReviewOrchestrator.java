@@ -47,6 +47,14 @@ public class ReviewOrchestrator implements AutoCloseable {
     @FunctionalInterface
     interface AgentReviewer {
         ReviewResult review(ReviewTarget target);
+
+        default List<ReviewResult> reviewPasses(ReviewTarget target, int reviewPasses) {
+            var results = new java.util.ArrayList<ReviewResult>(reviewPasses);
+            for (int pass = 0; pass < reviewPasses; pass++) {
+                results.add(review(target));
+            }
+            return results;
+        }
     }
 
     @FunctionalInterface
@@ -285,7 +293,7 @@ public class ReviewOrchestrator implements AutoCloseable {
 
     private static AgentReviewerFactory defaultReviewerFactory(OrchestratorConfig orchestratorConfig) {
         return (config, context) -> {
-            ReviewAgent agent = new ReviewAgent(
+            var agent = new ReviewAgent(
                 config,
                 context,
                 new ReviewAgent.PromptTemplates(
@@ -294,7 +302,17 @@ public class ReviewOrchestrator implements AutoCloseable {
                     orchestratorConfig.promptTexts().localReviewResultRequest()
                 )
             );
-            return agent::review;
+            return new AgentReviewer() {
+                @Override
+                public ReviewResult review(ReviewTarget target) {
+                    return agent.review(target);
+                }
+
+                @Override
+                public List<ReviewResult> reviewPasses(ReviewTarget target, int reviewPasses) {
+                    return agent.reviewPasses(target, reviewPasses);
+                }
+            };
         };
     }
 
@@ -339,7 +357,7 @@ public class ReviewOrchestrator implements AutoCloseable {
                 agents,
                 target,
                 sharedContext,
-                agentReviewExecutor::executeAgentSafely
+                agentReviewExecutor::executeAgentPassesSafely
             );
         }
 
@@ -347,7 +365,7 @@ public class ReviewOrchestrator implements AutoCloseable {
             agents,
             target,
             sharedContext,
-            agentReviewExecutor::executeAgentSafely
+            agentReviewExecutor::executeAgentPassesSafely
         );
     }
 

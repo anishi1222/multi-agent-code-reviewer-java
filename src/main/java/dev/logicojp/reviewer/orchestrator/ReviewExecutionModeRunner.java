@@ -17,22 +17,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.BiConsumer;
 
 final class ReviewExecutionModeRunner {
 
-    private record ExecutionParams(int reviewPasses, int totalTasks, long timeoutMinutes, long perAgentTimeoutMinutes) {
+    private record ExecutionParams(int reviewPasses, int agentCount, long timeoutMinutes, long perAgentTimeoutMinutes) {
     }
 
-    private record SubtaskWithConfig(StructuredTaskScope.Subtask<ReviewResult> subtask, AgentConfig config) {
+    private record SubtaskWithConfig(StructuredTaskScope.Subtask<List<ReviewResult>> subtask, AgentConfig config) {
     }
 
     @FunctionalInterface
     interface AgentPassExecutor {
-        ReviewResult execute(AgentConfig config,
-                             ReviewTarget target,
-                             ReviewContext context,
-                             long perAgentTimeoutMinutes);
+        List<ReviewResult> execute(AgentConfig config,
+                                   ReviewTarget target,
+                                   ReviewContext context,
+                                   int reviewPasses,
+                                   long perAgentTimeoutMinutes);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ReviewExecutionModeRunner.class);
@@ -55,31 +55,39 @@ final class ReviewExecutionModeRunner {
                                     AgentPassExecutor agentPassExecutor) {
         ExecutionParams params = executionParams(agents.size());
 
-        List<CompletableFuture<ReviewResult>> futures = new ArrayList<>(params.totalTasks());
-        forEachAgentPass(agents, params.reviewPasses(), (config, passNumber) -> {
-            CompletableFuture<ReviewResult> future = CompletableFuture
+        List<CompletableFuture<List<ReviewResult>>> futures = new ArrayList<>(params.agentCount());
+        for (var config : agents.values()) {
+            CompletableFuture<List<ReviewResult>> future = CompletableFuture
                 .supplyAsync(() -> {
-                    logPassStart(config, passNumber, params.reviewPasses(), false);
-                    return agentPassExecutor.execute(config, target, sharedContext, params.perAgentTimeoutMinutes());
-                }, executorService)
-                .exceptionally(ex -> {
-                    logger.error("Agent {} (pass {}) failed with timeout or error: {}",
-                        config.name(), passNumber, ex.getMessage(), ex);
-                    return failedResult(
+                    return executeAgentPasses(
                         config,
                         target,
-                        "Review timed out or failed (pass %d): %s".formatted(passNumber, ex.getMessage())
+                        sharedContext,
+                        params.reviewPasses(),
+                        params.perAgentTimeoutMinutes(),
+                        false,
+                        agentPassExecutor
+                    );
+                }, executorService)
+                .exceptionally(ex -> {
+                    logger.error("Agent {} failed with timeout or error: {}",
+                        config.name(), ex.getMessage(), ex);
+                    return failedResults(
+                        config,
+                        target,
+                        params.reviewPasses(),
+                        "Review timed out or failed: " + ex.getMessage()
                     );
                 });
             futures.add(future);
-        });
+        }
 
         CompletableFuture<Void> allFutures = CompletableFuture.allOf(
             futures.toArray(new CompletableFuture[0])
         );
 
         awaitAsyncCompletion(allFutures, params.timeoutMinutes());
-        return finalizeAsyncResults(params.reviewPasses(), futures);
+        return finalizeResults(params.reviewPasses(), collectAsyncResults(futures, target));
     }
 
     List<ReviewResult> executeStructured(Map<String, AgentConfig> agents,
@@ -87,18 +95,23 @@ final class ReviewExecutionModeRunner {
                                          ReviewContext sharedContext,
                                          AgentPassExecutor agentPassExecutor) {
         ExecutionParams params = executionParams(agents.size());
-        List<SubtaskWithConfig> tasks = new ArrayList<>(params.totalTasks());
-        try (var scope = StructuredTaskScope.<ReviewResult>open()) {
-            forEachAgentPass(agents, params.reviewPasses(), (config, passNumber) ->
-                tasks.add(new SubtaskWithConfig(scope.fork(() -> {
-                    logPassStart(config, passNumber, params.reviewPasses(), true);
-                    return agentPassExecutor.execute(config, target, sharedContext, params.perAgentTimeoutMinutes());
-                }), config))
-            );
+        List<SubtaskWithConfig> tasks = new ArrayList<>(params.agentCount());
+        try (var scope = StructuredTaskScope.<List<ReviewResult>>open()) {
+            for (var config : agents.values()) {
+                tasks.add(new SubtaskWithConfig(scope.fork(() -> executeAgentPasses(
+                    config,
+                    target,
+                    sharedContext,
+                    params.reviewPasses(),
+                    params.perAgentTimeoutMinutes(),
+                    true,
+                    agentPassExecutor
+                )), config));
+            }
 
             joinStructuredWithTimeout(scope, params.timeoutMinutes());
 
-            return finalizeCollectedResults(
+            return finalizeResults(
                 params.reviewPasses(),
                 collectStructuredResults(tasks, target, params.perAgentTimeoutMinutes())
             );
@@ -109,7 +122,7 @@ final class ReviewExecutionModeRunner {
         int reviewPasses = executionConfig.reviewPasses();
         return new ExecutionParams(
             reviewPasses,
-            agentCount * reviewPasses,
+            agentCount,
             executionConfig.orchestratorTimeoutMinutes(),
             perAgentTimeoutMinutes()
         );
@@ -119,17 +132,17 @@ final class ReviewExecutionModeRunner {
         return executionConfig.agentTimeoutMinutes() * (executionConfig.maxRetries() + 1L);
     }
 
-    private ReviewResult summarizeTaskResult(SubtaskWithConfig taskWithConfig,
-                                             ReviewTarget target,
-                                             long perAgentTimeoutMinutes) {
+    private List<ReviewResult> summarizeTaskResult(SubtaskWithConfig taskWithConfig,
+                                                   ReviewTarget target,
+                                                   long perAgentTimeoutMinutes) {
         return switch (taskWithConfig.subtask().state()) {
             case SUCCESS -> taskWithConfig.subtask().get();
             case FAILED -> {
                 Throwable cause = taskWithConfig.subtask().exception();
-                yield failedResult(taskWithConfig.config(), target,
+                yield failedResults(taskWithConfig.config(), target, executionConfig.reviewPasses(),
                     "Review failed: " + (cause != null ? cause.getMessage() : "unknown"));
             }
-            case UNAVAILABLE -> failedResult(taskWithConfig.config(), target,
+            case UNAVAILABLE -> failedResults(taskWithConfig.config(), target, executionConfig.reviewPasses(),
                 "Review cancelled after " + perAgentTimeoutMinutes + " minutes");
         };
     }
@@ -138,20 +151,29 @@ final class ReviewExecutionModeRunner {
             List<SubtaskWithConfig> tasks,
             ReviewTarget target,
             long perAgentTimeoutMinutes) {
-        List<ReviewResult> results = new ArrayList<>(tasks.size());
+        List<ReviewResult> results = new ArrayList<>(tasks.size() * executionConfig.reviewPasses());
         for (var task : tasks) {
-            results.add(summarizeTaskResult(task, target, perAgentTimeoutMinutes));
+            results.addAll(summarizeTaskResult(task, target, perAgentTimeoutMinutes));
         }
         return results;
     }
 
-    private List<ReviewResult> finalizeCollectedResults(int reviewPasses, List<ReviewResult> results) {
+    private List<ReviewResult> finalizeResults(int reviewPasses, List<ReviewResult> results) {
         return reviewResultPipeline.finalizeResults(results, reviewPasses);
     }
 
-    private List<ReviewResult> finalizeAsyncResults(int reviewPasses,
-                                                    List<CompletableFuture<ReviewResult>> futures) {
-        return finalizeCollectedResults(reviewPasses, reviewResultPipeline.collectFromFutures(futures));
+    private List<ReviewResult> collectAsyncResults(List<CompletableFuture<List<ReviewResult>>> futures,
+                                                   ReviewTarget target) {
+        List<ReviewResult> results = new ArrayList<>(futures.size() * executionConfig.reviewPasses());
+        for (CompletableFuture<List<ReviewResult>> future : futures) {
+            List<ReviewResult> perAgentResults = future.getNow(List.of());
+            if (perAgentResults == null || perAgentResults.isEmpty()) {
+                logger.warn("Review future completed without per-agent results for target {}", target.displayName());
+                continue;
+            }
+            results.addAll(perAgentResults);
+        }
+        return results;
     }
 
     private void awaitAsyncCompletion(CompletableFuture<Void> allFutures, long timeoutMinutes) {
@@ -165,7 +187,7 @@ final class ReviewExecutionModeRunner {
         }
     }
 
-    private void joinStructuredWithTimeout(StructuredTaskScope<ReviewResult, Void> scope,
+    private void joinStructuredWithTimeout(StructuredTaskScope<List<ReviewResult>, Void> scope,
                                            long timeoutMinutes) {
         try {
             StructuredConcurrencyUtils.joinWithTimeout(scope, timeoutMinutes + 1, TimeUnit.MINUTES);
@@ -178,14 +200,23 @@ final class ReviewExecutionModeRunner {
         }
     }
 
-    private void forEachAgentPass(Map<String, AgentConfig> agents,
-                                  int reviewPasses,
-                                  BiConsumer<AgentConfig, Integer> action) {
-        for (var config : agents.values()) {
-            for (int pass = 1; pass <= reviewPasses; pass++) {
-                action.accept(config, pass);
-            }
+    private List<ReviewResult> executeAgentPasses(AgentConfig config,
+                                                  ReviewTarget target,
+                                                  ReviewContext sharedContext,
+                                                  int reviewPasses,
+                                                  long perAgentTimeoutMinutes,
+                                                  boolean structured,
+                                                  AgentPassExecutor agentPassExecutor) {
+        for (int pass = 1; pass <= reviewPasses; pass++) {
+            logPassStart(config, pass, reviewPasses, structured);
         }
+        return agentPassExecutor.execute(
+            config,
+            target,
+            sharedContext,
+            reviewPasses,
+            perAgentTimeoutMinutes
+        );
     }
 
     private void logPassStart(AgentConfig config,
@@ -204,12 +235,19 @@ final class ReviewExecutionModeRunner {
             config.name(), passNumber, reviewPasses);
     }
 
-    private ReviewResult failedResult(AgentConfig config, ReviewTarget target, String errorMessage) {
-        return ReviewResult.builder()
-            .agentConfig(config)
-            .repository(target.displayName())
-            .success(false)
-            .errorMessage(errorMessage)
-            .build();
+    private List<ReviewResult> failedResults(AgentConfig config,
+                                             ReviewTarget target,
+                                             int reviewPasses,
+                                             String errorMessage) {
+        List<ReviewResult> results = new ArrayList<>(reviewPasses);
+        for (int pass = 0; pass < reviewPasses; pass++) {
+            results.add(ReviewResult.builder()
+                .agentConfig(config)
+                .repository(target.displayName())
+                .success(false)
+                .errorMessage(errorMessage)
+                .build());
+        }
+        return results;
     }
 }
