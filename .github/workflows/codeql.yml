@@ -68,6 +68,7 @@ jobs:
       with:
         website: oracle.com
         release: EA
+        version: 26
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
