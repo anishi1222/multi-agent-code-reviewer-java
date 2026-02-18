@@ -61,6 +61,10 @@ public class ReviewAgent {
     private final String localSourceHeaderPrompt;
     private final String localReviewResultPrompt;
 
+    /// Creates default collaborators for a given agent configuration and context.
+    /// Collaborators are created via `new` rather than DI because they are per-invocation
+    /// objects whose lifecycle is bound to a single review execution — not shared singletons.
+    /// For testing, use the full-parameter constructor to inject custom collaborators.
     static AgentCollaborators defaultCollaborators(AgentConfig config, ReviewContext ctx) {
         return new AgentCollaborators(
             new ReviewTargetInstructionResolver(

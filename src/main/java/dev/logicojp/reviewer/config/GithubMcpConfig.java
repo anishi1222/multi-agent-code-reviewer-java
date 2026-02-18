@@ -48,6 +48,11 @@ public record GithubMcpConfig(
     /// Provides compile-time safety within the application; converted to
     /// {@code Map<String, Object>} only at the SDK boundary.
     public record McpServerConfig(String type, String url, List<String> tools, Map<String, String> headers) {
+        public McpServerConfig {
+            tools = tools != null ? List.copyOf(tools) : List.of();
+            headers = headers != null ? Map.copyOf(headers) : Map.of();
+        }
+
         /// Converts to an immutable Map for SDK compatibility.
         public Map<String, Object> toMap() {
             return Map.of(
@@ -65,7 +70,7 @@ public record GithubMcpConfig(
                 .collect(Collectors.toUnmodifiableMap(
                     Map.Entry::getKey,
                     entry -> {
-                        String normalized = entry.getKey() == null ? "" : entry.getKey().toLowerCase();
+                        String normalized = entry.getKey() == null ? "" : entry.getKey().toLowerCase(java.util.Locale.ROOT);
                         if (normalized.contains("authorization") || normalized.contains("token")) {
                             return maskSensitiveHeaderValue(entry.getValue());
                         }

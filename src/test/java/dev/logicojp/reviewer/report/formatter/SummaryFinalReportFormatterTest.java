@@ -9,7 +9,7 @@ import dev.logicojp.reviewer.service.TemplateService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,7 +75,7 @@ class SummaryFinalReportFormatterTest {
             .repository("owner/repo")
             .content(content)
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
     }
 
@@ -85,7 +85,7 @@ class SummaryFinalReportFormatterTest {
             .repository("owner/repo")
             .success(false)
             .errorMessage(error)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
     }
 

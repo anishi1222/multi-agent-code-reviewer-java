@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,7 +51,7 @@ class SummaryPromptBuilderTest {
             agent("security", "Security"),
             "owner/repo",
             null,
-            LocalDateTime.now(),
+            Instant.now(),
             false,
             "timeout"
         );
@@ -95,7 +95,7 @@ class SummaryPromptBuilderTest {
             agent(name, name),
             "owner/repo",
             content,
-            LocalDateTime.now(),
+            Instant.now(),
             true,
             null
         );

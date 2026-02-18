@@ -9,7 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -49,7 +49,7 @@ class AgentReviewExecutorTest {
                     .repository(target.displayName())
                     .content("ok")
                     .success(true)
-                    .timestamp(LocalDateTime.now())
+                    .timestamp(Instant.now())
                     .build()
             );
 

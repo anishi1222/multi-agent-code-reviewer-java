@@ -21,7 +21,7 @@ public class CopilotClientStarter {
     public void start(StartableClient client,
                       long timeoutSeconds,
                       CopilotStartupErrorFormatter startupErrorFormatter)
-        throws ExecutionException, InterruptedException {
+        throws InterruptedException {
         try {
             client.start(timeoutSeconds);
         } catch (ExecutionException e) {
@@ -33,22 +33,22 @@ public class CopilotClientStarter {
         }
     }
 
-    private ExecutionException mapExecutionException(ExecutionException e,
+    private CopilotCliException mapExecutionException(ExecutionException e,
                                                      CopilotStartupErrorFormatter startupErrorFormatter) {
         Throwable cause = e.getCause();
         if (cause instanceof TimeoutException) {
-            return new ExecutionException(startupErrorFormatter.buildProtocolTimeoutMessage(), cause);
+            return new CopilotCliException(startupErrorFormatter.buildProtocolTimeoutMessage(), cause);
         }
         if (cause != null) {
-            return new ExecutionException("Copilot client start failed: " + cause.getMessage(), cause);
+            return new CopilotCliException("Copilot client start failed: " + cause.getMessage(), cause);
         }
-        return e;
+        return new CopilotCliException("Copilot client start failed", e);
     }
 
-    private ExecutionException timeoutDuringStart(long timeoutSeconds,
+    private CopilotCliException timeoutDuringStart(long timeoutSeconds,
                                                   CopilotStartupErrorFormatter startupErrorFormatter,
                                                   TimeoutException e) {
-        return new ExecutionException(startupErrorFormatter.buildClientTimeoutMessage(timeoutSeconds), e);
+        return new CopilotCliException(startupErrorFormatter.buildClientTimeoutMessage(timeoutSeconds), e);
     }
 
     private void closeQuietly(StartableClient client) {

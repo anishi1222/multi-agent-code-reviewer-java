@@ -753,6 +753,13 @@
           "parameterTypes": []
         },
         {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String"
+          ]
+        },
+        {
           "name": "setAgentName",
           "parameterTypes": [
             "java.lang.String"
@@ -787,6 +794,15 @@
         {
           "name": "<init>",
           "parameterTypes": []
+        },
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String"
+          ]
         },
         {
           "name": "setAgentDescription",
@@ -1406,6 +1422,33 @@
       ]
     },
     {
+      "type": "dev.logicojp.reviewer.cli.$CliOutputFactory$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "dev.logicojp.reviewer.cli.$CliOutputFactory$Stderr1$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "dev.logicojp.reviewer.cli.$CliOutputFactory$Stdout0$Definition",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "dev.logicojp.reviewer.cli.$ListAgentsCommand$Definition",
       "methods": [
         {
@@ -1656,6 +1699,9 @@
           "parameterTypes": []
         }
       ]
+    },
+    {
+      "type": "dev.logicojp.reviewer.config.GithubMcpConfig$MaskedToStringMap"
     },
     {
       "type": "dev.logicojp.reviewer.instruction.$CustomInstructionLoader$Definition",

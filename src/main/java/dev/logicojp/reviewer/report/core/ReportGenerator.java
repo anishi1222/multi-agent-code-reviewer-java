@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -24,10 +25,16 @@ public class ReportGenerator {
     
     private final Path outputDirectory;
     private final ReportContentFormatter reportContentFormatter;
+    private final Clock clock;
     
     public ReportGenerator(Path outputDirectory, TemplateService templateService) {
+        this(outputDirectory, templateService, Clock.systemDefaultZone());
+    }
+
+    ReportGenerator(Path outputDirectory, TemplateService templateService, Clock clock) {
         this.outputDirectory = outputDirectory;
         this.reportContentFormatter = new ReportContentFormatter(templateService);
+        this.clock = clock;
     }
     
     /// Generates a markdown report file for the given review result.
@@ -36,7 +43,7 @@ public class ReportGenerator {
      Path generateReport(ReviewResult result) throws IOException {
         ensureOutputDirectory();
         AgentConfig config = result.agentConfig();
-        String date = LocalDate.now().format(DATE_FORMATTER);
+        String date = LocalDate.now(clock).format(DATE_FORMATTER);
         Path reportPath = createReportPath(config, date);
         
         String reportContent = reportContentFormatter.format(result, date);

@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +34,7 @@ class FallbackSummaryBuilderTest {
             agent("code", "Code"),
             "owner/repo",
             "line1\nline2   line3",
-            LocalDateTime.now(),
+            Instant.now(),
             true,
             null
         );
@@ -42,7 +42,7 @@ class FallbackSummaryBuilderTest {
             agent("security", "Security"),
             "owner/repo",
             null,
-            LocalDateTime.now(),
+            Instant.now(),
             false,
             "api error"
         );

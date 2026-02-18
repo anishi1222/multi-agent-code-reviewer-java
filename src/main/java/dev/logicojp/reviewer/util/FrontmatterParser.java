@@ -134,10 +134,10 @@ public final class FrontmatterParser {
     /// Parses top-level key-value fields from frontmatter text using SnakeYAML.
     /// Falls back to manual line-based parsing when the frontmatter contains
     /// YAML special characters (e.g. unquoted glob patterns like {@code **/*.py}).
-    @SuppressWarnings("unchecked")
     private static Map<String, String> parseFields(String frontmatter) {
         try {
             var yaml = new Yaml(new SafeConstructor(new LoaderOptions()));
+            @SuppressWarnings("unchecked")
             Map<String, Object> parsed = yaml.load(frontmatter);
             if (parsed == null) {
                 return Map.of();
@@ -151,7 +151,7 @@ public final class FrontmatterParser {
                 }
             }
             return fields;
-        } catch (Exception _) {
+        } catch (org.yaml.snakeyaml.error.YAMLException | ClassCastException _) {
             return parseFieldsManually(frontmatter);
         }
     }

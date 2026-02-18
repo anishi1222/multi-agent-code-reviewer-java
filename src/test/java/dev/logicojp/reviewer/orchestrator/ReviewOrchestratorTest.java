@@ -12,7 +12,7 @@ import dev.logicojp.reviewer.util.FeatureFlags;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -53,7 +53,7 @@ class ReviewOrchestratorTest {
                 .repository(target.displayName())
                 .content("ok")
                 .success(true)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build(),
             (directory, localConfig) -> () -> new dev.logicojp.reviewer.target.LocalFileProvider.CollectionResult(
                 "source",

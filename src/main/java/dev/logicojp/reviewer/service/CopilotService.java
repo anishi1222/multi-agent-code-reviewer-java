@@ -46,8 +46,6 @@ public class CopilotService {
     public void initializeOrThrow(String githubToken) {
         try {
             initialize(githubToken);
-        } catch (ExecutionException e) {
-            throw new CopilotCliException("Failed to initialize Copilot service", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new CopilotCliException("Failed to initialize Copilot service", e);
@@ -55,7 +53,10 @@ public class CopilotService {
     }
 
     /// Initializes the Copilot client.
-    private void initialize(String githubToken) throws ExecutionException, InterruptedException {
+    /// Double-checked locking with volatile is intentional for safe lazy initialization.
+    /// While the CLI currently calls this from a single thread, DCL is retained for
+    /// correctness if this service is later reused in multi-threaded contexts.
+    private void initialize(String githubToken) throws InterruptedException {
         if (client != null) {
             return;
         }
@@ -84,7 +85,7 @@ public class CopilotService {
     }
 
     private void startClient(CopilotClient createdClient,
-                             long timeoutSeconds) throws ExecutionException, InterruptedException {
+                             long timeoutSeconds) throws InterruptedException {
         clientStarter.start(new CopilotClientStarter.StartableClient() {
             @Override
             public void start(long timeoutSeconds) throws ExecutionException, TimeoutException, InterruptedException {

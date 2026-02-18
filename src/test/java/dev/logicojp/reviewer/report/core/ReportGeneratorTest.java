@@ -10,7 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,7 +37,7 @@ class ReportGeneratorTest {
             .repository("owner/repo")
             .content("review body")
             .success(true)
-            .timestamp(LocalDateTime.now())
+            .timestamp(Instant.now())
             .build();
 
         Path output = generator.generateReport(result);

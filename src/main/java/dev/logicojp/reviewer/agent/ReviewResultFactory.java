@@ -2,7 +2,7 @@ package dev.logicojp.reviewer.agent;
 
 import dev.logicojp.reviewer.report.core.ReviewResult;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 final class ReviewResultFactory {
 
@@ -10,7 +10,7 @@ final class ReviewResultFactory {
         return baseBuilder(config, repository)
             .success(false)
             .errorMessage(e.getMessage())
-            .timestamp(now())
+            .timestamp(Instant.now())
             .build();
     }
 
@@ -21,7 +21,7 @@ final class ReviewResultFactory {
         return baseBuilder(config, repository)
             .success(false)
             .errorMessage(errorMsg)
-            .timestamp(now())
+            .timestamp(Instant.now())
             .build();
     }
 
@@ -29,7 +29,7 @@ final class ReviewResultFactory {
         return baseBuilder(config, repository)
             .content(content)
             .success(true)
-            .timestamp(now())
+            .timestamp(Instant.now())
             .build();
     }
 
@@ -37,9 +37,5 @@ final class ReviewResultFactory {
         return ReviewResult.builder()
             .agentConfig(config)
             .repository(repository);
-    }
-
-    private LocalDateTime now() {
-        return LocalDateTime.now();
     }
 }
