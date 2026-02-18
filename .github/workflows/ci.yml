@@ -30,7 +30,7 @@ jobs:
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@54b4f5a65c1a84b2fdfdc2078fe43df32819e4b1 # v1.4.5
         with:
-          java-version: '26-ea'
+          java-version: 'dev'
           distribution: 'graalvm'
 
       - name: Validate dependency policy (enforcer + checksum)
@@ -53,7 +53,7 @@ jobs:
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@54b4f5a65c1a84b2fdfdc2078fe43df32819e4b1 # v1.4.5
         with:
-          java-version: '26-ea'
+          java-version: 'dev'
           distribution: 'graalvm'
 
       - name: Compile
@@ -82,7 +82,7 @@ jobs:
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@54b4f5a65c1a84b2fdfdc2078fe43df32819e4b1 # v1.4.5
         with:
-          java-version: '26-ea'
+          java-version: 'dev'
           distribution: 'graalvm'
 
       - name: Build Native Image
