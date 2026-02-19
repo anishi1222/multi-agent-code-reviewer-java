@@ -27,6 +27,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 2026-02-16 〜 2026-02-19 のレビューサイクルで検出された全指摘事項は対応済みです。
 
+- 2026-02-19 (v7): セキュリティレポート追従対応 — `LocalFileConfig` の機密ファイルパターンのフォールバックをリソース定義と同期し、OWASP `dependency-check-maven` を実行できる任意プロファイル `security-audit` を追加
 - 2026-02-19 (v6): リリース文書集約対応 — RELEASE_NOTES EN/JA に 2026-02-19 Daily Rollup を公開
 - 2026-02-19 (v5): ドキュメント整備対応 — v2-v4 の進行を簡潔な運用サマリーとして追記
 - 2026-02-19 (v4): ドキュメント同期対応 — 運用完了チェックを 2026-02-19 に更新し、PR #76 完了を明示
@@ -42,11 +43,12 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 ## 運用完了チェック（2026-02-19）
 
-- 最終更新: 2026-02-19 (v6)
+- 最終更新: 2026-02-19 (v7)
 
 - [x] 全レビュー指摘事項を対応完了
 - [x] 全テストスイート合格（0失敗）
 - [x] 信頼性修正PRをマージ完了: #76（idle-timeout scheduler 停止時フォールバック）
+- [x] 機密ファイルパターンのフォールバック同期を完了（`LocalFileConfig`）
 - [x] README EN/JA を同期
 
 ## リリース更新手順（テンプレート）
@@ -83,6 +85,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - PR の Dependency Review は、脆弱性が `moderate` 以上で失敗します。
 - PR の Dependency Review は、`GPL-2.0` / `GPL-3.0` / `AGPL-3.0` / `LGPL-2.1` / `LGPL-3.0` ライセンスを拒否します。
 - CI ワークフローで `validate` / `compile` / `test` を必須チェックとして実行します。
+- 任意の詳細監査として、`mvn -Psecurity-audit verify`（OWASP `dependency-check-maven`）を利用できます。
 
 推奨されるブランチ保護の Required checks:
 
@@ -777,10 +780,16 @@ flowchart TB
         direction LR
         CopilotService["CopilotService
         SDK ライフサイクル管理"]
+      CopilotClientStarter["CopilotClientStarter
+      SDK クライアント起動"]
+      CopilotCliHealthChecker["CopilotCliHealthChecker
+      gh copilot ヘルス/認証チェック"]
         TemplateService
     end
 
     ReviewExecutionCoordinator --> CopilotService
+    CopilotService --> CopilotClientStarter
+    CopilotService --> CopilotCliHealthChecker
 
     %% ── 外部サービス ──
     subgraph External["外部サービス"]
@@ -854,6 +863,8 @@ reviewer:
 テンプレート内では `{{placeholder}}` 形式のプレースホルダーが使用できます。各テンプレートで使用可能なプレースホルダーはテンプレートファイルを参照してください。
 
 ## プロジェクト構造
+
+以下のツリーは 2026-02-19 (v7) 時点の現行ソース構成に同期済みです。
 
 ```
 multi-agent-reviewer/

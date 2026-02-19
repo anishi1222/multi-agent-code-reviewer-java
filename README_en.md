@@ -27,6 +27,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 
 All review findings from 2026-02-16 through 2026-02-19 review cycles have been fully addressed.
 
+- 2026-02-19 (v7): Security report follow-up — synchronized `LocalFileConfig` fallback sensitive file patterns with resource defaults and added an opt-in `security-audit` Maven profile (`dependency-check-maven`)
 - 2026-02-19 (v6): Release documentation rollup — published the 2026-02-19 daily rollup section in RELEASE_NOTES EN/JA
 - 2026-02-19 (v5): Documentation refinement — added concise operations summary for the v2-v4 progression
 - 2026-02-19 (v4): Documentation sync — refreshed Operational Completion Check to 2026-02-19 and recorded PR #76 completion
@@ -42,11 +43,12 @@ All review findings from 2026-02-16 through 2026-02-19 review cycles have been f
 
 ## Operational Completion Check (2026-02-19)
 
-- Last updated: 2026-02-19 (v6)
+- Last updated: 2026-02-19 (v7)
 
 - [x] All review findings addressed
 - [x] Full test suite passing (0 failures)
 - [x] Reliability fix PR merged: #76 (idle-timeout scheduler shutdown fallback)
+- [x] Sensitive-pattern fallback sync completed (`LocalFileConfig`)
 - [x] README EN/JA synchronized
 
 ## Release Update Procedure (Template)
@@ -83,6 +85,7 @@ This repository enforces dependency and build hygiene in both Maven and GitHub A
 - PR dependency review fails on vulnerability severity `moderate` or higher.
 - PR dependency review denies these licenses: `GPL-2.0`, `GPL-3.0`, `AGPL-3.0`, `LGPL-2.1`, `LGPL-3.0`.
 - CI workflow runs `validate`, `compile`, and `test` as required checks.
+- Optional local/CI deep audit is available via `mvn -Psecurity-audit verify` (OWASP `dependency-check-maven`).
 
 Recommended branch protection required checks:
 
@@ -777,10 +780,16 @@ flowchart TB
         direction LR
         CopilotService["CopilotService
         SDK lifecycle management"]
+      CopilotClientStarter["CopilotClientStarter
+      SDK client bootstrap"]
+      CopilotCliHealthChecker["CopilotCliHealthChecker
+      gh copilot health/auth checks"]
         TemplateService
     end
 
     ReviewExecutionCoordinator --> CopilotService
+    CopilotService --> CopilotClientStarter
+    CopilotService --> CopilotCliHealthChecker
 
     %% ── External ──
     subgraph External["External"]
@@ -854,6 +863,8 @@ reviewer:
 Templates support `{{placeholder}}` format placeholders. See each template file for available placeholders.
 
 ## Project Structure
+
+The following tree is synchronized with the current source layout as of 2026-02-19 (v7).
 
 ```
 multi-agent-reviewer/

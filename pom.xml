@@ -29,6 +29,7 @@
         <!-- Application dependencies -->
         <copilot.sdk.version>1.0.9</copilot.sdk.version>
         <graalvm.version>25.0.2</graalvm.version>
+        <dependency.check.version>12.1.1</dependency.check.version>
     </properties>
 
     <repositories>
@@ -207,6 +208,28 @@
     </build>
 
     <profiles>
+        <!-- Optional supply-chain audit profile -->
+        <profile>
+            <id>security-audit</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>${dependency.check.version}</version>
+                        <executions>
+                            <execution>
+                                <id>dependency-check</id>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- GraalVM Native Image Profile -->
         <profile>
             <id>native</id>

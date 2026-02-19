@@ -28,6 +28,39 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 
 ---
 
+## 2026-02-19 (v7)
+
+### Summary
+- Followed up the latest security report with targeted remediations and documentation synchronization.
+- Synchronized fallback sensitive file patterns in `LocalFileConfig` with resource defaults to keep secret-file filtering safe even on fallback paths.
+- Added an opt-in OWASP dependency audit profile and refreshed README EN/JA (including architecture diagram and project structure sync note).
+
+### Highlights
+
+#### Sensitive Pattern Fallback Consistency
+- Updated `FALLBACK_SENSITIVE_FILE_PATTERNS` in `LocalFileConfig` to include generic config filenames already present in `defaults/sensitive-file-patterns.txt`:
+  - `application.yml`, `application.yaml`
+  - `config.json`, `settings.json`, `settings.yaml`
+- This preserves sensitive-file filtering behavior even when resource loading falls back to in-code defaults.
+
+#### Regression Guard
+- Added `LocalFileConfigTest#fallbackSensitivePatternsContainResourcePatterns`.
+- The test validates that fallback sensitive-pattern definitions always include all resource-defined patterns, preventing future drift.
+
+#### Supply-Chain Audit Operation
+- Added Maven property `dependency.check.version` and optional profile `security-audit` in `pom.xml`.
+- Running `mvn -Psecurity-audit verify` enables OWASP `dependency-check-maven` without making every default build heavier.
+
+#### Documentation Synchronization
+- Updated `README_en.md` and `README_ja.md` to record v7 remediation.
+- Updated architecture diagram to include `CopilotClientStarter` and `CopilotCliHealthChecker` relations.
+- Updated project structure section note to indicate synchronization with the current source layout.
+
+### Validation
+- Full test suite passed locally: 971 tests, 0 failures.
+
+---
+
 ## 2026-02-19 (v6)
 
 ### Summary
