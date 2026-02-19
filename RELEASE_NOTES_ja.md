@@ -11,6 +11,30 @@
 
 ## 2026-02-19
 
+## 2026-02-19 (v2)
+
+### 概要
+- CodeQL ワークフローの Java セットアップを 26 から 25 へ変更し、プロジェクト方針（Java 25.0.2）に統一しました。
+- `pom.xml` と main CI ワークフローで先行して揃えていた Java 25 設定に、CodeQL 側も整合させて不一致を解消しました。
+- 変更を PR #74 で `main` にマージしました。
+
+### 主な変更
+
+#### PR #74: CodeQL ワークフローの JDK 統一
+- `.github/workflows/codeql.yml` の JDK 設定を `26` から `25` に更新。
+- ビルド設定と GitHub Actions ワークフローの Java バージョン方針を全体で整合。
+
+### 検証
+- ローカル検証: `mvn clean package` 成功
+- PR #74 の必須チェック合格: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### マージ済み PR
+- [#74](https://github.com/anishi1222/multi-agent-code-reviewer/pull/74): CodeQL ワークフローの JDK を Java 25 に統一
+
+---
+
+## 2026-02-19
+
 ### 概要
 - マルチパスレビュー時の性能指摘に対応し、同一エージェント内の複数パスで単一の `CopilotSession` を再利用するよう改善しました。
 - 実行モデルを「パス単位」から「エージェント単位（内部で複数パス実行）」へリファクタし、マルチパスマージの挙動を維持しました。
