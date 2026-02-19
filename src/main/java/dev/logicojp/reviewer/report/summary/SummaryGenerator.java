@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 
 /// Generates executive summary by aggregating all agent review results.
 /// All prompt/template content is loaded from external templates via {@link TemplateService}.
@@ -75,6 +76,8 @@ public class SummaryGenerator {
     private static final Logger logger = LoggerFactory.getLogger(SummaryGenerator.class);
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
+    private static final Pattern INVOCATION_TIMESTAMP_PATTERN =
+        Pattern.compile("\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}-\\d{2}");
     
     private final Path outputDirectory;
     private final CopilotClient client;
@@ -131,11 +134,12 @@ public class SummaryGenerator {
     /// @param repository The repository that was reviewed
     /// @return Path to the generated summary file
     public Path generateSummary(List<ReviewResult> results, String repository) throws IOException {
-        ensureOutputDirectory();
+        Path summaryOutputDirectory = resolveSummaryOutputDirectory();
+        ensureOutputDirectory(summaryOutputDirectory);
 
         String timestamp = invocationTimestamp;
-        String filename = "executive-summary.md";
-        Path summaryPath = outputDirectory.resolve(filename);
+        String filename = "executive_summary_%s.md".formatted(timestamp);
+        Path summaryPath = summaryOutputDirectory.resolve(filename);
         
         logger.info("Generating executive summary from {} review results", results.size());
         
@@ -206,7 +210,19 @@ public class SummaryGenerator {
         return fallbackSummaryBuilder.buildFallbackSummary(results);
     }
 
-    private void ensureOutputDirectory() throws IOException {
-        ReportFileUtils.ensureOutputDirectory(outputDirectory);
+    private Path resolveSummaryOutputDirectory() {
+        Path invocationDirectory = outputDirectory.getFileName();
+        if (invocationDirectory == null) {
+            return outputDirectory;
+        }
+        if (!INVOCATION_TIMESTAMP_PATTERN.matcher(invocationDirectory.toString()).matches()) {
+            return outputDirectory;
+        }
+        Path parent = outputDirectory.getParent();
+        return parent != null ? parent : outputDirectory;
+    }
+
+    private void ensureOutputDirectory(Path directory) throws IOException {
+        ReportFileUtils.ensureOutputDirectory(directory);
     }
 }

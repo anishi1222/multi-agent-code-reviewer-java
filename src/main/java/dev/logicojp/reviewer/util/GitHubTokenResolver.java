@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -21,6 +22,8 @@ public final class GitHubTokenResolver {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubTokenResolver.class);
     private static final String PLACEHOLDER = "${GITHUB_TOKEN}";
+    private static final String STDIN_TOKEN_SENTINEL = "-";
+    private static final int MAX_STDIN_TOKEN_BYTES = 256;
     private static final String PATH_ENV = "PATH";
     private static final String GH_CLI_PATH_ENV = "GH_CLI_PATH";
     private static final long DEFAULT_TIMEOUT_SECONDS = 10;
@@ -50,10 +53,34 @@ public final class GitHubTokenResolver {
             return null;
         }
         String trimmed = token.trim();
+        if (STDIN_TOKEN_SENTINEL.equals(trimmed)) {
+            return readTokenFromStdin();
+        }
         if (trimmed.isEmpty() || PLACEHOLDER.equals(trimmed)) {
             return null;
         }
         return trimmed;
+    }
+
+    private @Nullable String readTokenFromStdin() {
+        try {
+            if (System.console() != null) {
+                char[] chars = System.console().readPassword("GitHub Token: ");
+                if (chars == null) {
+                    return "";
+                }
+                String token = String.valueOf(chars).trim();
+                Arrays.fill(chars, '\0');
+                return token;
+            }
+            byte[] raw = System.in.readNBytes(MAX_STDIN_TOKEN_BYTES);
+            String token = new String(raw, StandardCharsets.UTF_8).trim();
+            Arrays.fill(raw, (byte) 0);
+            return token;
+        } catch (IOException e) {
+            logger.warn("Failed to read token from stdin", e);
+            return null;
+        }
     }
 
     private Optional<String> resolveFromGhAuth() {

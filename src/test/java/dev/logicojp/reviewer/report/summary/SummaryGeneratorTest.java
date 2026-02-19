@@ -14,6 +14,9 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,7 +47,7 @@ class SummaryGeneratorTest {
                 null,
                 (results, repository) -> "AI summary content"
             ),
-            java.time.Clock.systemDefaultZone()
+            Clock.fixed(Instant.parse("2026-02-19T20:30:44Z"), ZoneId.of("UTC"))
         );
 
         List<ReviewResult> results = List.of(
@@ -59,6 +62,7 @@ class SummaryGeneratorTest {
         Path summaryPath = generator.generateSummary(results, "owner/repo");
 
         assertThat(Files.exists(summaryPath)).isTrue();
+        assertThat(summaryPath.getFileName().toString()).isEqualTo("executive_summary_2026-02-19-20-30-44.md");
         String content = Files.readString(summaryPath);
         assertThat(content).contains("AI summary content");
         assertThat(content).contains("owner/repo");

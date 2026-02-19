@@ -27,7 +27,8 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 2026-02-16 〜 2026-02-19 のレビューサイクルで検出された全指摘事項は対応済みです。
 
-- 2026-02-19 (v8): 命名規則整合対応 — エグゼクティブサマリー出力をタイムスタンプ付きから固定 `executive-summary.md` へ統一し、README EN/JA の出力例とテストパスを同期
+- 2026-02-19 (v9): セキュリティ追従対応完了 — エージェント定義の疑わしいパターン検証を全プロンプト注入フィールドへ拡張し、MCPヘッダーのマスキング経路（`entrySet`/`values` 文字列化）を強化、さらに `--token -` の標準入力読込を解決境界まで遅延してトークン露出時間を短縮
+- 2026-02-19 (v8): 命名規則整合対応 — エグゼクティブサマリー出力を `reports/{owner}/{repo}/executive_summary_yyyy-mm-dd-HH-mm-ss.md`（CLI呼び出し時刻）へ同期し、README EN/JA の出力例とテストを一致
 - 2026-02-19 (v7): セキュリティレポート追従対応 — `LocalFileConfig` の機密ファイルパターンのフォールバックをリソース定義と同期し、OWASP `dependency-check-maven` を実行できる任意プロファイル `security-audit` を追加
 - 2026-02-19 (v6): リリース文書集約対応 — RELEASE_NOTES EN/JA に 2026-02-19 Daily Rollup を公開
 - 2026-02-19 (v5): ドキュメント整備対応 — v2-v4 の進行を簡潔な運用サマリーとして追記
@@ -44,13 +45,16 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 ## 運用完了チェック（2026-02-19）
 
-- 最終更新: 2026-02-19 (v8)
+- 最終更新: 2026-02-19 (v9)
 
 - [x] 全レビュー指摘事項を対応完了
 - [x] 全テストスイート合格（0失敗）
 - [x] 信頼性修正PRをマージ完了: #76（idle-timeout scheduler 停止時フォールバック）
 - [x] 機密ファイルパターンのフォールバック同期を完了（`LocalFileConfig`）
-- [x] エグゼクティブサマリーのファイル名を命名規則に整合（`executive-summary.md`）
+- [x] エグゼクティブサマリーのファイル名を命名規則に整合（`executive_summary_yyyy-mm-dd-HH-mm-ss.md`）
+- [x] エージェント定義の疑わしいパターン検証を全プロンプト注入フィールドへ拡張
+- [x] MCP認証ヘッダのマスキングを `entrySet` / `values` 文字列化経路まで強化
+- [x] `--token -` の読込をトークン解決境界へ遅延し、メモリ露出時間を最小化
 - [x] README EN/JA を同期
 
 ## リリース更新手順（テンプレート）
@@ -339,24 +343,24 @@ agent: 'agent'
 ./reports/
 └── owner/
     └── repository/
-    └── 2026-02-19-18-38-42/
-      ├── security-report.md
-      ├── code-quality-report.md
-      ├── performance-report.md
-      ├── best-practices-report.md
-      └── executive-summary.md
+      ├── executive_summary_2026-02-19-18-38-42.md
+      └── 2026-02-19-18-38-42/
+        ├── security-report.md
+        ├── code-quality-report.md
+        ├── performance-report.md
+        └── best-practices-report.md
 ```
 
 **ローカルディレクトリの場合**（`--local /path/to/my-project`）:
 ```
 ./reports/
 └── my-project/
+  ├── executive_summary_2026-02-19-18-38-42.md
   └── 2026-02-19-18-38-42/
     ├── security-report.md
     ├── code-quality-report.md
     ├── performance-report.md
-    ├── best-practices-report.md
-    └── executive-summary.md
+    └── best-practices-report.md
 ```
 
 `-o` / `--output` オプションで出力ベースディレクトリを変更できます（デフォルト: `./reports`）。
