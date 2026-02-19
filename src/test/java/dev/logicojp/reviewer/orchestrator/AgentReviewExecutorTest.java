@@ -45,7 +45,7 @@ class AgentReviewExecutorTest {
             var executor = new AgentReviewExecutor(
                 new Semaphore(1),
                 executorService,
-                (config, context) -> new ReviewOrchestrator.AgentReviewer() {
+                (config, context) -> new AgentReviewer() {
                     @Override
                     public ReviewResult review(ReviewTarget target) {
                         return ReviewResult.builder()
@@ -97,7 +97,7 @@ class AgentReviewExecutorTest {
             var executor = new AgentReviewExecutor(
                 new Semaphore(1),
                 executorService,
-                (config, context) -> new ReviewOrchestrator.AgentReviewer() {
+                (config, context) -> new AgentReviewer() {
                     @Override
                     public ReviewResult review(ReviewTarget target) {
                         throw new IllegalStateException("boom");
@@ -138,7 +138,7 @@ class AgentReviewExecutorTest {
                 executorService,
                 (config, context) -> {
                     createdReviewers.incrementAndGet();
-                    return new ReviewOrchestrator.AgentReviewer() {
+                    return new AgentReviewer() {
                         @Override
                         public ReviewResult review(ReviewTarget target) {
                             return ReviewResult.builder()

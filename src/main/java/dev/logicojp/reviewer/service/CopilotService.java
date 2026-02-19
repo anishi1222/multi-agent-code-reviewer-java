@@ -7,13 +7,10 @@ import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import dev.logicojp.reviewer.util.SecurityAuditLogger;
+import dev.logicojp.reviewer.util.TokenHashUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -89,7 +86,7 @@ public class CopilotService {
 
     /// Initializes the Copilot client.
     private synchronized void initialize(String githubToken) throws InterruptedException {
-        String tokenFingerprint = fingerprintToken(githubToken);
+        String tokenFingerprint = TokenHashUtils.sha256HexOrNull(githubToken);
         if (client != null && Objects.equals(initializedTokenFingerprint, tokenFingerprint)) {
             return;
         }
@@ -121,19 +118,6 @@ public class CopilotService {
             "Copilot client authentication completed",
             Map.of("outcome", "success")
         );
-    }
-
-    private String fingerprintToken(String githubToken) {
-        if (githubToken == null) {
-            return null;
-        }
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(githubToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
-        }
     }
 
     private String shortFingerprint(String fingerprint) {

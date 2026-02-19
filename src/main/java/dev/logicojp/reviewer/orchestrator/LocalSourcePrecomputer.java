@@ -10,10 +10,10 @@ import java.nio.file.Path;
 final class LocalSourcePrecomputer {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalSourcePrecomputer.class);
-    private final ReviewOrchestrator.LocalSourceCollectorFactory localSourceCollectorFactory;
+    private final LocalSourceCollectorFactory localSourceCollectorFactory;
     private final LocalFileConfig localFileConfig;
 
-    LocalSourcePrecomputer(ReviewOrchestrator.LocalSourceCollectorFactory localSourceCollectorFactory,
+    LocalSourcePrecomputer(LocalSourceCollectorFactory localSourceCollectorFactory,
                            LocalFileConfig localFileConfig) {
         this.localSourceCollectorFactory = localSourceCollectorFactory;
         this.localFileConfig = localFileConfig;

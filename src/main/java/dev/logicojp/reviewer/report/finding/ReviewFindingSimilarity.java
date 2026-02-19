@@ -2,14 +2,12 @@ package dev.logicojp.reviewer.report.finding;
 
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class ReviewFindingSimilarity {
 
-    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
     private static final Pattern KEYWORD_PATTERN = Pattern.compile("[a-z0-9_]+|[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}]{2,}");
     private static final double NEAR_DUPLICATE_SIMILARITY = 0.80d;
 

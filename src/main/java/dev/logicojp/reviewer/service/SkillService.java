@@ -10,18 +10,15 @@ import dev.logicojp.reviewer.skill.SkillExecutor;
 import dev.logicojp.reviewer.skill.SkillRegistry;
 import dev.logicojp.reviewer.skill.SkillResult;
 import dev.logicojp.reviewer.util.ExecutorUtils;
+import dev.logicojp.reviewer.util.TokenHashUtils;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -134,7 +131,7 @@ public class SkillService {
 
     private SkillExecutor createExecutor(String githubToken, String model) {
         var key = new ExecutorCacheKey(
-            secureHash(githubToken),
+            TokenHashUtils.sha256HexOrEmpty(githubToken),
             model
         );
         SkillExecutor existing = executorCache.get(key);
@@ -189,19 +186,6 @@ public class SkillService {
                     removed.close();
                 }
             }
-        }
-    }
-
-    private static String secureHash(String token) {
-        if (token == null || token.isBlank()) {
-            return "";
-        }
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashed);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
         }
     }
 

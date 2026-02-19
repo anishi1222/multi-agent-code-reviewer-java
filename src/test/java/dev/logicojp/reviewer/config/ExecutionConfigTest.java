@@ -256,4 +256,45 @@ class ExecutionConfigTest {
             assertThat(updated.parallelism()).isEqualTo(4); // default
         }
     }
+
+    @Nested
+    @DisplayName("グルーピング設定")
+    class GroupedSettings {
+
+        @Test
+        @DisplayName("ofファクトリはグルーピング設定からExecutionConfigを生成できる")
+        void createsConfigFromGroupedSettings() {
+            ExecutionConfig config = ExecutionConfig.of(
+                new ExecutionConfig.ConcurrencySettings(3, 2),
+                new ExecutionConfig.TimeoutSettings(20, 10, 6, 8, 9, 30),
+                new ExecutionConfig.RetrySettings(4),
+                new ExecutionConfig.BufferSettings(8192, 1024, 64)
+            );
+
+            assertThat(config.parallelism()).isEqualTo(3);
+            assertThat(config.reviewPasses()).isEqualTo(2);
+            assertThat(config.orchestratorTimeoutMinutes()).isEqualTo(20);
+            assertThat(config.agentTimeoutMinutes()).isEqualTo(10);
+            assertThat(config.idleTimeoutMinutes()).isEqualTo(6);
+            assertThat(config.skillTimeoutMinutes()).isEqualTo(8);
+            assertThat(config.summaryTimeoutMinutes()).isEqualTo(9);
+            assertThat(config.ghAuthTimeoutSeconds()).isEqualTo(30);
+            assertThat(config.maxRetries()).isEqualTo(4);
+            assertThat(config.maxAccumulatedSize()).isEqualTo(8192);
+            assertThat(config.initialAccumulatedCapacity()).isEqualTo(1024);
+            assertThat(config.instructionBufferExtraCapacity()).isEqualTo(64);
+        }
+
+        @Test
+        @DisplayName("group accessorは現在値を返す")
+        void exposesGroupedAccessors() {
+            ExecutionConfig config = new ExecutionConfig(5, 3, 21, 11, 7, 9, 10, 40, 2, 4096, 512, 48);
+
+            assertThat(config.concurrencySettings().parallelism()).isEqualTo(5);
+            assertThat(config.concurrencySettings().reviewPasses()).isEqualTo(3);
+            assertThat(config.timeoutSettings().orchestratorTimeoutMinutes()).isEqualTo(21);
+            assertThat(config.retrySettings().maxRetries()).isEqualTo(2);
+            assertThat(config.bufferSettings().maxAccumulatedSize()).isEqualTo(4096);
+        }
+    }
 }

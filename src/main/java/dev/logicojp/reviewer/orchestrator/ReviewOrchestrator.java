@@ -5,22 +5,17 @@ import dev.logicojp.reviewer.agent.ReviewAgent;
 import dev.logicojp.reviewer.agent.ReviewContext;
 import dev.logicojp.reviewer.config.ExecutionConfig;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
-import dev.logicojp.reviewer.config.LocalFileConfig;
 import dev.logicojp.reviewer.instruction.CustomInstruction;
 import dev.logicojp.reviewer.report.core.ReviewResult;
 import dev.logicojp.reviewer.target.LocalFileProvider;
 import dev.logicojp.reviewer.target.ReviewTarget;
 import dev.logicojp.reviewer.util.ExecutorUtils;
-import dev.logicojp.reviewer.util.FeatureFlags;
 import com.github.copilot.sdk.CopilotClient;
-import io.micronaut.core.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,72 +39,6 @@ public class ReviewOrchestrator implements AutoCloseable {
     private static final int EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 60;
     private static final int SCHEDULER_SHUTDOWN_TIMEOUT_SECONDS = 10;
 
-    @FunctionalInterface
-    interface AgentReviewer {
-        ReviewResult review(ReviewTarget target);
-
-        default List<ReviewResult> reviewPasses(ReviewTarget target, int reviewPasses) {
-            var results = new java.util.ArrayList<ReviewResult>(reviewPasses);
-            for (int pass = 0; pass < reviewPasses; pass++) {
-                results.add(review(target));
-            }
-            return results;
-        }
-    }
-
-    @FunctionalInterface
-    interface AgentReviewerFactory {
-        AgentReviewer create(AgentConfig config, ReviewContext context);
-    }
-
-    @FunctionalInterface
-    interface LocalSourceCollector {
-        LocalFileProvider.CollectionResult collectAndGenerate();
-    }
-
-    @FunctionalInterface
-    interface LocalSourceCollectorFactory {
-        LocalSourceCollector create(Path directory, LocalFileConfig localFileConfig);
-    }
-
-    /// Grouping of executor and concurrency resources used by the orchestrator.
-    record ExecutorResources(
-        @Nullable ExecutorService executorService,
-        ExecutorService agentExecutionExecutor,
-        ScheduledExecutorService sharedScheduler,
-        Semaphore concurrencyLimit
-    ) {
-        ExecutorResources {
-            agentExecutionExecutor = Objects.requireNonNull(agentExecutionExecutor);
-            sharedScheduler = Objects.requireNonNull(sharedScheduler);
-            concurrencyLimit = Objects.requireNonNull(concurrencyLimit);
-        }
-    }
-
-    record OrchestratorCollaborators(
-        AgentReviewerFactory reviewerFactory,
-        LocalSourceCollectorFactory localSourceCollectorFactory,
-        ExecutorResources executorResources,
-        Map<String, Object> cachedMcpServers,
-        ReviewResultPipeline reviewResultPipeline,
-        AgentReviewExecutor agentReviewExecutor,
-        ReviewExecutionModeRunner reviewExecutionModeRunner,
-        ReviewContextFactory reviewContextFactory,
-        LocalSourcePrecomputer localSourcePrecomputer
-    ) {
-        OrchestratorCollaborators {
-            reviewerFactory = Objects.requireNonNull(reviewerFactory);
-            localSourceCollectorFactory = Objects.requireNonNull(localSourceCollectorFactory);
-            executorResources = Objects.requireNonNull(executorResources);
-            cachedMcpServers = cachedMcpServers != null ? Map.copyOf(cachedMcpServers) : Map.of();
-            reviewResultPipeline = Objects.requireNonNull(reviewResultPipeline);
-            agentReviewExecutor = Objects.requireNonNull(agentReviewExecutor);
-            reviewExecutionModeRunner = Objects.requireNonNull(reviewExecutionModeRunner);
-            reviewContextFactory = Objects.requireNonNull(reviewContextFactory);
-            localSourcePrecomputer = Objects.requireNonNull(localSourcePrecomputer);
-        }
-    }
-    
     private static final Logger logger = LoggerFactory.getLogger(ReviewOrchestrator.class);
 
     private final ExecutionConfig executionConfig;
@@ -125,45 +54,6 @@ public class ReviewOrchestrator implements AutoCloseable {
     private final AgentReviewExecutor agentReviewExecutor;
     private final ReviewContextFactory reviewContextFactory;
     private final LocalSourcePrecomputer localSourcePrecomputer;
-
-    /// Immutable grouping of prompt template texts used by agents.
-    public record PromptTexts(
-        String focusAreasGuidance,
-        String localSourceHeader,
-        String localReviewResultRequest
-    ) {
-        public PromptTexts {
-            focusAreasGuidance = focusAreasGuidance != null ? focusAreasGuidance : "";
-            localSourceHeader = localSourceHeader != null ? localSourceHeader : "";
-            localReviewResultRequest = localReviewResultRequest != null ? localReviewResultRequest : "";
-        }
-    }
-
-    public record OrchestratorConfig(
-        @Nullable String githubToken,
-        @Nullable GithubMcpConfig githubMcpConfig,
-        LocalFileConfig localFileConfig,
-        FeatureFlags featureFlags,
-        ExecutionConfig executionConfig,
-        List<CustomInstruction> customInstructions,
-        @Nullable String reasoningEffort,
-        @Nullable String outputConstraints,
-        PromptTexts promptTexts
-    ) {
-        public OrchestratorConfig {
-            executionConfig = Objects.requireNonNull(executionConfig, "executionConfig must not be null");
-            featureFlags = Objects.requireNonNull(featureFlags, "featureFlags must not be null");
-            localFileConfig = localFileConfig != null ? localFileConfig : new LocalFileConfig();
-            customInstructions = customInstructions != null ? List.copyOf(customInstructions) : List.of();
-            promptTexts = promptTexts != null ? promptTexts : new PromptTexts(null, null, null);
-        }
-
-        @Override
-        public String toString() {
-            return "OrchestratorConfig{githubToken=***, localFileConfig=%s, executionConfig=%s, customInstructions=%d}"
-                .formatted(localFileConfig, executionConfig, customInstructions.size());
-        }
-    }
 
     public ReviewOrchestrator(CopilotClient client, OrchestratorConfig orchestratorConfig) {
         this(client, orchestratorConfig, defaultCollaborators(client, orchestratorConfig));

@@ -27,7 +27,7 @@ public class ReviewOrchestratorFactory {
 
     @FunctionalInterface
     interface OrchestratorCreator {
-        ReviewOrchestrator create(CopilotClient client, ReviewOrchestrator.OrchestratorConfig orchestratorConfig);
+        ReviewOrchestrator create(CopilotClient client, OrchestratorConfig orchestratorConfig);
     }
 
     private static final Logger logger = LoggerFactory.getLogger(ReviewOrchestratorFactory.class);
@@ -95,14 +95,14 @@ public class ReviewOrchestratorFactory {
         return createOrchestrator(orchestratorConfig);
     }
 
-    private ReviewOrchestrator.OrchestratorConfig buildOrchestratorConfig(String githubToken,
-                                                                           ExecutionConfig executionConfig,
-                                                                           List<CustomInstruction> customInstructions,
-                                                                           String reasoningEffort,
-                                                                           String outputConstraints) {
+    private OrchestratorConfig buildOrchestratorConfig(String githubToken,
+                                                       ExecutionConfig executionConfig,
+                                                       List<CustomInstruction> customInstructions,
+                                                       String reasoningEffort,
+                                                       String outputConstraints) {
         PromptTexts promptTexts = loadPromptTexts();
 
-        return new ReviewOrchestrator.OrchestratorConfig(
+        return new OrchestratorConfig(
             githubToken,
             githubMcpConfig,
             localFileConfig,
@@ -111,11 +111,7 @@ public class ReviewOrchestratorFactory {
             customInstructions,
             reasoningEffort,
             outputConstraints,
-            new ReviewOrchestrator.PromptTexts(
-                promptTexts.focusAreasGuidance(),
-                promptTexts.localSourceHeader(),
-                promptTexts.localReviewResultRequest()
-            )
+            promptTexts
         );
     }
 
@@ -149,12 +145,7 @@ public class ReviewOrchestratorFactory {
         }
     }
 
-    private record PromptTexts(String focusAreasGuidance,
-                               String localSourceHeader,
-                               String localReviewResultRequest) {
-    }
-
-    private ReviewOrchestrator createOrchestrator(ReviewOrchestrator.OrchestratorConfig orchestratorConfig) {
+    private ReviewOrchestrator createOrchestrator(OrchestratorConfig orchestratorConfig) {
         return orchestratorCreator.create(copilotService.getClient(), orchestratorConfig);
     }
 }

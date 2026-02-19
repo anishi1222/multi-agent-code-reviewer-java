@@ -49,7 +49,7 @@ class ReviewOrchestratorFactoryTest {
             }
         };
 
-        AtomicReference<ReviewOrchestrator.OrchestratorConfig> captured = new AtomicReference<>();
+        AtomicReference<OrchestratorConfig> captured = new AtomicReference<>();
 
         ReviewOrchestratorFactory factory = new ReviewOrchestratorFactory(
             copilotService,

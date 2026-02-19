@@ -19,6 +19,25 @@ public record ExecutionConfig(
     int instructionBufferExtraCapacity
 ) {
 
+    public record ConcurrencySettings(int parallelism, int reviewPasses) {
+    }
+
+    public record TimeoutSettings(long orchestratorTimeoutMinutes,
+                                  long agentTimeoutMinutes,
+                                  long idleTimeoutMinutes,
+                                  long skillTimeoutMinutes,
+                                  long summaryTimeoutMinutes,
+                                  long ghAuthTimeoutSeconds) {
+    }
+
+    public record RetrySettings(int maxRetries) {
+    }
+
+    public record BufferSettings(int maxAccumulatedSize,
+                                 int initialAccumulatedCapacity,
+                                 int instructionBufferExtraCapacity) {
+    }
+
     public static final int DEFAULT_MAX_RETRIES = 2;
     public static final long DEFAULT_IDLE_TIMEOUT_MINUTES = 5;
     public static final int DEFAULT_REVIEW_PASSES = 1;
@@ -45,6 +64,53 @@ public record ExecutionConfig(
         maxAccumulatedSize = ConfigDefaults.defaultIfNonPositive(maxAccumulatedSize, DEFAULT_MAX_ACCUMULATED_SIZE);
         initialAccumulatedCapacity = ConfigDefaults.defaultIfNonPositive(initialAccumulatedCapacity, DEFAULT_INITIAL_ACCUMULATED_CAPACITY);
         instructionBufferExtraCapacity = ConfigDefaults.defaultIfNonPositive(instructionBufferExtraCapacity, DEFAULT_INSTRUCTION_BUFFER_EXTRA_CAPACITY);
+    }
+
+    public static ExecutionConfig of(ConcurrencySettings concurrency,
+                                     TimeoutSettings timeouts,
+                                     RetrySettings retry,
+                                     BufferSettings buffers) {
+        return new ExecutionConfig(
+            concurrency.parallelism(),
+            concurrency.reviewPasses(),
+            timeouts.orchestratorTimeoutMinutes(),
+            timeouts.agentTimeoutMinutes(),
+            timeouts.idleTimeoutMinutes(),
+            timeouts.skillTimeoutMinutes(),
+            timeouts.summaryTimeoutMinutes(),
+            timeouts.ghAuthTimeoutSeconds(),
+            retry.maxRetries(),
+            buffers.maxAccumulatedSize(),
+            buffers.initialAccumulatedCapacity(),
+            buffers.instructionBufferExtraCapacity()
+        );
+    }
+
+    public ConcurrencySettings concurrencySettings() {
+        return new ConcurrencySettings(parallelism, reviewPasses);
+    }
+
+    public TimeoutSettings timeoutSettings() {
+        return new TimeoutSettings(
+            orchestratorTimeoutMinutes,
+            agentTimeoutMinutes,
+            idleTimeoutMinutes,
+            skillTimeoutMinutes,
+            summaryTimeoutMinutes,
+            ghAuthTimeoutSeconds
+        );
+    }
+
+    public RetrySettings retrySettings() {
+        return new RetrySettings(maxRetries);
+    }
+
+    public BufferSettings bufferSettings() {
+        return new BufferSettings(
+            maxAccumulatedSize,
+            initialAccumulatedCapacity,
+            instructionBufferExtraCapacity
+        );
     }
 
     /// Returns a copy of this config with the parallelism value replaced.
@@ -142,10 +208,23 @@ public record ExecutionConfig(
         }
 
         public ExecutionConfig build() {
-            return new ExecutionConfig(parallelism, reviewPasses, orchestratorTimeoutMinutes,
-                agentTimeoutMinutes, idleTimeoutMinutes, skillTimeoutMinutes,
-                summaryTimeoutMinutes, ghAuthTimeoutSeconds, maxRetries,
-                maxAccumulatedSize, initialAccumulatedCapacity, instructionBufferExtraCapacity);
+            return ExecutionConfig.of(
+                new ConcurrencySettings(parallelism, reviewPasses),
+                new TimeoutSettings(
+                    orchestratorTimeoutMinutes,
+                    agentTimeoutMinutes,
+                    idleTimeoutMinutes,
+                    skillTimeoutMinutes,
+                    summaryTimeoutMinutes,
+                    ghAuthTimeoutSeconds
+                ),
+                new RetrySettings(maxRetries),
+                new BufferSettings(
+                    maxAccumulatedSize,
+                    initialAccumulatedCapacity,
+                    instructionBufferExtraCapacity
+                )
+            );
         }
     }
 }

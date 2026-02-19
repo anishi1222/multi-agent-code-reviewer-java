@@ -5,6 +5,7 @@ import io.micronaut.core.annotation.Nullable;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.stream.IntStream;
 
 /// Holds the result of a review performed by an agent.
 public record ReviewResult(
@@ -28,6 +29,21 @@ public record ReviewResult(
     /// Creates a builder with a custom clock for testability.
     public static Builder builder(Clock clock) {
         return new Builder(clock);
+    }
+
+    public static java.util.List<ReviewResult> failedResults(AgentConfig config,
+                                                              String repository,
+                                                              int count,
+                                                              String errorMessage) {
+        int safeCount = Math.max(0, count);
+        return IntStream.range(0, safeCount)
+            .mapToObj(_ -> ReviewResult.builder()
+                .agentConfig(config)
+                .repository(repository)
+                .success(false)
+                .errorMessage(errorMessage)
+                .build())
+            .toList();
     }
 
     public static final class Builder {

@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 @Singleton
@@ -37,34 +38,40 @@ final class ScopedInstructionLoader {
 
         List<CustomInstruction> instructions = new ArrayList<>();
         try (Stream<Path> stream = Files.list(instructionsDir)) {
-            stream.filter(Files::isRegularFile)
+            List<Path> instructionFiles = stream.filter(Files::isRegularFile)
                 .filter(path -> path.getFileName().toString().endsWith(instructionsExtension))
                 .sorted()
-                .forEach(path -> {
-                    try {
-                        String rawContent = Files.readString(path, StandardCharsets.UTF_8);
-                        if (rawContent.isBlank()) {
-                            logger.debug("Scoped instruction file is empty: {}", path);
-                            return;
-                        }
+                .toList();
 
-                        var parsed = CustomInstructionLoader.parseFrontmatter(rawContent);
-                        instructions.add(new CustomInstruction(
-                            path.toString(),
-                            parsed.content().trim(),
-                            InstructionSource.LOCAL_FILE,
-                            parsed.applyTo(),
-                            parsed.description()
-                        ));
-                        logger.info("Loaded scoped instruction from: {} (applyTo: {})",
-                            path, parsed.applyTo());
-                    } catch (IOException e) {
-                        logger.warn("Failed to read instruction file {}: {}", path, e.getMessage(), e);
-                    }
-                });
+            for (Path path : instructionFiles) {
+                loadScopedInstruction(path).ifPresent(instructions::add);
+            }
         } catch (IOException e) {
             logger.warn("Failed to scan instructions directory {}: {}", instructionsDir, e.getMessage(), e);
         }
         return instructions;
+    }
+
+    private Optional<CustomInstruction> loadScopedInstruction(Path path) {
+        try {
+            String rawContent = Files.readString(path, StandardCharsets.UTF_8);
+            if (rawContent.isBlank()) {
+                logger.debug("Scoped instruction file is empty: {}", path);
+                return Optional.empty();
+            }
+
+            var parsed = CustomInstructionLoader.parseFrontmatter(rawContent);
+            logger.info("Loaded scoped instruction from: {} (applyTo: {})", path, parsed.applyTo());
+            return Optional.of(new CustomInstruction(
+                path.toString(),
+                parsed.content().trim(),
+                InstructionSource.LOCAL_FILE,
+                parsed.applyTo(),
+                parsed.description()
+            ));
+        } catch (IOException e) {
+            logger.warn("Failed to read instruction file {}: {}", path, e.getMessage(), e);
+            return Optional.empty();
+        }
     }
 }

@@ -13,7 +13,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.ArrayList;
 import java.util.List;
 
 final class AgentReviewExecutor {
@@ -21,11 +20,11 @@ final class AgentReviewExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AgentReviewExecutor.class);
     private final Semaphore concurrencyLimit;
     private final ExecutorService agentExecutionExecutor;
-    private final ReviewOrchestrator.AgentReviewerFactory reviewerFactory;
+    private final AgentReviewerFactory reviewerFactory;
 
     AgentReviewExecutor(Semaphore concurrencyLimit,
                         ExecutorService agentExecutionExecutor,
-                        ReviewOrchestrator.AgentReviewerFactory reviewerFactory) {
+                        AgentReviewerFactory reviewerFactory) {
         this.concurrencyLimit = concurrencyLimit;
         this.agentExecutionExecutor = agentExecutionExecutor;
         this.reviewerFactory = reviewerFactory;
@@ -40,7 +39,7 @@ final class AgentReviewExecutor {
             concurrencyLimit.acquire();
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
-            return failedResults(config, target, reviewPasses,
+            return ReviewResult.failedResults(config, target.displayName(), reviewPasses,
                 "Review interrupted while waiting for concurrency permit");
         }
         try {
@@ -56,7 +55,7 @@ final class AgentReviewExecutor {
                                                         int reviewPasses,
                                                         long perAgentTimeoutMinutes) {
         try {
-            ReviewOrchestrator.AgentReviewer reviewer = reviewerFactory.create(config, context);
+            AgentReviewer reviewer = reviewerFactory.create(config, context);
             Future<List<ReviewResult>> future = agentExecutionExecutor.submit(
                 () -> reviewer.reviewPasses(target, reviewPasses)
             );
@@ -71,30 +70,16 @@ final class AgentReviewExecutor {
             long totalTimeoutMinutes = perAgentTimeoutMinutes * Math.max(1, reviewPasses);
             logger.warn("Agent {} timed out after {} minutes for {} pass(es)",
                 config.name(), totalTimeoutMinutes, reviewPasses, e);
-            return failedResults(config, target, reviewPasses,
+            return ReviewResult.failedResults(config, target.displayName(), reviewPasses,
                 "Review timed out after " + totalTimeoutMinutes + " minutes");
         } catch (ExecutionException e) {
             logger.error("Agent {} execution failed: {}", config.name(), e.getMessage(), e);
-            return failedResults(config, target, reviewPasses, "Review failed: " + e.getMessage());
+            return ReviewResult.failedResults(config, target.displayName(), reviewPasses,
+                "Review failed: " + e.getMessage());
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
-            return failedResults(config, target, reviewPasses, "Review interrupted during execution");
+            return ReviewResult.failedResults(config, target.displayName(), reviewPasses,
+                "Review interrupted during execution");
         }
-    }
-
-    private List<ReviewResult> failedResults(AgentConfig config,
-                                             ReviewTarget target,
-                                             int reviewPasses,
-                                             String errorMessage) {
-        List<ReviewResult> results = new ArrayList<>(reviewPasses);
-        for (int pass = 0; pass < reviewPasses; pass++) {
-            results.add(ReviewResult.builder()
-                .agentConfig(config)
-                .repository(target.displayName())
-                .success(false)
-                .errorMessage(errorMessage)
-                .build());
-        }
-        return results;
     }
 }

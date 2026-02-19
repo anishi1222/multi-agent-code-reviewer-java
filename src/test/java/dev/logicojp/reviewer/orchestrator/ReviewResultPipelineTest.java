@@ -4,20 +4,15 @@ import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.report.core.ReviewResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("ReviewResultPipeline")
 class ReviewResultPipelineTest {
-
-    private static final Logger testLogger = LoggerFactory.getLogger(ReviewResultPipelineTest.class);
 
     private static AgentConfig agent(String name) {
         return new AgentConfig(name, name, "model", "system", "instruction", null, List.of(), List.of());
@@ -85,23 +80,4 @@ class ReviewResultPipelineTest {
         assertThat(finalized.getFirst().content()).contains("検出パス: 1, 2");
     }
 
-    @Test
-    @DisplayName("collectFromFuturesは完了済みfutureから結果を収集する")
-    void collectFromFuturesCollectsCompletedResults() {
-        var pipeline = new ReviewResultPipeline();
-        var result = ReviewResult.builder()
-            .agentConfig(agent("security"))
-            .repository("owner/repo")
-            .content("ok")
-            .success(true)
-            .timestamp(Instant.now())
-            .build();
-
-        List<ReviewResult> collected = pipeline.collectFromFutures(
-            List.of(CompletableFuture.completedFuture(result), CompletableFuture.completedFuture(null))
-        );
-
-        assertThat(collected).hasSize(1);
-        assertThat(collected.getFirst()).isEqualTo(result);
-    }
 }

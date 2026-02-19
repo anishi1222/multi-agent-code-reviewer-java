@@ -27,6 +27,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 
 All review findings from 2026-02-16 through 2026-02-19 review cycles have been fully addressed.
 
+- 2026-02-19 (v11): Code quality remediation — centralized token hashing via shared `TokenHashUtils`, unified orchestrator failure-result generation with `ReviewResult.failedResults(...)`, extracted orchestrator nested types (`OrchestratorConfig`, `PromptTexts`, and collaborator interfaces/records) into top-level package types, refactored scoped-instruction loading to avoid stream-side-effect try/catch blocks, introduced grouped execution settings (`ConcurrencySettings`, `TimeoutSettings`, `RetrySettings`, `BufferSettings`) with factory access, removed dead code (`ReviewResultPipeline.collectFromFutures`) and unused similarity field, and added dedicated command tests for `ReviewCommand` / `SkillCommand`
 - 2026-02-19 (v10): Performance + WAF security hardening — eliminated redundant finding-key extraction in merge flow, added prefix-indexed near-duplicate lookup, optimized local file read buffer sizing, precompiled fallback whitespace regex, introduced structured security audit logging, enforced SDK WARN level even in verbose mode, applied owner-only report output permissions on POSIX, added Maven `dependencyConvergence`, and added weekly OWASP dependency-audit workflow
 - 2026-02-19 (v9): Security follow-up closure — expanded suspicious-pattern validation for agent definitions to all prompt-injected fields, strengthened MCP header masking paths (`entrySet`/`values` stringification), and reduced token exposure by deferring `--token -` stdin materialization to resolution time
 - 2026-02-19 (v8): Naming-rule alignment — synchronized executive summary output to `reports/{owner}/{repo}/executive_summary_yyyy-mm-dd-HH-mm-ss.md` (CLI invocation timestamp) and aligned README EN/JA examples + tests
@@ -46,7 +47,7 @@ All review findings from 2026-02-16 through 2026-02-19 review cycles have been f
 
 ## Operational Completion Check (2026-02-19)
 
-- Last updated: 2026-02-19 (v10)
+- Last updated: 2026-02-19 (v11)
 
 - [x] All review findings addressed
 - [x] Full test suite passing (0 failures)
@@ -64,6 +65,13 @@ All review findings from 2026-02-16 through 2026-02-19 review cycles have been f
 - [x] `--verbose` mode keeps Copilot SDK logger at `WARN`
 - [x] Report output directories/files use owner-only POSIX permissions where supported
 - [x] Weekly scheduled OWASP dependency audit workflow added
+- [x] SHA-256 token hashing unified via shared utility (`TokenHashUtils`)
+- [x] Orchestrator failure results unified (`ReviewResult.failedResults`)
+- [x] `ReviewOrchestrator` nested collaborator/config types extracted to top-level package types
+- [x] Scoped instruction loading refactored to explicit file loop + isolated IO handling
+- [x] `ExecutionConfig` grouped settings/factory added to reduce positional constructor risk
+- [x] Dead code removed (`ReviewResultPipeline.collectFromFutures`, unused `ReviewFindingSimilarity.WHITESPACE`)
+- [x] `ReviewCommand` and `SkillCommand` unit tests added (normal/help/error)
 - [x] README EN/JA synchronized
 
 ## Release Update Procedure (Template)

@@ -25,7 +25,7 @@ class ReviewOrchestratorTest {
     @DisplayName("注入ファクトリ経由でエージェントレビューを実行できる")
     void executesReviewsUsingInjectedFactories() {
         CopilotClient client = new CopilotClient(new CopilotClientOptions());
-        var orchestratorConfig = new ReviewOrchestrator.OrchestratorConfig(
+        var orchestratorConfig = new OrchestratorConfig(
             null,
             new GithubMcpConfig(null, null, null, null, null, null),
             new LocalFileConfig(),
@@ -34,7 +34,7 @@ class ReviewOrchestratorTest {
             List.of(),
             "high",
             null,
-            new ReviewOrchestrator.PromptTexts(
+            new PromptTexts(
                 "focus guidance",
                 "local source header",
                 "local result request"

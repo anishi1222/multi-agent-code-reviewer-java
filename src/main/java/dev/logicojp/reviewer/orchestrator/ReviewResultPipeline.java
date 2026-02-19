@@ -5,10 +5,8 @@ import dev.logicojp.reviewer.report.merger.ReviewResultMerger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 /// Finalizes orchestrated review results: collect, filter, log, and optional merge.
 final class ReviewResultPipeline {
@@ -16,23 +14,6 @@ final class ReviewResultPipeline {
     private static final Logger logger = LoggerFactory.getLogger(ReviewResultPipeline.class);
 
     ReviewResultPipeline() {
-    }
-
-    List<ReviewResult> collectFromFutures(List<CompletableFuture<ReviewResult>> futures) {
-        List<ReviewResult> results = new ArrayList<>(futures.size());
-        for (CompletableFuture<ReviewResult> future : futures) {
-            try {
-                ReviewResult result = future.getNow(null);
-                if (result == null) {
-                    logger.warn("Review future completed without a result (null)");
-                    continue;
-                }
-                results.add(result);
-            } catch (Exception e) {
-                logger.error("Error collecting review result: {}", e.getMessage(), e);
-            }
-        }
-        return results;
     }
 
     List<ReviewResult> finalizeResults(List<ReviewResult> results, int reviewPasses) {

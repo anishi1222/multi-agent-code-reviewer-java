@@ -27,6 +27,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 2026-02-16 〜 2026-02-19 のレビューサイクルで検出された全指摘事項は対応済みです。
 
+- 2026-02-19 (v11): コード品質指摘対応 — 共通 `TokenHashUtils` によるトークンSHA-256ハッシュの一元化、`ReviewResult.failedResults(...)` による失敗結果生成の共通化、`ReviewOrchestrator` のネスト型（`OrchestratorConfig` / `PromptTexts` / 協調インターフェース・レコード群）をトップレベル型へ分離、`ScopedInstructionLoader` のストリーム内副作用try-catchを明示ループ+分離I/O処理へ整理、`ExecutionConfig` にグルーピング設定（`ConcurrencySettings` / `TimeoutSettings` / `RetrySettings` / `BufferSettings`）とファクトリを追加、デッドコード削除（`ReviewResultPipeline.collectFromFutures`・未使用 `ReviewFindingSimilarity.WHITESPACE`）、`ReviewCommand` / `SkillCommand` 専用ユニットテスト追加
 - 2026-02-19 (v10): パフォーマンス + WAF セキュリティ強化対応 — マージ処理の重複キー抽出を排除（`findingKeyFromNormalized` 再利用）、近似重複探索に priority+タイトルprefixインデックスを追加、ローカルファイル読込バッファの初期容量最適化、フォールバック要約の正規表現を事前コンパイル化、構造化 `SECURITY_AUDIT` ログ導入、`--verbose` 時でも Copilot SDK ロガーを `WARN` 固定、POSIX環境でレポート出力を owner-only 権限化、Maven `dependencyConvergence` 追加、週次 OWASP 依存関係監査ワークフロー追加
 - 2026-02-19 (v9): セキュリティ追従対応完了 — エージェント定義の疑わしいパターン検証を全プロンプト注入フィールドへ拡張し、MCPヘッダーのマスキング経路（`entrySet`/`values` 文字列化）を強化、さらに `--token -` の標準入力読込を解決境界まで遅延してトークン露出時間を短縮
 - 2026-02-19 (v8): 命名規則整合対応 — エグゼクティブサマリー出力を `reports/{owner}/{repo}/executive_summary_yyyy-mm-dd-HH-mm-ss.md`（CLI呼び出し時刻）へ同期し、README EN/JA の出力例とテストを一致
@@ -46,7 +47,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 ## 運用完了チェック（2026-02-19）
 
-- 最終更新: 2026-02-19 (v10)
+- 最終更新: 2026-02-19 (v11)
 
 - [x] 全レビュー指摘事項を対応完了
 - [x] 全テストスイート合格（0失敗）
@@ -64,6 +65,13 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - [x] `--verbose` 時も Copilot SDK ロガーを `WARN` 固定
 - [x] POSIX環境でレポート出力ディレクトリ/ファイルを owner-only 権限化
 - [x] OWASP 依存関係監査の週次スケジュールワークフロー追加
+- [x] SHA-256トークンハッシュを共通ユーティリティ（`TokenHashUtils`）へ統一
+- [x] 失敗結果生成を `ReviewResult.failedResults` に集約
+- [x] `ReviewOrchestrator` のネスト型をトップレベル型へ分離
+- [x] `ScopedInstructionLoader` を明示ループ + 分離I/O例外処理へ整理
+- [x] `ExecutionConfig` にグルーピング設定とファクトリを追加し位置引数リスクを低減
+- [x] デッドコード削除（`ReviewResultPipeline.collectFromFutures`、未使用 `ReviewFindingSimilarity.WHITESPACE`）
+- [x] `ReviewCommand` / `SkillCommand` の単体テストを追加（正常/ヘルプ/異常系）
 - [x] README EN/JA を同期
 
 ## リリース更新手順（テンプレート）

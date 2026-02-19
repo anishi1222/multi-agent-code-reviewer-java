@@ -72,9 +72,9 @@ final class ReviewExecutionModeRunner {
                 .exceptionally(ex -> {
                     logger.error("Agent {} failed with timeout or error: {}",
                         config.name(), ex.getMessage(), ex);
-                    return failedResults(
+                    return ReviewResult.failedResults(
                         config,
-                        target,
+                        target.displayName(),
                         params.reviewPasses(),
                         "Review timed out or failed: " + ex.getMessage()
                     );
@@ -139,10 +139,10 @@ final class ReviewExecutionModeRunner {
             case SUCCESS -> taskWithConfig.subtask().get();
             case FAILED -> {
                 Throwable cause = taskWithConfig.subtask().exception();
-                yield failedResults(taskWithConfig.config(), target, executionConfig.reviewPasses(),
+                yield ReviewResult.failedResults(taskWithConfig.config(), target.displayName(), executionConfig.reviewPasses(),
                     "Review failed: " + (cause != null ? cause.getMessage() : "unknown"));
             }
-            case UNAVAILABLE -> failedResults(taskWithConfig.config(), target, executionConfig.reviewPasses(),
+            case UNAVAILABLE -> ReviewResult.failedResults(taskWithConfig.config(), target.displayName(), executionConfig.reviewPasses(),
                 "Review cancelled after " + perAgentTimeoutMinutes + " minutes");
         };
     }
@@ -235,19 +235,4 @@ final class ReviewExecutionModeRunner {
             config.name(), passNumber, reviewPasses);
     }
 
-    private List<ReviewResult> failedResults(AgentConfig config,
-                                             ReviewTarget target,
-                                             int reviewPasses,
-                                             String errorMessage) {
-        List<ReviewResult> results = new ArrayList<>(reviewPasses);
-        for (int pass = 0; pass < reviewPasses; pass++) {
-            results.add(ReviewResult.builder()
-                .agentConfig(config)
-                .repository(target.displayName())
-                .success(false)
-                .errorMessage(errorMessage)
-                .build());
-        }
-        return results;
-    }
 }
