@@ -14,6 +14,28 @@ import java.util.function.Consumer;
 public final class CliParsing {
     private static final int MAX_STDIN_TOKEN_BYTES = 256;
     static final String STDIN_TOKEN_SENTINEL = "-";
+    private static final TokenInput SYSTEM_TOKEN_INPUT = new SystemTokenInput();
+
+    interface TokenInput {
+        char[] readPassword();
+
+        byte[] readStdin(int maxBytes) throws IOException;
+    }
+
+    private static final class SystemTokenInput implements TokenInput {
+        @Override
+        public char[] readPassword() {
+            if (System.console() == null) {
+                return null;
+            }
+            return System.console().readPassword("GitHub Token: ");
+        }
+
+        @Override
+        public byte[] readStdin(int maxBytes) throws IOException {
+            return System.in.readNBytes(maxBytes);
+        }
+    }
 
     public record OptionValue(String value, int newIndex) {
     }
@@ -132,17 +154,20 @@ public final class CliParsing {
     /// minimize the scope of token references and prefer short-lived tokens
     /// (e.g., fine-grained personal access tokens) to reduce exposure window.
      static String readToken(String value) {
+        return readToken(value, SYSTEM_TOKEN_INPUT);
+    }
+
+    static String readToken(String value, TokenInput tokenInput) {
         if (STDIN_TOKEN_SENTINEL.equals(value)) {
             try {
-                if (System.console() != null) {
-                    char[] chars = System.console().readPassword("GitHub Token: ");
-                    if (chars == null) return "";
+                char[] chars = tokenInput.readPassword();
+                if (chars != null) {
                     // NOTE: SDK APIs require String; char[] is cleared immediately after conversion.
                     String token = String.valueOf(chars).trim();
                     Arrays.fill(chars, '\0');
                     return token;
                 }
-                byte[] raw = System.in.readNBytes(MAX_STDIN_TOKEN_BYTES);
+                byte[] raw = tokenInput.readStdin(MAX_STDIN_TOKEN_BYTES);
                 String token = new String(raw, StandardCharsets.UTF_8).trim();
                 Arrays.fill(raw, (byte) 0);
                 return token;

@@ -191,7 +191,7 @@ class AgentMarkdownParser {
         Map<String, StringBuilder> sectionBuilders = new LinkedHashMap<>();
         String currentKey = null;
 
-        for (String line : (Iterable<String>) body.lines()::iterator) {
+        for (String line : body.lines().toList()) {
             String sectionKey = extractRecognizedSectionKey(line);
             if (sectionKey != null) {
                 if (sectionBuilders.containsKey(sectionKey)) {

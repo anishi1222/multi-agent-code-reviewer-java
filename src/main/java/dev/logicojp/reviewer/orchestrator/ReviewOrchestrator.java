@@ -120,6 +120,8 @@ public class ReviewOrchestrator implements AutoCloseable {
             Semaphore concurrencyLimit = new Semaphore(orchestratorConfig.executionConfig().parallelism());
             agentExecutionExecutor = Executors.newThreadPerTaskExecutor(
                 Thread.ofVirtual().name("agent-execution-", 0).factory());
+            // Scheduler uses one lightweight platform thread intentionally:
+            // it only triggers periodic timeout checks and should not run blocking review work.
             sharedScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "idle-timeout-shared");
                 t.setDaemon(true);

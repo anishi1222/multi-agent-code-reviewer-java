@@ -27,6 +27,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 2026-02-16 〜 2026-02-19 のレビューサイクルで検出された全指摘事項は対応済みです。
 
+- 2026-02-19 (v12): ベストプラクティス指摘対応 — `TemplateService` のキャッシュ同期を整理しつつ決定的LRU挙動を維持、`SkillService` の手動実行器キャッシュ管理を Caffeine + エビクション時クローズへ置換、`CliParsing.TokenInput` によりCLIトークン読込のシステムI/O依存を抽象化、`ContentCollector` の連結キャッシュロックを簡素化、`AgentMarkdownParser` のセクション解析可読性改善、`ReviewExecutionModeRunner` のマルチパス開始ログを実行実態に一致させ、`GithubMcpConfig` のMapラッパー委譲メソッドを補完、`ReviewResult` のデフォルトtimestamp処理を簡素化、`SkillExecutor` のFQCN呼出しを解消、`CopilotService` / `ReviewOrchestrator` に並行設計意図コメントを補強
 - 2026-02-19 (v11): コード品質指摘対応 — 共通 `TokenHashUtils` によるトークンSHA-256ハッシュの一元化、`ReviewResult.failedResults(...)` による失敗結果生成の共通化、`ReviewOrchestrator` のネスト型（`OrchestratorConfig` / `PromptTexts` / 協調インターフェース・レコード群）をトップレベル型へ分離、`ScopedInstructionLoader` のストリーム内副作用try-catchを明示ループ+分離I/O処理へ整理、`ExecutionConfig` にグルーピング設定（`ConcurrencySettings` / `TimeoutSettings` / `RetrySettings` / `BufferSettings`）とファクトリを追加、デッドコード削除（`ReviewResultPipeline.collectFromFutures`・未使用 `ReviewFindingSimilarity.WHITESPACE`）、`ReviewCommand` / `SkillCommand` 専用ユニットテスト追加
 - 2026-02-19 (v10): パフォーマンス + WAF セキュリティ強化対応 — マージ処理の重複キー抽出を排除（`findingKeyFromNormalized` 再利用）、近似重複探索に priority+タイトルprefixインデックスを追加、ローカルファイル読込バッファの初期容量最適化、フォールバック要約の正規表現を事前コンパイル化、構造化 `SECURITY_AUDIT` ログ導入、`--verbose` 時でも Copilot SDK ロガーを `WARN` 固定、POSIX環境でレポート出力を owner-only 権限化、Maven `dependencyConvergence` 追加、週次 OWASP 依存関係監査ワークフロー追加
 - 2026-02-19 (v9): セキュリティ追従対応完了 — エージェント定義の疑わしいパターン検証を全プロンプト注入フィールドへ拡張し、MCPヘッダーのマスキング経路（`entrySet`/`values` 文字列化）を強化、さらに `--token -` の標準入力読込を解決境界まで遅延してトークン露出時間を短縮
@@ -47,7 +48,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 ## 運用完了チェック（2026-02-19）
 
-- 最終更新: 2026-02-19 (v11)
+- 最終更新: 2026-02-19 (v12)
 
 - [x] 全レビュー指摘事項を対応完了
 - [x] 全テストスイート合格（0失敗）
@@ -72,6 +73,16 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - [x] `ExecutionConfig` にグルーピング設定とファクトリを追加し位置引数リスクを低減
 - [x] デッドコード削除（`ReviewResultPipeline.collectFromFutures`、未使用 `ReviewFindingSimilarity.WHITESPACE`）
 - [x] `ReviewCommand` / `SkillCommand` の単体テストを追加（正常/ヘルプ/異常系）
+- [x] `TemplateService` のキャッシュ同期を簡素化しつつ決定的LRU挙動を維持
+- [x] `SkillService` の実行器キャッシュを Caffeine 化し、エビクション時に実行器をクローズ
+- [x] CLIトークン入力をシステムI/Oから抽象化（`CliParsing.TokenInput`）
+- [x] `ContentCollector` の連結キャッシュロックを簡素化
+- [x] `AgentMarkdownParser` のセクション解析可読性を改善（Iterableキャストトリック除去）
+- [x] `ReviewExecutionModeRunner` のマルチパス開始ログを実行実態に一致
+- [x] `GithubMcpConfig` のMapラッパー委譲メソッドを補完（`isEmpty`/`containsValue`/`keySet`/`values`）
+- [x] `ReviewResult` のデフォルトtimestamp処理を簡素化
+- [x] `SkillExecutor` のFQCNユーティリティ呼出しを解消（`ExecutorUtils` import）
+- [x] `CopilotService` / `ReviewOrchestrator` の並行設計意図コメントを補強
 - [x] README EN/JA を同期
 
 ## リリース更新手順（テンプレート）

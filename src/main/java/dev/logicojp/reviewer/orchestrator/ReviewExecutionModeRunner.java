@@ -207,9 +207,7 @@ final class ReviewExecutionModeRunner {
                                                   long perAgentTimeoutMinutes,
                                                   boolean structured,
                                                   AgentPassExecutor agentPassExecutor) {
-        for (int pass = 1; pass <= reviewPasses; pass++) {
-            logPassStart(config, pass, reviewPasses, structured);
-        }
+        logAgentStart(config, reviewPasses, structured);
         return agentPassExecutor.execute(
             config,
             target,
@@ -219,20 +217,19 @@ final class ReviewExecutionModeRunner {
         );
     }
 
-    private void logPassStart(AgentConfig config,
-                              int passNumber,
+    private void logAgentStart(AgentConfig config,
                               int reviewPasses,
                               boolean structured) {
         if (reviewPasses <= 1) {
             return;
         }
         if (structured) {
-            logger.info("Agent {}: starting pass {}/{} (structured)",
-                config.name(), passNumber, reviewPasses);
+            logger.info("Agent {}: starting {} passes (structured)",
+                config.name(), reviewPasses);
             return;
         }
-        logger.info("Agent {}: starting pass {}/{}",
-            config.name(), passNumber, reviewPasses);
+        logger.info("Agent {}: starting {} passes",
+            config.name(), reviewPasses);
     }
 
 }
