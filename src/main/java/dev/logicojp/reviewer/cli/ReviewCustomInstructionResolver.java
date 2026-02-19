@@ -5,6 +5,7 @@ import dev.logicojp.reviewer.instruction.CustomInstructionLoader;
 import dev.logicojp.reviewer.instruction.CustomInstructionSafetyValidator;
 import dev.logicojp.reviewer.instruction.InstructionSource;
 import dev.logicojp.reviewer.target.ReviewTarget;
+import dev.logicojp.reviewer.util.SecurityAuditLogger;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /// Resolves custom instructions for a review run.
@@ -99,6 +101,14 @@ class ReviewCustomInstructionResolver {
         }
 
         output.println("⚠  --trust enabled: loading custom instructions from the review target.");
+        logger.warn("[SECURITY AUDIT] Trust boundary relaxed: loading instructions from target={}",
+            target.displayName());
+        SecurityAuditLogger.log(
+            "trust-boundary",
+            "instruction-load",
+            "Trust mode enabled for target instruction loading",
+            Map.of("target", target.displayName())
+        );
         CustomInstructionLoader targetLoader = resolveTargetLoader(options);
         List<CustomInstruction> targetInstructions = targetLoader.loadForTarget(target);
         logTrustAuditTrail(targetInstructions);
@@ -107,9 +117,19 @@ class ReviewCustomInstructionResolver {
 
     private void logTrustAuditTrail(List<CustomInstruction> instructions) {
         for (CustomInstruction instruction : instructions) {
-            logger.info("[TRUST AUDIT] Loaded instruction from: {} (size: {} bytes)",
-                instruction.sourcePath(),
+            String sourcePath = instruction.sourcePath() != null ? instruction.sourcePath() : "unknown";
+            logger.warn("[SECURITY AUDIT] Loaded trusted instruction from: {} (size: {} bytes)",
+                sourcePath,
                 instruction.content() != null ? instruction.content().length() : 0);
+            SecurityAuditLogger.log(
+                "trust-boundary",
+                "instruction-load",
+                "Trusted instruction loaded",
+                Map.of(
+                    "source", sourcePath,
+                    "size", Integer.toString(instruction.content() != null ? instruction.content().length() : 0)
+                )
+            );
         }
     }
 
@@ -139,11 +159,23 @@ class ReviewCustomInstructionResolver {
                            List<CustomInstruction> instructions,
                            String loadedPrefix,
                            boolean trusted) {
-        List<CustomInstruction> safe = CustomInstructionSafetyValidator.filterSafe(
-            List.of(instruction),
-            "Skipped unsafe instruction",
-            trusted
-        );
+        var validation = CustomInstructionSafetyValidator.validate(instruction, trusted);
+        if (!validation.safe()) {
+            String sourcePath = instruction.sourcePath() != null ? instruction.sourcePath() : "unknown";
+            logger.warn("Skipped unsafe instruction {}: {}", sourcePath, validation.reason());
+            SecurityAuditLogger.log(
+                "instruction-validation",
+                "instruction-rejected",
+                "Unsafe instruction rejected",
+                Map.of(
+                    "source", sourcePath,
+                    "reason", validation.reason(),
+                    "trusted", Boolean.toString(trusted)
+                )
+            );
+            return;
+        }
+        List<CustomInstruction> safe = List.of(instruction);
         if (!safe.isEmpty()) {
             instructions.add(safe.getFirst());
             output.println(loadedPrefix + instruction.sourcePath());

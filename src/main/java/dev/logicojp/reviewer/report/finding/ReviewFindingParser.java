@@ -59,8 +59,8 @@ public final class ReviewFindingParser {
 
     /// Derives a finding key from an already-computed NormalizedFinding,
     /// avoiding redundant extractTableValue and normalizeText calls.
-     static String findingKeyFromNormalized(AggregatedFinding.NormalizedFinding normalized,
-                                            String rawBody) {
+    public static String findingKeyFromNormalized(AggregatedFinding.NormalizedFinding normalized,
+                                                  String rawBody) {
         if (!normalized.title().isEmpty()
             && (!normalized.summary().isEmpty() || !normalized.location().isEmpty()
                 || !normalized.priority().isEmpty())) {

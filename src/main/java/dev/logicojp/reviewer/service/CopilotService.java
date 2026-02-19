@@ -6,6 +6,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import dev.logicojp.reviewer.util.SecurityAuditLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -67,7 +69,21 @@ public class CopilotService {
             initialize(normalizeToken(githubToken));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            SecurityAuditLogger.log(
+                "authentication",
+                "copilot.initialize",
+                "Copilot client initialization interrupted",
+                Map.of("outcome", "interrupted")
+            );
             throw new CopilotCliException("Failed to initialize Copilot service", e);
+        } catch (RuntimeException e) {
+            SecurityAuditLogger.log(
+                "authentication",
+                "copilot.initialize",
+                "Copilot client initialization failed",
+                Map.of("outcome", "failure")
+            );
+            throw e;
         }
     }
 
@@ -84,12 +100,27 @@ public class CopilotService {
 
         logger.info("Initializing Copilot client...");
         CopilotClientOptions options = buildClientOptions(githubToken);
+        SecurityAuditLogger.log(
+            "authentication",
+            "copilot.initialize",
+            "Copilot client authentication initiated",
+            Map.of(
+                "authMethod", shouldUseToken(githubToken) ? "github-token" : "gh-cli",
+                "tokenFingerprintPrefix", shortFingerprint(tokenFingerprint)
+            )
+        );
         CopilotClient createdClient = new CopilotClient(options);
         long timeoutSeconds = resolveStartTimeoutSeconds();
         startClient(createdClient, timeoutSeconds);
         client = createdClient;
         initializedTokenFingerprint = tokenFingerprint;
         logger.info("Copilot client initialized");
+        SecurityAuditLogger.log(
+            "authentication",
+            "copilot.initialize",
+            "Copilot client authentication completed",
+            Map.of("outcome", "success")
+        );
     }
 
     private String fingerprintToken(String githubToken) {
@@ -103,6 +134,13 @@ public class CopilotService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available", e);
         }
+    }
+
+    private String shortFingerprint(String fingerprint) {
+        if (fingerprint == null || fingerprint.isBlank()) {
+            return "none";
+        }
+        return fingerprint.length() <= 12 ? fingerprint : fingerprint.substring(0, 12);
     }
 
     private CopilotClientOptions buildClientOptions(String githubToken) throws InterruptedException {
@@ -192,8 +230,20 @@ public class CopilotService {
             logger.info("Shutting down Copilot client...");
             client.close();
             logger.info("Copilot client shut down");
+            SecurityAuditLogger.log(
+                "authentication",
+                "copilot.shutdown",
+                "Copilot client shutdown completed",
+                Map.of("outcome", "success")
+            );
         } catch (Exception e) {
             logger.warn("Error shutting down Copilot client: {}", e.getMessage(), e);
+            SecurityAuditLogger.log(
+                "authentication",
+                "copilot.shutdown",
+                "Copilot client shutdown failed",
+                Map.of("outcome", "failure")
+            );
         } finally {
             client = null;
             initializedTokenFingerprint = null;

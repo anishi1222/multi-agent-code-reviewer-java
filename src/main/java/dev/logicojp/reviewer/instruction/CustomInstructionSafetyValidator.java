@@ -22,6 +22,7 @@ public final class CustomInstructionSafetyValidator {
 
     private static final int MAX_INSTRUCTION_SIZE = 32 * 1024;
     private static final int MAX_UNTRUSTED_INSTRUCTION_SIZE = 8 * 1024;
+    private static final int MAX_ABSOLUTE_INSTRUCTION_SIZE = 32 * 1024;
     private static final int MAX_INSTRUCTION_LINES = 300;
     private static final List<String> DEFAULT_SUSPICIOUS_PATTERN_TEXTS = List.of(
         "ignore\\s+(all\\s+)?(previous|prior|above)\\s+instructions?",
@@ -91,7 +92,7 @@ public final class CustomInstructionSafetyValidator {
     private CustomInstructionSafetyValidator() {
     }
 
-     static ValidationResult validate(CustomInstruction instruction) {
+    static ValidationResult validate(CustomInstruction instruction) {
         return validate(instruction, false);
     }
 
@@ -101,7 +102,8 @@ public final class CustomInstructionSafetyValidator {
         }
 
         String content = instruction.content();
-        int maxSize = trusted ? MAX_INSTRUCTION_SIZE : MAX_UNTRUSTED_INSTRUCTION_SIZE;
+        int requestedMaxSize = trusted ? MAX_INSTRUCTION_SIZE : MAX_UNTRUSTED_INSTRUCTION_SIZE;
+        int maxSize = Math.min(requestedMaxSize, MAX_ABSOLUTE_INSTRUCTION_SIZE);
         if (content.length() > maxSize) {
             return new ValidationResult(false, "size limit exceeded");
         }

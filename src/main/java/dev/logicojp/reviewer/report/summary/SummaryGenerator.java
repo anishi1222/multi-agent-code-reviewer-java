@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import dev.logicojp.reviewer.service.CopilotCliException;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -148,7 +147,7 @@ public class SummaryGenerator {
         
         // Build the final report
         String finalReport = summaryFinalReportFormatter.format(summaryContent, repository, results, timestamp);
-        Files.writeString(summaryPath, finalReport);
+        ReportFileUtils.writeSecureString(summaryPath, finalReport);
         
         logger.info("Generated executive summary: {}", summaryPath);
         return summaryPath;

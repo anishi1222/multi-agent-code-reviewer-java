@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -47,7 +46,7 @@ public class ReportGenerator {
         Path reportPath = createReportPath(config);
         
         String reportContent = reportContentFormatter.format(result, invocationTimestamp);
-        Files.writeString(reportPath, reportContent);
+        ReportFileUtils.writeSecureString(reportPath, reportContent);
         
         logger.info("Generated report: {}", reportPath);
         return reportPath;

@@ -6,8 +6,11 @@ import dev.logicojp.reviewer.service.TemplateService;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 final class FallbackSummaryBuilder {
+
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
     private final TemplateService templateService;
     private final int excerptLength;
@@ -72,7 +75,9 @@ final class FallbackSummaryBuilder {
         }
         String content = result.content();
         int prefixLength = Math.min(content.length(), excerptLength * excerptNormalizationMultiplier);
-        String normalizedPrefix = content.substring(0, prefixLength).replaceAll("\\s+", " ").trim();
+        String normalizedPrefix = WHITESPACE_PATTERN.matcher(content.substring(0, prefixLength))
+            .replaceAll(" ")
+            .trim();
         if (normalizedPrefix.length() <= excerptLength) {
             return normalizedPrefix;
         }

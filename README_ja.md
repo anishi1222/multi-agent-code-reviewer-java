@@ -27,6 +27,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 2026-02-16 〜 2026-02-19 のレビューサイクルで検出された全指摘事項は対応済みです。
 
+- 2026-02-19 (v10): パフォーマンス + WAF セキュリティ強化対応 — マージ処理の重複キー抽出を排除（`findingKeyFromNormalized` 再利用）、近似重複探索に priority+タイトルprefixインデックスを追加、ローカルファイル読込バッファの初期容量最適化、フォールバック要約の正規表現を事前コンパイル化、構造化 `SECURITY_AUDIT` ログ導入、`--verbose` 時でも Copilot SDK ロガーを `WARN` 固定、POSIX環境でレポート出力を owner-only 権限化、Maven `dependencyConvergence` 追加、週次 OWASP 依存関係監査ワークフロー追加
 - 2026-02-19 (v9): セキュリティ追従対応完了 — エージェント定義の疑わしいパターン検証を全プロンプト注入フィールドへ拡張し、MCPヘッダーのマスキング経路（`entrySet`/`values` 文字列化）を強化、さらに `--token -` の標準入力読込を解決境界まで遅延してトークン露出時間を短縮
 - 2026-02-19 (v8): 命名規則整合対応 — エグゼクティブサマリー出力を `reports/{owner}/{repo}/executive_summary_yyyy-mm-dd-HH-mm-ss.md`（CLI呼び出し時刻）へ同期し、README EN/JA の出力例とテストを一致
 - 2026-02-19 (v7): セキュリティレポート追従対応 — `LocalFileConfig` の機密ファイルパターンのフォールバックをリソース定義と同期し、OWASP `dependency-check-maven` を実行できる任意プロファイル `security-audit` を追加
@@ -45,7 +46,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 ## 運用完了チェック（2026-02-19）
 
-- 最終更新: 2026-02-19 (v9)
+- 最終更新: 2026-02-19 (v10)
 
 - [x] 全レビュー指摘事項を対応完了
 - [x] 全テストスイート合格（0失敗）
@@ -55,6 +56,14 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - [x] エージェント定義の疑わしいパターン検証を全プロンプト注入フィールドへ拡張
 - [x] MCP認証ヘッダのマスキングを `entrySet` / `values` 文字列化経路まで強化
 - [x] `--token -` の読込をトークン解決境界へ遅延し、メモリ露出時間を最小化
+- [x] マージ処理の重複正規化/正規表現抽出を削減（`findingKeyFromNormalized` 再利用）
+- [x] 近似重複探索を priority+タイトルprefix インデックスで候補絞り込み
+- [x] ローカルファイル読込時に `ByteArrayOutputStream` 初期容量を最適化
+- [x] フォールバック要約の空白正規化正規表現を事前コンパイル化
+- [x] 認証/信頼境界/命令検証向けに構造化 `SECURITY_AUDIT` ログを導入
+- [x] `--verbose` 時も Copilot SDK ロガーを `WARN` 固定
+- [x] POSIX環境でレポート出力ディレクトリ/ファイルを owner-only 権限化
+- [x] OWASP 依存関係監査の週次スケジュールワークフロー追加
 - [x] README EN/JA を同期
 
 ## リリース更新手順（テンプレート）

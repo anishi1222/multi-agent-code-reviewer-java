@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <property name="MASK_PATTERN" value="(?i)(Bearer\s+|ghp_|github_pat_)[A-Za-z0-9._\-]+"/>
+
     <!-- Console appender -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [%X{event.category}:%X{event.action}] - %replace(%msg){'${MASK_PATTERN}','$1***'}%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/security-audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/security-audit.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>14</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{ISO8601} level=%-5level category=%X{event.category} action=%X{event.action} %msg%n</pattern>
         </encoder>
     </appender>
     
@@ -18,6 +31,10 @@
     -->
     <logger name="com.github.copilot.sdk" level="WARN"/>
     <logger name="org.yaml.snakeyaml" level="WARN"/>
+    <logger name="SECURITY_AUDIT" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
     
     <!-- Root logger -->
     <root level="INFO">
