@@ -9,7 +9,29 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
 4. Update `README_en.md` and `README_ja.md` with release references and URLs.
 
-## 2026-02-19
+## 2026-02-19 (v3)
+
+### Summary
+- Fixed repeated review failures caused by idle-timeout scheduling on a terminated shared scheduler.
+- Added resilient fallback behavior so review execution continues without idle watchdog when scheduling is unavailable.
+- Added a regression test for the shutdown scheduler path and merged the fix via PR #76.
+
+### Highlights
+
+#### PR #76: Idle Timeout Scheduler Resilience
+- Updated `IdleTimeoutScheduler.schedule(...)` to return a no-op `ScheduledFuture` when the scheduler is already shut down or rejects scheduling.
+- Added warning logs for fallback path to preserve observability without failing review execution.
+- Added test case in `IdleTimeoutSchedulerTest` for shutdown scheduler behavior.
+
+### Validation
+- Focused test passed: `mvn -Dtest=IdleTimeoutSchedulerTest test`
+- Full package build passed: `mvn clean package`
+- PR #76 required checks passed: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### Merged PRs
+- [#76](https://github.com/anishi1222/multi-agent-code-reviewer/pull/76): tolerate idle-timeout scheduler shutdown during reviews
+
+---
 
 ## 2026-02-19 (v2)
 
