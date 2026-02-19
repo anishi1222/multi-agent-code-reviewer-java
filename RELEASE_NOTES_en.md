@@ -28,6 +28,115 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 
 ---
 
+## 2026-02-19 (v12)
+
+### Summary
+- Best-practices remediation cycle completing the v9–v12 progression.
+- Simplified cache management, abstracted CLI I/O, improved logging accuracy, and reinforced concurrency design documentation.
+
+### Highlights
+
+#### PR #95: Best-Practices Remediation v12
+- `TemplateService`: Simplified cache synchronization while preserving deterministic LRU eviction behavior.
+- `SkillService`: Replaced manual executor-cache management with Caffeine library (eviction-time executor close).
+- `CliParsing`: Introduced `TokenInput` interface to abstract CLI token reading from direct system I/O.
+- `ContentCollector`: Simplified joined-content cache locking.
+- `AgentMarkdownParser`: Improved section parsing readability (removed iterable-cast trick).
+- `ReviewExecutionModeRunner`: Made multi-pass start logging accurate to actual execution state.
+- `GithubMcpConfig`: Completed Map wrapper delegation methods (`isEmpty`/`containsValue`/`keySet`/`values`).
+- `ReviewResult`: Simplified default timestamp handling.
+- `SkillExecutor`: Removed FQCN utility call (direct `ExecutorUtils` import).
+- `CopilotService` / `ReviewOrchestrator`: Reinforced concurrency/threading design intent documentation.
+- Added Caffeine dependency to `pom.xml`.
+- Added `CliParsingTest` tests for `TokenInput` abstraction.
+
+#### PR #96: Documentation Sync
+- Updated project structure tree and architecture Mermaid diagram in README EN/JA from v7 to v12.
+- Added `.github/workflows/` section, 8 new orchestrator files, `SecurityAuditLogger`, and `TokenHashUtils`.
+
+### Validation
+- 756 tests, 0 failures.
+- CI 5/5 green on both PRs.
+
+### Merged PRs
+- [#95](https://github.com/anishi1222/multi-agent-code-reviewer/pull/95): fix: remediate best-practices findings v12
+- [#96](https://github.com/anishi1222/multi-agent-code-reviewer/pull/96): docs: sync project structure and architecture diagram to v12
+
+---
+
+## 2026-02-19 (v11)
+
+### Summary
+- Code quality remediation — extracted nested types, unified shared utilities, removed dead code, and added command unit tests.
+
+### Highlights
+
+#### PR #94: Code Quality Remediation v11
+- Centralized SHA-256 token hashing via shared `TokenHashUtils`.
+- Unified orchestrator failure-result generation with `ReviewResult.failedResults(...)`.
+- Extracted `ReviewOrchestrator` nested types (`OrchestratorConfig`, `PromptTexts`, collaborator interfaces/records) to top-level package types.
+- Refactored `ScopedInstructionLoader` to explicit file loop + isolated IO handling.
+- Introduced `ExecutionConfig` grouped settings (`ConcurrencySettings`, `TimeoutSettings`, `RetrySettings`, `BufferSettings`) with factory access.
+- Removed dead code: `ReviewResultPipeline.collectFromFutures`, unused `ReviewFindingSimilarity.WHITESPACE`.
+- Added `ReviewCommand` and `SkillCommand` dedicated unit tests.
+
+### Validation
+- 756 tests, 0 failures.
+- CI 5/5 green.
+
+### Merged PRs
+- [#94](https://github.com/anishi1222/multi-agent-code-reviewer/pull/94): fix: resolve code-quality remediation findings v11
+
+---
+
+## 2026-02-19 (v10)
+
+### Summary
+- Performance optimization and WAF security hardening across merge flow, file I/O, regex handling, logging, and build governance.
+
+### Highlights
+
+#### PR #93: Performance + WAF Security Hardening v10
+- Eliminated redundant finding-key extraction in merge flow (`findingKeyFromNormalized` reuse).
+- Added priority+title-prefix index for near-duplicate detection before similarity matching.
+- Optimized `ByteArrayOutputStream` initial capacity for local file reads.
+- Precompiled fallback summary whitespace normalization regex.
+- Introduced structured `SECURITY_AUDIT` logging for auth/trust/instruction-validation events.
+- Enforced Copilot SDK logger at `WARN` even in `--verbose` mode.
+- Applied owner-only POSIX permissions for report output directories/files.
+- Added Maven `dependencyConvergence` enforcer rule.
+- Added weekly OWASP dependency audit GitHub Actions workflow (`dependency-audit.yml`).
+
+### Validation
+- 756 tests, 0 failures.
+- CI 5/5 green.
+
+### Merged PRs
+- [#93](https://github.com/anishi1222/multi-agent-code-reviewer/pull/93): fix: resolve performance and WAF security findings
+
+---
+
+## 2026-02-19 (v9)
+
+### Summary
+- Security follow-up closure — expanded prompt-injection validation, strengthened MCP header masking, and reduced token exposure window.
+
+### Highlights
+
+#### PR #92: Security Follow-up Closure v9
+- Expanded suspicious-pattern validation for agent definitions to all prompt-injected fields (not just instructions).
+- Strengthened MCP auth header masking for `entrySet`/`values` stringification paths.
+- Deferred `--token -` stdin materialization to token-resolution boundary, minimizing in-memory token lifetime.
+
+### Validation
+- Full test suite passed.
+- CI 5/5 green.
+
+### Merged PRs
+- [#92](https://github.com/anishi1222/multi-agent-code-reviewer/pull/92): fix: security follow-up closure
+
+---
+
 ## 2026-02-19 (v8)
 
 ### Summary

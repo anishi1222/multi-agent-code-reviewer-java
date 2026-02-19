@@ -44,7 +44,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - 2026-02-17 (v1): PRs #22〜#27 — 最終リメディエーション（PR-1〜PR-5）
 - 運用サマリー（2026-02-19 v2-v4）: Java 25 へのCI整合（PR #74）→ idle-timeout scheduler 耐障害性修正（PR #76）→ 運用完了チェック同期（PR #78）
 - リリース詳細: `RELEASE_NOTES_ja.md`
-- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer/releases/tag/v2026.02.19-notes-v10
+- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer/releases/tag/v2026.02.19-notes-v12
 
 ## 運用完了チェック（2026-02-19）
 
