@@ -28,6 +28,39 @@
 
 ---
 
+## 2026-02-19 (v7)
+
+### 概要
+- 最新のセキュリティレポートに対する追従修正と、関連ドキュメント同期を実施しました。
+- `LocalFileConfig` の機密ファイルパターン・フォールバック定義をリソース既定値と同期し、フォールバック経路でも機密ファイル除外の安全性を維持しました。
+- OWASP 依存関係監査を任意で実行できるプロファイルを追加し、README EN/JA（アーキテクチャ図・プロジェクト構造注記含む）を更新しました。
+
+### 主な変更
+
+#### 機密パターン・フォールバック整合
+- `LocalFileConfig` の `FALLBACK_SENSITIVE_FILE_PATTERNS` に、`defaults/sensitive-file-patterns.txt` で既に管理している汎用設定ファイル名を追加:
+  - `application.yml`, `application.yaml`
+  - `config.json`, `settings.json`, `settings.yaml`
+- リソース読み込み失敗時でも、フォールバック経路で同等の機密ファイル除外を維持できるようにしました。
+
+#### 回帰防止
+- `LocalFileConfigTest#fallbackSensitivePatternsContainResourcePatterns` を追加。
+- リソース定義の機密パターンがフォールバック定義に必ず包含されることを検証し、将来の乖離を防止します。
+
+#### サプライチェーン監査運用
+- `pom.xml` に `dependency.check.version` と任意プロファイル `security-audit` を追加。
+- `mvn -Psecurity-audit verify` で OWASP `dependency-check-maven` を実行可能にし、通常ビルドの負荷増加は回避します。
+
+#### ドキュメント同期
+- `README_en.md` / `README_ja.md` に v7 対応内容を反映。
+- アーキテクチャ図に `CopilotClientStarter` / `CopilotCliHealthChecker` の関係を追加。
+- プロジェクト構造セクションに、現行ソース構成との同期注記を追加。
+
+### 検証
+- ローカル全体テスト: 971 tests, 0 failures。
+
+---
+
 ## 2026-02-19 (v5)
 
 ### 概要

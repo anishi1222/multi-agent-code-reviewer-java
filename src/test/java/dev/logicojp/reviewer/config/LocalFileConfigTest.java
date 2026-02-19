@@ -3,6 +3,11 @@ package dev.logicojp.reviewer.config;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("LocalFileConfig")
@@ -44,5 +49,23 @@ class LocalFileConfigTest {
         assertThat(config.sourceExtensions()).containsExactly("abc");
         assertThat(config.sensitiveFilePatterns()).containsExactly("secret-file");
         assertThat(config.sensitiveExtensions()).containsExactly("sec");
+    }
+
+    @Test
+    @DisplayName("機密ファイルパターンのフォールバックはリソース定義を包含する")
+    void fallbackSensitivePatternsContainResourcePatterns() throws Exception {
+        Field field = LocalFileConfig.class.getDeclaredField("FALLBACK_SENSITIVE_FILE_PATTERNS");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<String> fallbackPatterns = (List<String>) field.get(null);
+
+        List<String> resourcePatterns = Files.readAllLines(Path.of("src/main/resources/defaults/sensitive-file-patterns.txt"))
+            .stream()
+            .map(String::trim)
+            .filter(line -> !line.isEmpty())
+            .filter(line -> !line.startsWith("#"))
+            .toList();
+
+        assertThat(fallbackPatterns).containsAll(resourcePatterns);
     }
 }

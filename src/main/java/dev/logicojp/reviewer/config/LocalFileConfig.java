@@ -59,7 +59,9 @@ public record LocalFileConfig(
         ".netrc", ".npmrc", ".pypirc", ".docker/config",
         "vault-config", "aws-credentials",
         "terraform.tfvars", "kubeconfig", ".kube/config",
-        "htpasswd", "shadow"
+        "htpasswd", "shadow",
+        "application.yml", "application.yaml",
+        "config.json", "settings.json", "settings.yaml"
     );
 
     private static final List<String> FALLBACK_SENSITIVE_EXTENSIONS = List.of(
