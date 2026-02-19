@@ -36,10 +36,11 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - リリース詳細: `RELEASE_NOTES_ja.md`
 - GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer-java/releases/tag/v2026.02.19-notes-v3
 
-## 運用完了チェック（2026-02-18）
+## 運用完了チェック（2026-02-19）
 
 - [x] 全レビュー指摘事項を対応完了
-- [x] 724テスト合格（0失敗）
+- [x] 全テストスイート合格（0失敗）
+- [x] 信頼性修正PRをマージ完了: #76（idle-timeout scheduler 停止時フォールバック）
 - [x] README EN/JA を同期
 
 ## リリース更新手順（テンプレート）
