@@ -819,6 +819,8 @@ flowchart TB
       CopilotCliHealthChecker["CopilotCliHealthChecker
       gh copilot health/auth checks"]
         TemplateService
+        SecurityAuditLogger["SecurityAuditLogger
+        Structured security audit logging"]
     end
 
     ReviewExecutionCoordinator --> CopilotService
@@ -898,13 +900,19 @@ Templates support `{{placeholder}}` format placeholders. See each template file 
 
 ## Project Structure
 
-The following tree is synchronized with the current source layout as of 2026-02-19 (v7).
+The following tree is synchronized with the current source layout as of 2026-02-20 (v12).
 
 ```
 multi-agent-reviewer/
 ├── pom.xml                              # Maven configuration
 ├── .sdkmanrc                            # SDKMAN GraalVM configuration
 ├── .github/
+│   ├── workflows/                       # CI/CD workflows
+│   │   ├── ci.yml                       # Build and test
+│   │   ├── codeql.yml                   # CodeQL analysis
+│   │   ├── dependency-audit.yml         # Weekly OWASP dependency audit
+│   │   ├── dependency-review.yml        # PR dependency review
+│   │   └── scorecard.yml               # OpenSSF Scorecard
 │   └── skills/                          # Skill definitions (SKILL.md format)
 │       ├── sql-injection-check/
 │       ├── secret-scan/
@@ -993,7 +1001,15 @@ multi-agent-reviewer/
     │   └── ScopedInstructionLoader.java # Scoped instruction loader
     ├── orchestrator/
     │   ├── AgentReviewExecutor.java     # Agent review executor
+    │   ├── AgentReviewer.java           # Agent reviewer interface
+    │   ├── AgentReviewerFactory.java    # Agent reviewer factory
+    │   ├── ExecutorResources.java       # Executor resource bundle
+    │   ├── LocalSourceCollector.java    # Local source collector interface
+    │   ├── LocalSourceCollectorFactory.java # Local source collector factory
     │   ├── LocalSourcePrecomputer.java  # Local source precomputer
+    │   ├── OrchestratorCollaborators.java # Orchestrator collaborator interfaces
+    │   ├── OrchestratorConfig.java      # Orchestrator configuration record
+    │   ├── PromptTexts.java             # Prompt text record
     │   ├── ReviewContextFactory.java    # Review context factory
     │   ├── ReviewExecutionModeRunner.java # Execution mode runner
     │   ├── ReviewOrchestrator.java      # Parallel execution control
@@ -1063,7 +1079,9 @@ multi-agent-reviewer/
         ├── FeatureFlags.java            # Feature flag resolution
         ├── FrontmatterParser.java       # YAML frontmatter parser
         ├── GitHubTokenResolver.java     # GitHub token resolution
-        └── StructuredConcurrencyUtils.java # Structured Concurrency utilities
+        ├── SecurityAuditLogger.java     # Structured security audit logging
+        ├── StructuredConcurrencyUtils.java # Structured Concurrency utilities
+        └── TokenHashUtils.java          # SHA-256 token hash utility
 
 └── src/main/resources/
     ├── defaults/
