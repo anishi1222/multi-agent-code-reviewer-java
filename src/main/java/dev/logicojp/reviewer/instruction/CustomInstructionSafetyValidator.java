@@ -166,6 +166,23 @@ public final class CustomInstructionSafetyValidator {
             .replace('\u0440', 'p')  // Cyrillic р → p
             .replace('\u0441', 'c')  // Cyrillic с → c
             .replace('\u0443', 'y')  // Cyrillic у → y
-            .replace('\u0445', 'x'); // Cyrillic х → x
+            .replace('\u0445', 'x')  // Cyrillic х → x
+            .replace('\u03BF', 'o')  // Greek ο → o
+            .replace('\u03B1', 'a')  // Greek α → a
+            .replace('\u03B5', 'e')  // Greek ε → e
+            .replace('\u03B9', 'i')  // Greek ι → i
+            .replace('\u0391', 'A')  // Greek Α → A
+            .replace('\u0392', 'B')  // Greek Β → B
+            .replace('\u0395', 'E')  // Greek Ε → E
+            .replace('\u0397', 'H')  // Greek Η → H
+            .replace('\u0399', 'I')  // Greek Ι → I
+            .replace('\u039A', 'K')  // Greek Κ → K
+            .replace('\u039C', 'M')  // Greek Μ → M
+            .replace('\u039D', 'N')  // Greek Ν → N
+            .replace('\u039F', 'O')  // Greek Ο → O
+            .replace('\u03A1', 'P')  // Greek Ρ → P
+            .replace('\u03A4', 'T')  // Greek Τ → T
+            .replace('\u03A5', 'Y')  // Greek Υ → Y
+            .replace('\u03A7', 'X'); // Greek Χ → X
     }
 }

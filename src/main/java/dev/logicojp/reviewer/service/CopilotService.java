@@ -9,6 +9,10 @@ import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +34,7 @@ public class CopilotService {
     private final CopilotStartupErrorFormatter startupErrorFormatter;
     private final CopilotClientStarter clientStarter;
     private volatile CopilotClient client;
-    private volatile String initializedToken;
+    private volatile String initializedTokenFingerprint;
 
     @Inject
     public CopilotService(CopilotCliPathResolver cliPathResolver,
@@ -69,7 +73,8 @@ public class CopilotService {
 
     /// Initializes the Copilot client.
     private synchronized void initialize(String githubToken) throws InterruptedException {
-        if (client != null && Objects.equals(initializedToken, githubToken)) {
+        String tokenFingerprint = fingerprintToken(githubToken);
+        if (client != null && Objects.equals(initializedTokenFingerprint, tokenFingerprint)) {
             return;
         }
 
@@ -83,8 +88,21 @@ public class CopilotService {
         long timeoutSeconds = resolveStartTimeoutSeconds();
         startClient(createdClient, timeoutSeconds);
         client = createdClient;
-        initializedToken = githubToken;
+        initializedTokenFingerprint = tokenFingerprint;
         logger.info("Copilot client initialized");
+    }
+
+    private String fingerprintToken(String githubToken) {
+        if (githubToken == null) {
+            return null;
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(githubToken.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 
     private CopilotClientOptions buildClientOptions(String githubToken) throws InterruptedException {
@@ -178,7 +196,7 @@ public class CopilotService {
             logger.warn("Error shutting down Copilot client: {}", e.getMessage(), e);
         } finally {
             client = null;
-            initializedToken = null;
+            initializedTokenFingerprint = null;
         }
     }
 }

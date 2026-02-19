@@ -3,7 +3,9 @@ package dev.logicojp.reviewer.target;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,12 +82,48 @@ final class LocalFileCandidateProcessor {
                 return ProcessedCandidate.skip();
             }
 
-            String content = Files.readString(realPath, StandardCharsets.UTF_8);
+            long remainingBudget = maxTotalSize - totalSize;
+            long readLimit = Math.min(maxFileSize, remainingBudget);
+            if (readLimit <= 0) {
+                logTotalSizeLimitReached(totalSize);
+                return ProcessedCandidate.stop();
+            }
+
+            ReadResult readResult = readUtf8WithLimit(realPath, readLimit);
+            if (readResult.exceededLimit()) {
+                if (maxFileSize <= remainingBudget) {
+                    logger.warn("File size exceeded limit during read (possible race), skipping: {}", path);
+                    return ProcessedCandidate.skip();
+                }
+                logTotalSizeLimitReached(totalSize);
+                return ProcessedCandidate.stop();
+            }
+
+            String content = readResult.content();
             String relativePath = toRelativePath(path);
-            return ProcessedCandidate.included(relativePath, content, size);
+            return ProcessedCandidate.included(relativePath, content, readResult.sizeBytes());
         } catch (IOException e) {
             logger.warn("Failed to read file {}: {}", candidate.path(), e.getMessage(), e);
             return ProcessedCandidate.skip();
+        }
+    }
+
+    private ReadResult readUtf8WithLimit(Path path, long maxBytes) throws IOException {
+        try (InputStream inputStream = Files.newInputStream(path);
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            long totalRead = 0;
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                totalRead += read;
+                if (totalRead > maxBytes) {
+                    return ReadResult.exceeded();
+                }
+                outputStream.write(buffer, 0, read);
+            }
+
+            String content = outputStream.toString(StandardCharsets.UTF_8);
+            return ReadResult.included(content, totalRead);
         }
     }
 
@@ -107,6 +145,16 @@ final class LocalFileCandidateProcessor {
 
     private void logTotalSizeLimitReached(long totalSize) {
         logger.warn("Total content size limit reached ({} bytes). Stopping collection.", totalSize);
+    }
+
+    private record ReadResult(boolean exceededLimit, String content, long sizeBytes) {
+        private static ReadResult included(String content, long sizeBytes) {
+            return new ReadResult(false, content, sizeBytes);
+        }
+
+        private static ReadResult exceeded() {
+            return new ReadResult(true, null, 0);
+        }
     }
 
     private record ProcessedCandidate(boolean included,

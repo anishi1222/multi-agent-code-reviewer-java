@@ -151,6 +151,13 @@ class ContentSanitizerTest {
         }
 
         @Test
+        @DisplayName("vbscript: URIスキームを除去する")
+        void removesVbscriptUri() {
+            String input = "Before vbscript:msgbox('xss') After";
+            assertThat(ContentSanitizer.sanitize(input)).doesNotContain("vbscript");
+        }
+
+        @Test
         @DisplayName("data: base64 URIを除去する")
         void removesDataUri() {
             String input = "Before data:text/html;base64,PHNjcmlwdD4= After";

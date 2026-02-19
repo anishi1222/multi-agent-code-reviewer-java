@@ -53,6 +53,7 @@ public final class ContentSanitizer {
         "<\\s*(script|iframe|object|embed|form|input|base|link|meta|style)\\b[^>]*/?>|" +
         "\\bon\\w+\\s*=|" +
         "javascript\\s*:|" +
+        "vbscript\\s*:|" +
         "data\\s*:[^,]*;base64",
         Pattern.DOTALL | Pattern.CASE_INSENSITIVE
     );

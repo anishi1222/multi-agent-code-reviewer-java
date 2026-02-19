@@ -70,4 +70,27 @@ class LocalFileCandidateProcessorTest {
         assertThat(result.fileCount()).isEqualTo(1);
         assertThat(result.totalSize()).isEqualTo(firstSize);
     }
+
+    @Test
+    @DisplayName("収集時サイズが過小でも読み取り時の実サイズでmaxFileSize超過を検出する")
+    void skipsWhenActualSizeExceedsLimitAtReadTime() throws IOException {
+        Path target = tempDir.resolve("target.java");
+        Files.writeString(target, "012345678901234567890123456789");
+
+        var candidates = List.of(
+            new LocalFileCandidate(target, 10)
+        );
+
+        var processor = new LocalFileCandidateProcessor(tempDir, tempDir.toRealPath(), 20, 10_000);
+        List<String> processed = new ArrayList<>();
+
+        LocalFileCandidateProcessor.ProcessingResult result = processor.process(
+            candidates,
+            (relativePath, content, sizeBytes) -> processed.add(relativePath)
+        );
+
+        assertThat(processed).isEmpty();
+        assertThat(result.fileCount()).isZero();
+        assertThat(result.totalSize()).isZero();
+    }
 }
