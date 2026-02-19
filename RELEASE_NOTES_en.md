@@ -9,6 +9,28 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
 4. Update `README_en.md` and `README_ja.md` with release references and URLs.
 
+## 2026-02-19 (v4)
+
+### Summary
+- Updated the operational completion checklist in README EN/JA to reflect 2026-02-19 completion status.
+- Recorded PR #76 reliability remediation explicitly in the checklist section for clearer traceability.
+- Merged the documentation synchronization via PR #78.
+
+### Highlights
+
+#### PR #78: Operational Completion Check Refresh
+- Updated `README_en.md` and `README_ja.md` section date from 2026-02-18 to 2026-02-19.
+- Replaced fixed test-count wording with full-suite passing status.
+- Added explicit checklist item for PR #76 (idle-timeout scheduler shutdown fallback).
+
+### Validation
+- PR #78 required checks passed: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### Merged PRs
+- [#78](https://github.com/anishi1222/multi-agent-code-reviewer/pull/78): refresh operational completion check for 2026-02-19
+
+---
+
 ## 2026-02-19 (v3)
 
 ### Summary

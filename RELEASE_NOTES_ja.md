@@ -9,6 +9,28 @@
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。
 4. `README_en.md` と `README_ja.md` にリリース参照とURLを追記する。
 
+## 2026-02-19 (v4)
+
+### 概要
+- README EN/JA の運用完了チェックを 2026-02-19 時点に更新しました。
+- チェック項目に PR #76 の信頼性対応を明示し、追跡性を改善しました。
+- ドキュメント同期変更を PR #78 で `main` に反映しました。
+
+### 主な変更
+
+#### PR #78: 運用完了チェックの更新
+- `README_en.md` / `README_ja.md` の該当セクション日付を 2026-02-18 から 2026-02-19 に更新。
+- 固定テスト件数表現を全テストスイート合格の表現へ変更。
+- PR #76（idle-timeout scheduler 停止時フォールバック）完了項目を追加。
+
+### 検証
+- PR #78 の必須チェック合格: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### マージ済み PR
+- [#78](https://github.com/anishi1222/multi-agent-code-reviewer/pull/78): 2026-02-19 運用完了チェック更新
+
+---
+
 ## 2026-02-19 (v3)
 
 ### 概要
