@@ -1,0 +1,32 @@
+name: Scheduled Dependency Audit
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owasp-check:
+    name: OWASP Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up JDK 25
+        uses: oracle-actions/setup-java@ec7274acdd237c7fe61395ed2edda22d756b5afe # v1
+        with:
+          website: jdk.java.net
+          release: 25
+
+      - name: Run OWASP dependency check
+        run: mvn -B -ntp -Psecurity-audit verify -DskipTests

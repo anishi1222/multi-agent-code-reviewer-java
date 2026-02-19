@@ -129,6 +129,7 @@
                                 <requireReleaseDeps>
                                     <message>SNAPSHOT dependencies/plugins are not allowed.</message>
                                 </requireReleaseDeps>
+                                <dependencyConvergence/>
                             </rules>
                             <fail>true</fail>
                         </configuration>

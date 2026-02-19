@@ -127,7 +127,7 @@ class ReviewResultMergerTest {
                     extractorCalled.set(true);
                     return List.of(new ReviewFindingParser.FindingBlock("Injected", "body"));
                 },
-                block -> {
+                (block, normalized) -> {
                     keyResolverCalled.set(true);
                     return "injected-key";
                 },

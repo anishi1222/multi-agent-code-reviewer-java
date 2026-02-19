@@ -27,6 +27,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 
 All review findings from 2026-02-16 through 2026-02-19 review cycles have been fully addressed.
 
+- 2026-02-19 (v10): Performance + WAF security hardening — eliminated redundant finding-key extraction in merge flow, added prefix-indexed near-duplicate lookup, optimized local file read buffer sizing, precompiled fallback whitespace regex, introduced structured security audit logging, enforced SDK WARN level even in verbose mode, applied owner-only report output permissions on POSIX, added Maven `dependencyConvergence`, and added weekly OWASP dependency-audit workflow
 - 2026-02-19 (v9): Security follow-up closure — expanded suspicious-pattern validation for agent definitions to all prompt-injected fields, strengthened MCP header masking paths (`entrySet`/`values` stringification), and reduced token exposure by deferring `--token -` stdin materialization to resolution time
 - 2026-02-19 (v8): Naming-rule alignment — synchronized executive summary output to `reports/{owner}/{repo}/executive_summary_yyyy-mm-dd-HH-mm-ss.md` (CLI invocation timestamp) and aligned README EN/JA examples + tests
 - 2026-02-19 (v7): Security report follow-up — synchronized `LocalFileConfig` fallback sensitive file patterns with resource defaults and added an opt-in `security-audit` Maven profile (`dependency-check-maven`)
@@ -45,7 +46,7 @@ All review findings from 2026-02-16 through 2026-02-19 review cycles have been f
 
 ## Operational Completion Check (2026-02-19)
 
-- Last updated: 2026-02-19 (v9)
+- Last updated: 2026-02-19 (v10)
 
 - [x] All review findings addressed
 - [x] Full test suite passing (0 failures)
@@ -55,6 +56,14 @@ All review findings from 2026-02-16 through 2026-02-19 review cycles have been f
 - [x] Agent definition suspicious-pattern validation expanded to all prompt-injected fields
 - [x] MCP auth header masking reinforced for `entrySet` / `values` stringification paths
 - [x] `--token -` handling deferred to token-resolution boundary to minimize in-memory token lifetime
+- [x] Merge-path redundant normalization/regex extraction removed (`findingKeyFromNormalized` reuse)
+- [x] Near-duplicate detection narrowed with priority+title-prefix index before similarity matching
+- [x] Local file reader pre-sizes `ByteArrayOutputStream` based on expected file size
+- [x] Fallback summary whitespace regex switched to precompiled pattern
+- [x] Structured `SECURITY_AUDIT` logging added for auth/trust/instruction-validation events
+- [x] `--verbose` mode keeps Copilot SDK logger at `WARN`
+- [x] Report output directories/files use owner-only POSIX permissions where supported
+- [x] Weekly scheduled OWASP dependency audit workflow added
 - [x] README EN/JA synchronized
 
 ## Release Update Procedure (Template)

@@ -31,7 +31,8 @@ public final class ReviewResultMerger {
 
     @FunctionalInterface
     interface FindingKeyResolver {
-        String resolve(ReviewFindingParser.FindingBlock block);
+        String resolve(ReviewFindingParser.FindingBlock block,
+                       AggregatedFinding.NormalizedFinding normalized);
     }
 
     @FunctionalInterface
@@ -58,7 +59,7 @@ public final class ReviewResultMerger {
         return mergeByAgent(
             results,
             ReviewFindingParser::extractFindingBlocks,
-            ReviewFindingParser::findingKey,
+            (block, normalized) -> ReviewFindingParser.findingKeyFromNormalized(normalized, block.body()),
             ReviewMergedContentFormatter::format
         );
     }
@@ -122,6 +123,7 @@ public final class ReviewResultMerger {
 
         Map<String, AggregatedFinding> aggregatedFindings = new LinkedHashMap<>();
         Map<String, Set<String>> findingKeysByPriority = new LinkedHashMap<>();
+        Map<String, Set<String>> findingKeysByPriorityAndPrefix = new LinkedHashMap<>();
         Set<String> fallbackPassContents = new LinkedHashSet<>();
 
         for (int i = 0; i < successful.size(); i++) {
@@ -146,14 +148,19 @@ public final class ReviewResultMerger {
 
             for (ReviewFindingParser.FindingBlock block : blocks) {
                 AggregatedFinding.NormalizedFinding normalized = AggregatedFinding.normalize(block);
-                String key = findingKeyResolver.resolve(block);
+                String key = findingKeyResolver.resolve(block, normalized);
                 AggregatedFinding existingExact = aggregatedFindings.get(key);
                 if (existingExact != null) {
                     aggregatedFindings.put(key, existingExact.withPass(passNumber));
                     continue;
                 }
 
-                String nearDuplicateKey = findNearDuplicateKey(aggregatedFindings, findingKeysByPriority, normalized);
+                String nearDuplicateKey = findNearDuplicateKey(
+                    aggregatedFindings,
+                    findingKeysByPriority,
+                    findingKeysByPriorityAndPrefix,
+                    normalized
+                );
                 if (nearDuplicateKey != null) {
                     AggregatedFinding nearExisting = aggregatedFindings.get(nearDuplicateKey);
                     aggregatedFindings.put(nearDuplicateKey, nearExisting.withPass(passNumber));
@@ -162,6 +169,12 @@ public final class ReviewResultMerger {
 
                 aggregatedFindings.put(key, AggregatedFinding.fromNormalized(block, normalized, passNumber));
                 indexByPriority(findingKeysByPriority, normalized.priority(), key);
+                indexByPriorityAndPrefix(
+                    findingKeysByPriorityAndPrefix,
+                    normalized.priority(),
+                    buildPrefixKey(normalized.title()),
+                    key
+                );
             }
         }
 
@@ -178,10 +191,15 @@ public final class ReviewResultMerger {
 
     private static String findNearDuplicateKey(Map<String, AggregatedFinding> existing,
                                                Map<String, Set<String>> findingKeysByPriority,
+                                               Map<String, Set<String>> findingKeysByPriorityAndPrefix,
                                                AggregatedFinding.NormalizedFinding incoming) {
         // Use index for both priority-specified and priority-blank findings
         String priorityKey = incoming.priority().isBlank() ? "" : incoming.priority();
-        Set<String> keys = findingKeysByPriority.getOrDefault(priorityKey, Set.of());
+        String titlePrefix = buildPrefixKey(incoming.title());
+        Set<String> keys = findingKeysByPriorityAndPrefix.get(priorityPrefixIndexKey(priorityKey, titlePrefix));
+        if (keys == null || keys.isEmpty()) {
+            keys = findingKeysByPriority.getOrDefault(priorityKey, Set.of());
+        }
         for (String key : keys) {
             AggregatedFinding candidate = existing.get(key);
             if (candidate != null && candidate.isNearDuplicateOf(incoming)) {
@@ -198,6 +216,27 @@ public final class ReviewResultMerger {
         // Index all findings including those with blank priority (keyed as "")
         String indexKey = (priority == null || priority.isBlank()) ? "" : priority;
         findingKeysByPriority.computeIfAbsent(indexKey, _ -> new LinkedHashSet<>()).add(key);
+    }
+
+    private static void indexByPriorityAndPrefix(Map<String, Set<String>> findingKeysByPriorityAndPrefix,
+                                                 String priority,
+                                                 String prefix,
+                                                 String key) {
+        String priorityKey = (priority == null || priority.isBlank()) ? "" : priority;
+        String indexKey = priorityPrefixIndexKey(priorityKey, prefix);
+        findingKeysByPriorityAndPrefix.computeIfAbsent(indexKey, _ -> new LinkedHashSet<>()).add(key);
+    }
+
+    private static String priorityPrefixIndexKey(String priority, String prefix) {
+        return priority + "|" + prefix;
+    }
+
+    private static String buildPrefixKey(String title) {
+        if (title == null || title.isBlank()) {
+            return "";
+        }
+        int length = Math.min(title.length(), 8);
+        return title.substring(0, length);
     }
 
     private static String normalizeText(String value) {

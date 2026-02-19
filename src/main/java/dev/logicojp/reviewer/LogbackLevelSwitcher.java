@@ -20,6 +20,8 @@ final class LogbackLevelSwitcher {
             LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
             context.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
             context.getLogger("dev.logicojp").setLevel(Level.DEBUG);
+            context.getLogger("com.github.copilot.sdk").setLevel(Level.WARN);
+            context.getLogger("org.yaml.snakeyaml").setLevel(Level.WARN);
             return true;
         } catch (ClassCastException _) {
             return false;

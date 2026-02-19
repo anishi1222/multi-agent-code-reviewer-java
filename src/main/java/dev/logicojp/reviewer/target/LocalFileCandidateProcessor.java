@@ -89,7 +89,7 @@ final class LocalFileCandidateProcessor {
                 return ProcessedCandidate.stop();
             }
 
-            ReadResult readResult = readUtf8WithLimit(realPath, readLimit);
+            ReadResult readResult = readUtf8WithLimit(realPath, readLimit, size);
             if (readResult.exceededLimit()) {
                 if (maxFileSize <= remainingBudget) {
                     logger.warn("File size exceeded limit during read (possible race), skipping: {}", path);
@@ -108,9 +108,10 @@ final class LocalFileCandidateProcessor {
         }
     }
 
-    private ReadResult readUtf8WithLimit(Path path, long maxBytes) throws IOException {
+    private ReadResult readUtf8WithLimit(Path path, long maxBytes, long expectedSize) throws IOException {
+        int initialCapacity = (int) Math.min(expectedSize, maxBytes);
         try (InputStream inputStream = Files.newInputStream(path);
-             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream(Math.max(initialCapacity, 32))) {
             byte[] buffer = new byte[8192];
             long totalRead = 0;
             int read;

@@ -3,6 +3,7 @@ package dev.logicojp.reviewer.cli;
 import dev.logicojp.reviewer.agent.AgentConfig;
 import dev.logicojp.reviewer.config.ModelConfig;
 import dev.logicojp.reviewer.target.ReviewTarget;
+import dev.logicojp.reviewer.util.SecurityAuditLogger;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -237,6 +238,7 @@ public class ReviewCommand {
         ReviewTargetResolver.TargetAndToken targetAndToken = resolveTargetAndToken(options);
         ReviewTarget target = targetAndToken.target();
         String resolvedToken = targetAndToken.resolvedToken();
+        logReviewAuditEvent(target, options.trustTarget(), resolvedToken != null && !resolvedToken.isBlank());
         ModelConfig modelConfig = resolveModelConfig(options);
         ReviewAgentConfigResolver.AgentResolution agentResolution = resolveAgentConfigs(options);
         List<Path> agentDirs = agentResolution.agentDirectories();
@@ -303,6 +305,20 @@ public class ReviewCommand {
                               String resolvedToken,
                               ReviewRunExecutor.ReviewRunRequest runRequest) {
         return executionCoordinator.execute(agentConfigs, agentDirs, resolvedToken, runRequest);
+    }
+
+    private void logReviewAuditEvent(ReviewTarget target, boolean trustMode, boolean hasToken) {
+        SecurityAuditLogger.log(
+            "access",
+            "review.start",
+            "Review access initiated",
+            Map.of(
+                "targetType", target.isLocal() ? "local" : "github",
+                "target", target.displayName(),
+                "trustMode", Boolean.toString(trustMode),
+                "tokenSource", hasToken ? "provided-or-resolved" : "not-required"
+            )
+        );
     }
 
 }
