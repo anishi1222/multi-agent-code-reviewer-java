@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -125,9 +126,10 @@ public class AgentConfigLoader {
                 try {
                     AgentConfig config = markdownParser.parse(file);
                     if (config != null) {
-                        if (CustomInstructionSafetyValidator.containsSuspiciousPattern(config.systemPrompt())
-                            || CustomInstructionSafetyValidator.containsSuspiciousPattern(config.instruction())) {
-                            logger.warn("Agent file contains suspicious patterns, skipping: {}", file);
+                        Optional<String> suspiciousField = firstSuspiciousField(config);
+                        if (suspiciousField.isPresent()) {
+                            logger.warn("Agent file contains suspicious patterns in '{}', skipping: {}",
+                                suspiciousField.get(), file);
                             continue;
                         }
                         config = applySkills(config, globalSkills);
@@ -244,6 +246,37 @@ public class AgentConfigLoader {
                 .filter(path -> filter == null || filter.contains(extractAgentName(path)))
                 .toList();
         }
+    }
+
+    private Optional<String> firstSuspiciousField(AgentConfig config) {
+        if (containsSuspicious(config.systemPrompt())) {
+            return Optional.of("role");
+        }
+        if (containsSuspicious(config.instruction())) {
+            return Optional.of("instruction");
+        }
+        if (containsSuspicious(config.outputFormat())) {
+            return Optional.of("output-format");
+        }
+        if (containsSuspicious(config.displayName())) {
+            return Optional.of("display-name");
+        }
+        if (containsSuspicious(config.model())) {
+            return Optional.of("model");
+        }
+        if (containsSuspicious(config.name())) {
+            return Optional.of("name");
+        }
+        for (String focusArea : config.focusAreas()) {
+            if (containsSuspicious(focusArea)) {
+                return Optional.of("focus-areas");
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean containsSuspicious(String value) {
+        return CustomInstructionSafetyValidator.containsSuspiciousPattern(value);
     }
     
     private String extractAgentName(Path file) {

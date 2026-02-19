@@ -27,7 +27,8 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 
 All review findings from 2026-02-16 through 2026-02-19 review cycles have been fully addressed.
 
-- 2026-02-19 (v8): Naming-rule alignment — changed executive summary output filename from timestamped format to fixed `executive-summary.md`, and synchronized README EN/JA examples + test path
+- 2026-02-19 (v9): Security follow-up closure — expanded suspicious-pattern validation for agent definitions to all prompt-injected fields, strengthened MCP header masking paths (`entrySet`/`values` stringification), and reduced token exposure by deferring `--token -` stdin materialization to resolution time
+- 2026-02-19 (v8): Naming-rule alignment — synchronized executive summary output to `reports/{owner}/{repo}/executive_summary_yyyy-mm-dd-HH-mm-ss.md` (CLI invocation timestamp) and aligned README EN/JA examples + tests
 - 2026-02-19 (v7): Security report follow-up — synchronized `LocalFileConfig` fallback sensitive file patterns with resource defaults and added an opt-in `security-audit` Maven profile (`dependency-check-maven`)
 - 2026-02-19 (v6): Release documentation rollup — published the 2026-02-19 daily rollup section in RELEASE_NOTES EN/JA
 - 2026-02-19 (v5): Documentation refinement — added concise operations summary for the v2-v4 progression
@@ -44,13 +45,16 @@ All review findings from 2026-02-16 through 2026-02-19 review cycles have been f
 
 ## Operational Completion Check (2026-02-19)
 
-- Last updated: 2026-02-19 (v8)
+- Last updated: 2026-02-19 (v9)
 
 - [x] All review findings addressed
 - [x] Full test suite passing (0 failures)
 - [x] Reliability fix PR merged: #76 (idle-timeout scheduler shutdown fallback)
 - [x] Sensitive-pattern fallback sync completed (`LocalFileConfig`)
-- [x] Executive summary filename aligned to naming convention (`executive-summary.md`)
+- [x] Executive summary filename aligned to naming convention (`executive_summary_yyyy-mm-dd-HH-mm-ss.md`)
+- [x] Agent definition suspicious-pattern validation expanded to all prompt-injected fields
+- [x] MCP auth header masking reinforced for `entrySet` / `values` stringification paths
+- [x] `--token -` handling deferred to token-resolution boundary to minimize in-memory token lifetime
 - [x] README EN/JA synchronized
 
 ## Release Update Procedure (Template)
@@ -339,24 +343,24 @@ Reports are generated under the output base directory in a subdirectory correspo
 ./reports/
 └── owner/
     └── repository/
-    └── 2026-02-19-18-38-42/
-      ├── security-report.md
-      ├── code-quality-report.md
-      ├── performance-report.md
-      ├── best-practices-report.md
-      └── executive-summary.md
+      ├── executive_summary_2026-02-19-18-38-42.md
+      └── 2026-02-19-18-38-42/
+        ├── security-report.md
+        ├── code-quality-report.md
+        ├── performance-report.md
+        └── best-practices-report.md
 ```
 
 **Local directory** (`--local /path/to/my-project`):
 ```
 ./reports/
 └── my-project/
+  ├── executive_summary_2026-02-19-18-38-42.md
   └── 2026-02-19-18-38-42/
     ├── security-report.md
     ├── code-quality-report.md
     ├── performance-report.md
-    ├── best-practices-report.md
-    └── executive-summary.md
+    └── best-practices-report.md
 ```
 
 Use `-o` / `--output` to change the output base directory (default: `./reports`).

@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 /// All other parsing methods are package-private (used only within the {@code cli} package).
 public final class CliParsing {
     private static final int MAX_STDIN_TOKEN_BYTES = 256;
+    static final String STDIN_TOKEN_SENTINEL = "-";
 
     public record OptionValue(String value, int newIndex) {
     }
@@ -112,13 +113,13 @@ public final class CliParsing {
     /// Reads a token value with a security check.
     /// Rejects direct token values passed via command line to prevent
     /// exposure in process listings and shell history.
-    /// Only `"-"` (stdin) is accepted; for other values a
+    /// Only `"-"` (stdin sentinel) is accepted; for other values a
     /// {@link CliValidationException} is thrown.
      static String readTokenWithWarning(String value) {
-        if (!"-".equals(value)) {
+        if (!STDIN_TOKEN_SENTINEL.equals(value)) {
             throw directTokenPassingNotSupported();
         }
-        return readToken(value);
+        return STDIN_TOKEN_SENTINEL;
     }
 
     /// Reads a token value, supporting stdin input via "-" to avoid
@@ -131,7 +132,7 @@ public final class CliParsing {
     /// minimize the scope of token references and prefer short-lived tokens
     /// (e.g., fine-grained personal access tokens) to reduce exposure window.
      static String readToken(String value) {
-        if ("-".equals(value)) {
+        if (STDIN_TOKEN_SENTINEL.equals(value)) {
             try {
                 if (System.console() != null) {
                     char[] chars = System.console().readPassword("GitHub Token: ");

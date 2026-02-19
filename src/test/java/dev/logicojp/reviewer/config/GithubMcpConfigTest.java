@@ -116,6 +116,40 @@ class GithubMcpConfigTest {
             // ${token} contains {token} which gets replaced, leaving the $ prefix
             assertThat(headers).containsEntry("Authorization", "token $abc123");
         }
+
+        @Test
+        @DisplayName("entrySetとvaluesのtoStringでもAuthorization値をマスクする")
+        void masksAuthorizationInEntrySetAndValuesToString() {
+            GithubMcpConfig config = new GithubMcpConfig(
+                "http", "https://api.example.com/",
+                List.of("*"), Map.of("X-Custom", "value"),
+                "Authorization", "Bearer {token}");
+            Map<String, Object> server = config.toMcpServer("ghp_secret123");
+
+            @SuppressWarnings("unchecked")
+            Map<String, String> headers = (Map<String, String>) server.get("headers");
+
+            assertThat(headers.get("Authorization")).isEqualTo("Bearer ghp_secret123");
+            assertThat(headers.entrySet().toString()).contains("Bearer ***");
+            assertThat(headers.entrySet().toString()).doesNotContain("ghp_secret123");
+            assertThat(headers.values().toString()).contains("Bearer ***");
+            assertThat(headers.values().toString()).doesNotContain("ghp_secret123");
+        }
+
+        @Test
+        @DisplayName("MCPサーバーマップのentrySet文字列化でもトークンをマスクする")
+        void masksAuthorizationInServerEntrySetToString() {
+            GithubMcpConfig config = new GithubMcpConfig(
+                "http", "https://api.example.com/",
+                List.of("*"), Map.of(),
+                "Authorization", "Bearer {token}");
+            Map<String, Object> server = config.toMcpServer("ghp_secret456");
+
+            String entrySetString = server.entrySet().toString();
+
+            assertThat(entrySetString).contains("Bearer ***");
+            assertThat(entrySetString).doesNotContain("ghp_secret456");
+        }
     }
 
     @Nested

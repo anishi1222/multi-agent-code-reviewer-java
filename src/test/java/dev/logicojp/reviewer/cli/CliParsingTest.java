@@ -153,4 +153,23 @@ class CliParsingTest {
             assertThat(CliParsing.hasHelpFlag(null)).isFalse();
         }
     }
+
+    @Nested
+    @DisplayName("readTokenWithWarning")
+    class ReadTokenWithWarning {
+
+        @Test
+        @DisplayName("stdinセンチネル '-' は許可される")
+        void acceptsStdinSentinel() {
+            assertThat(CliParsing.readTokenWithWarning("-")).isEqualTo("-");
+        }
+
+        @Test
+        @DisplayName("直接トークン指定は拒否される")
+        void rejectsDirectToken() {
+            assertThatThrownBy(() -> CliParsing.readTokenWithWarning("ghp_secret"))
+                .isInstanceOf(CliValidationException.class)
+                .hasMessageContaining("Direct token passing via command line is not supported");
+        }
+    }
 }
