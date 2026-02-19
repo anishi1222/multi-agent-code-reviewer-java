@@ -9,6 +9,27 @@
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。
 4. `README_en.md` と `README_ja.md` にリリース参照とURLを追記する。
 
+## 2026-02-19 (v5)
+
+### 概要
+- README EN/JA に 2026-02-19 v2-v4 の運用サマリーを1行で追記しました。
+- リメディエーション進行を簡潔に可視化し、運用引き継ぎ時の把握性を向上しました。
+- ドキュメント更新を PR #80 で `main` に反映しました。
+
+### 主な変更
+
+#### PR #80: README への v2-v4 運用サマリー追記
+- `README_en.md` と `README_ja.md` に運用サマリーを1行追加。
+- サマリーで PR #74（Java 25 CI整合）→ PR #76（idle-timeout scheduler 耐障害性）→ PR #78（運用完了チェック同期）の流れを明示。
+
+### 検証
+- PR #80 の必須チェック合格: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### マージ済み PR
+- [#80](https://github.com/anishi1222/multi-agent-code-reviewer/pull/80): README へ v2-v4 運用サマリーを追加
+
+---
+
 ## 2026-02-19 (v4)
 
 ### 概要

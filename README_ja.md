@@ -27,6 +27,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 
 2026-02-16 〜 2026-02-19 のレビューサイクルで検出された全指摘事項は対応済みです。
 
+- 2026-02-19 (v5): ドキュメント整備対応 — v2-v4 の進行を簡潔な運用サマリーとして追記
 - 2026-02-19 (v4): ドキュメント同期対応 — 運用完了チェックを 2026-02-19 に更新し、PR #76 完了を明示
 - 2026-02-19 (v3): 信頼性対応 — idle-timeout scheduler 停止時も継続し、`RejectedExecutionException` のリトライ連鎖を防止
 - 2026-02-19 (v2): CI整合性対応 — CodeQL ワークフローの JDK を 26 から 25 へ変更し、Java 25.0.2 方針に統一
@@ -36,7 +37,7 @@ GitHub Copilot SDK for Java を使用した、複数のAIエージェントに�
 - 2026-02-17 (v1): PRs #22〜#27 — 最終リメディエーション（PR-1〜PR-5）
 - 運用サマリー（2026-02-19 v2-v4）: Java 25 へのCI整合（PR #74）→ idle-timeout scheduler 耐障害性修正（PR #76）→ 運用完了チェック同期（PR #78）
 - リリース詳細: `RELEASE_NOTES_ja.md`
-- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer-java/releases/tag/v2026.02.19-notes-v4
+- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer-java/releases/tag/v2026.02.19-notes-v5
 
 ## 運用完了チェック（2026-02-19）
 

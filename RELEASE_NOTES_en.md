@@ -9,6 +9,27 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
 4. Update `README_en.md` and `README_ja.md` with release references and URLs.
 
+## 2026-02-19 (v5)
+
+### Summary
+- Added a concise operations summary for the 2026-02-19 v2-v4 sequence to README EN/JA.
+- Captured the remediation progression in one line for quick operational handoff visibility.
+- Merged the documentation update via PR #80.
+
+### Highlights
+
+#### PR #80: v2-v4 Operations Summary in README
+- Added a one-line operations summary to `README_en.md` and `README_ja.md`.
+- Summary explicitly tracks the progression: PR #74 (Java 25 CI alignment) → PR #76 (idle-timeout scheduler resilience) → PR #78 (operational completion check sync).
+
+### Validation
+- PR #80 required checks passed: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### Merged PRs
+- [#80](https://github.com/anishi1222/multi-agent-code-reviewer/pull/80): add v2-v4 operations summary to README
+
+---
+
 ## 2026-02-19 (v4)
 
 ### Summary
