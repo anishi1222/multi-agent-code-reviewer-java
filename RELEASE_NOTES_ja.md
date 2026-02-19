@@ -9,7 +9,29 @@
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。
 4. `README_en.md` と `README_ja.md` にリリース参照とURLを追記する。
 
-## 2026-02-19
+## 2026-02-19 (v3)
+
+### 概要
+- 停止済み共有 scheduler へのアイドルタイムアウト登録で発生していたレビュー失敗を修正しました。
+- スケジューリング不可時は idle watchdog なしで処理継続するフォールバックを実装し、実行の安定性を向上しました。
+- shutdown 済み scheduler 経路の回帰テストを追加し、修正を PR #76 で `main` に反映しました。
+
+### 主な変更
+
+#### PR #76: Idle Timeout Scheduler の耐障害性向上
+- `IdleTimeoutScheduler.schedule(...)` で scheduler が停止済み、または登録拒否された場合に no-op `ScheduledFuture` を返すよう変更。
+- フォールバック時に警告ログを出力し、失敗させず可観測性を維持。
+- `IdleTimeoutSchedulerTest` に shutdown scheduler ケースを追加。
+
+### 検証
+- フォーカステスト: `mvn -Dtest=IdleTimeoutSchedulerTest test` 成功
+- 全体ビルド: `mvn clean package` 成功
+- PR #76 の必須チェック合格: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### マージ済み PR
+- [#76](https://github.com/anishi1222/multi-agent-code-reviewer/pull/76): レビュー時の idle-timeout scheduler 停止を許容
+
+---
 
 ## 2026-02-19 (v2)
 
