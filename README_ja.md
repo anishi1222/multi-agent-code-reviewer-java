@@ -342,7 +342,7 @@ agent: 'agent'
       ├── code-quality-report.md
       ├── performance-report.md
       ├── best-practices-report.md
-      └── executive_summary_2026-02-19-18-38-42.md
+      └── executive-summary.md
 ```
 
 **ローカルディレクトリの場合**（`--local /path/to/my-project`）:
@@ -354,7 +354,7 @@ agent: 'agent'
     ├── code-quality-report.md
     ├── performance-report.md
     ├── best-practices-report.md
-    └── executive_summary_2026-02-19-18-38-42.md
+    └── executive-summary.md
 ```
 
 `-o` / `--output` オプションで出力ベースディレクトリを変更できます（デフォルト: `./reports`）。

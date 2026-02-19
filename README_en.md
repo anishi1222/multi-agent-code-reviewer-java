@@ -342,7 +342,7 @@ Reports are generated under the output base directory in a subdirectory correspo
       ├── code-quality-report.md
       ├── performance-report.md
       ├── best-practices-report.md
-      └── executive_summary_2026-02-19-18-38-42.md
+      └── executive-summary.md
 ```
 
 **Local directory** (`--local /path/to/my-project`):
@@ -354,7 +354,7 @@ Reports are generated under the output base directory in a subdirectory correspo
     ├── code-quality-report.md
     ├── performance-report.md
     ├── best-practices-report.md
-    └── executive_summary_2026-02-19-18-38-42.md
+    └── executive-summary.md
 ```
 
 Use `-o` / `--output` to change the output base directory (default: `./reports`).

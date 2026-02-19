@@ -134,7 +134,7 @@ public class SummaryGenerator {
         ensureOutputDirectory();
 
         String timestamp = invocationTimestamp;
-        String filename = "executive_summary_%s.md".formatted(timestamp);
+        String filename = "executive-summary.md";
         Path summaryPath = outputDirectory.resolve(filename);
         
         logger.info("Generating executive summary from {} review results", results.size());

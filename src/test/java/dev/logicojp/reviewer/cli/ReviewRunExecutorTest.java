@@ -42,7 +42,7 @@ class ReviewRunExecutorTest {
             (results, outputDirectory) -> List.of(outputDirectory.resolve("agent-a-report.md")),
             (results, context) -> {
                 summaryCalled.set(true);
-                return context.outputDirectory().resolve("executive_summary_2026-02-16.md");
+                return context.outputDirectory().resolve("executive-summary.md");
             }
         );
 
