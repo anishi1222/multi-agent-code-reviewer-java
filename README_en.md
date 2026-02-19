@@ -27,6 +27,7 @@ A parallel code review application using multiple AI agents with GitHub Copilot 
 
 All review findings from 2026-02-16 through 2026-02-19 review cycles have been fully addressed.
 
+- 2026-02-19 (v8): Naming-rule alignment — changed executive summary output filename from timestamped format to fixed `executive-summary.md`, and synchronized README EN/JA examples + test path
 - 2026-02-19 (v7): Security report follow-up — synchronized `LocalFileConfig` fallback sensitive file patterns with resource defaults and added an opt-in `security-audit` Maven profile (`dependency-check-maven`)
 - 2026-02-19 (v6): Release documentation rollup — published the 2026-02-19 daily rollup section in RELEASE_NOTES EN/JA
 - 2026-02-19 (v5): Documentation refinement — added concise operations summary for the v2-v4 progression
@@ -39,16 +40,17 @@ All review findings from 2026-02-16 through 2026-02-19 review cycles have been f
 - 2026-02-17 (v1): PRs #22–#27 — Final remediation (PR-1 to PR-5)
 - Operations summary (2026-02-19 v2-v4): Java 25 CI alignment (PR #74) → idle-timeout scheduler resilience fix (PR #76) → operational completion checklist sync (PR #78)
 - Release details: `RELEASE_NOTES_en.md`
-- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer-java/releases/tag/v2026.02.19-notes-v6
+- GitHub Release: https://github.com/anishi1222/multi-agent-code-reviewer/releases/tag/v2026.02.19-notes-v10
 
 ## Operational Completion Check (2026-02-19)
 
-- Last updated: 2026-02-19 (v7)
+- Last updated: 2026-02-19 (v8)
 
 - [x] All review findings addressed
 - [x] Full test suite passing (0 failures)
 - [x] Reliability fix PR merged: #76 (idle-timeout scheduler shutdown fallback)
 - [x] Sensitive-pattern fallback sync completed (`LocalFileConfig`)
+- [x] Executive summary filename aligned to naming convention (`executive-summary.md`)
 - [x] README EN/JA synchronized
 
 ## Release Update Procedure (Template)

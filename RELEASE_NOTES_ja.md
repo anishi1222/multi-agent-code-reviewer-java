@@ -28,6 +28,28 @@
 
 ---
 
+## 2026-02-19 (v8)
+
+### 概要
+- エグゼクティブサマリー出力の命名を、レポートファイル命名ポリシーに整合させました。
+- タイムスタンプ付きのサマリーファイル名を廃止し、固定名 `executive-summary.md` に統一しました。
+- 命名整合のため、関連テストスタブと README EN/JA の出力例を更新しました。
+
+### 主な変更
+
+#### PR #90: エグゼクティブサマリーファイル名の整合
+- `SummaryGenerator` のエグゼクティブサマリー出力を `executive-summary.md` に変更。
+- `ReviewRunExecutorTest` のサマリー出力スタブパスを `executive-summary.md` に更新。
+- `README_en.md` と `README_ja.md` の出力例を新命名規則に同期。
+
+### 検証
+- PR #90 必須チェック合格: `CI/Build Native Image`, `CI/Build and Test`, `CI/Supply Chain Guard`, `Dependency Review`, `Automatic Dependency Submission`
+
+### マージ済み PR
+- [#90](https://github.com/anishi1222/multi-agent-code-reviewer/pull/90): エグゼクティブサマリーのファイル名をレポート命名規則に整合
+
+---
+
 ## 2026-02-19 (v7)
 
 ### 概要

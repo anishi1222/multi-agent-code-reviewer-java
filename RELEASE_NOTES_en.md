@@ -28,6 +28,28 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 
 ---
 
+## 2026-02-19 (v8)
+
+### Summary
+- Aligned executive summary output naming with the report-file naming policy.
+- Replaced timestamped executive summary output filename with fixed `executive-summary.md`.
+- Updated related test stub and README EN/JA output examples for naming consistency.
+
+### Highlights
+
+#### PR #90: Executive Summary Filename Alignment
+- `SummaryGenerator` now writes the executive summary file as `executive-summary.md`.
+- Updated `ReviewRunExecutorTest` stubbed summary path to `executive-summary.md`.
+- Updated output examples in `README_en.md` and `README_ja.md` to match the new naming rule.
+
+### Validation
+- PR #90 required checks passed: `CI/Build Native Image`, `CI/Build and Test`, `CI/Supply Chain Guard`, `Dependency Review`, `Automatic Dependency Submission`
+
+### Merged PRs
+- [#90](https://github.com/anishi1222/multi-agent-code-reviewer/pull/90): align executive summary filename with report naming convention
+
+---
+
 ## 2026-02-19 (v7)
 
 ### Summary
