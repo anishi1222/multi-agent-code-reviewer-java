@@ -9,6 +9,25 @@
 3. タグから GitHub Release を作成し、EN/JA 要約を本文に含める。
 4. `README_en.md` と `README_ja.md` にリリース参照とURLを追記する。
 
+## 2026-02-19 Daily Rollup
+
+### エグゼクティブサマリー
+- 同日内で v1 から v5 まで段階的にリメディエーションと文書同期を完了しました。
+- 最終状態として、コード・CI・RELEASE_NOTES・README EN/JA 参照がすべて整合しています。
+
+### 進行概要（v1 → v5）
+- v1: マルチパスレビュー性能改善（`CopilotSession` 共有再利用）。
+- v2: CodeQL ワークフローの Java 25 方針整合（JDK 26 → 25）。
+- v3: idle-timeout scheduler の停止/拒否経路に対する信頼性強化。
+- v4: 運用完了チェックの同期（2026-02-19 基準化、PR #76 の追跡性明示）。
+- v5: v2-v4 の運用サマリーを README EN/JA に簡潔追記。
+
+### 主要PRチェーン
+- 信頼性・コード経路: [#74](https://github.com/anishi1222/multi-agent-code-reviewer/pull/74), [#76](https://github.com/anishi1222/multi-agent-code-reviewer/pull/76)
+- ドキュメント・リリース同期: [#78](https://github.com/anishi1222/multi-agent-code-reviewer/pull/78), [#79](https://github.com/anishi1222/multi-agent-code-reviewer/pull/79), [#80](https://github.com/anishi1222/multi-agent-code-reviewer/pull/80), [#81](https://github.com/anishi1222/multi-agent-code-reviewer/pull/81)
+
+---
+
 ## 2026-02-19 (v5)
 
 ### 概要
