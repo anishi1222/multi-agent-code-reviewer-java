@@ -28,6 +28,115 @@
 
 ---
 
+## 2026-02-19 (v12)
+
+### 概要
+- v9〜v12 のベストプラクティスリメディエーションサイクルを完了しました。
+- キャッシュ管理の簡素化、CLI I/O の抽象化、ロギング精度の改善、並行設計ドキュメントの強化を実施しました。
+
+### 主な変更
+
+#### PR #95: ベストプラクティスリメディエーション v12
+- `TemplateService`: 決定的LRU挙動を維持しつつキャッシュ同期を簡素化。
+- `SkillService`: 手動実行器キャッシュ管理を Caffeine ライブラリ（エビクション時クローズ）に置換。
+- `CliParsing`: `TokenInput` インターフェースでCLIトークン読込をシステムI/Oから抽象化。
+- `ContentCollector`: 連結キャッシュロックを簡素化。
+- `AgentMarkdownParser`: セクション解析の可読性を改善（Iterableキャストトリック除去）。
+- `ReviewExecutionModeRunner`: マルチパス開始ログを実行実態に一致。
+- `GithubMcpConfig`: Mapラッパー委譲メソッドを補完（`isEmpty`/`containsValue`/`keySet`/`values`）。
+- `ReviewResult`: デフォルトtimestamp処理を簡素化。
+- `SkillExecutor`: FQCNユーティリティ呼出しを除去（`ExecutorUtils` import）。
+- `CopilotService` / `ReviewOrchestrator`: 並行/スレッド設計意図ドキュメントを強化。
+- `pom.xml` に Caffeine 依存を追加。
+- `CliParsingTest` に `TokenInput` 抽象化テストを追加。
+
+#### PR #96: ドキュメント同期
+- README EN/JA のプロジェクト構造ツリーとアーキテクチャMermaid図を v7 → v12 へ更新。
+- `.github/workflows/` セクション、オーケストレータ新規8ファイル、`SecurityAuditLogger`、`TokenHashUtils` を追加。
+
+### 検証
+- 756テスト、0失敗。
+- CI 5/5 合格（両PR）。
+
+### マージ済み PR
+- [#95](https://github.com/anishi1222/multi-agent-code-reviewer/pull/95): fix: remediate best-practices findings v12
+- [#96](https://github.com/anishi1222/multi-agent-code-reviewer/pull/96): docs: sync project structure and architecture diagram to v12
+
+---
+
+## 2026-02-19 (v11)
+
+### 概要
+- コード品質リメディエーション — ネスト型の抽出、共通ユーティリティの統一、デッドコード削除、コマンドユニットテストの追加。
+
+### 主な変更
+
+#### PR #94: コード品質リメディエーション v11
+- SHA-256トークンハッシュを共通 `TokenHashUtils` に統一。
+- オーケストレータの失敗結果生成を `ReviewResult.failedResults(...)` に統一。
+- `ReviewOrchestrator` のネスト型（`OrchestratorConfig`、`PromptTexts`、協調インターフェース/レコード群）をトップレベル型へ分離。
+- `ScopedInstructionLoader` を明示ループ + 分離IO例外処理へリファクタ。
+- `ExecutionConfig` にグルーピング設定（`ConcurrencySettings`、`TimeoutSettings`、`RetrySettings`、`BufferSettings`）とファクトリを追加。
+- デッドコード削除: `ReviewResultPipeline.collectFromFutures`、未使用 `ReviewFindingSimilarity.WHITESPACE`。
+- `ReviewCommand` / `SkillCommand` 専用ユニットテストを追加。
+
+### 検証
+- 756テスト、0失敗。
+- CI 5/5 合格。
+
+### マージ済み PR
+- [#94](https://github.com/anishi1222/multi-agent-code-reviewer/pull/94): fix: resolve code-quality remediation findings v11
+
+---
+
+## 2026-02-19 (v10)
+
+### 概要
+- マージフロー、ファイルI/O、正規表現処理、ロギング、ビルドガバナンスに渡るパフォーマンス最適化とWAFセキュリティ強化。
+
+### 主な変更
+
+#### PR #93: パフォーマンス + WAFセキュリティ強化 v10
+- マージフローの重複キー抽出を排除（`findingKeyFromNormalized` 再利用）。
+- 近似重複検出で priority+タイトルprefix インデックスを追加。
+- ローカルファイル読込の `ByteArrayOutputStream` 初期容量を最適化。
+- フォールバック要約の空白正規化正規表現を事前コンパイル化。
+- 認証/信頼/命令検証向けに構造化 `SECURITY_AUDIT` ログを導入。
+- `--verbose` 時も Copilot SDK ロガーを `WARN` 固定。
+- POSIX環境でレポート出力ディレクトリ/ファイルを owner-only 権限化。
+- Maven `dependencyConvergence` エンフォーサールールを追加。
+- 週次 OWASP 依存関係監査ワークフロー（`dependency-audit.yml`）を追加。
+
+### 検証
+- 756テスト、0失敗。
+- CI 5/5 合格。
+
+### マージ済み PR
+- [#93](https://github.com/anishi1222/multi-agent-code-reviewer/pull/93): fix: resolve performance and WAF security findings
+
+---
+
+## 2026-02-19 (v9)
+
+### 概要
+- セキュリティ追従対応完了 — プロンプトインジェクション検証拡張、MCPヘッダーマスキング強化、トークン露出時間短縮。
+
+### 主な変更
+
+#### PR #92: セキュリティ追従対応 v9
+- エージェント定義の疑わしいパターン検証を全プロンプト注入フィールドへ拡張。
+- MCP認証ヘッダーのマスキングを `entrySet`/`values` 文字列化経路まで強化。
+- `--token -` の標準入力読込をトークン解決境界まで遅延し、メモリ内トークン露出時間を最小化。
+
+### 検証
+- 全テストスイート合格。
+- CI 5/5 合格。
+
+### マージ済み PR
+- [#92](https://github.com/anishi1222/multi-agent-code-reviewer/pull/92): fix: security follow-up closure
+
+---
+
 ## 2026-02-19 (v8)
 
 ### 概要
