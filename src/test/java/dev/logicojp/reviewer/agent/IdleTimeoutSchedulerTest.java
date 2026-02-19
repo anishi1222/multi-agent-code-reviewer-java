@@ -41,4 +41,23 @@ class IdleTimeoutSchedulerTest {
             executor.shutdownNow();
         }
     }
+
+    @Test
+    @DisplayName("scheduler停止後は例外を投げずにno-op futureを返す")
+    void scheduleReturnsNoOpFutureWhenSchedulerIsShutdown() {
+        var executor = Executors.newSingleThreadScheduledExecutor();
+        try {
+            executor.shutdownNow();
+
+            ContentCollector collector = new ContentCollector("agent");
+            IdleTimeoutScheduler scheduler = IdleTimeoutScheduler.withMinInterval(1);
+
+            var task = scheduler.schedule(executor, collector, 20);
+
+            assertThat((Object) task).isNotNull();
+            assertThat(task.isDone()).isTrue();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
 }
