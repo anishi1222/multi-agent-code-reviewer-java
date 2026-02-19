@@ -44,6 +44,13 @@ public class ReviewAgent {
         }
     }
 
+    @FunctionalInterface
+    interface AgentCollaboratorsFactory {
+        AgentCollaborators create(AgentConfig config, ReviewContext ctx);
+    }
+
+    private static final AgentCollaboratorsFactory DEFAULT_COLLABORATORS_FACTORY = ReviewAgent::defaultCollaborators;
+
     public record PromptTemplates(
         String focusAreasGuidance,
         String localSourceHeader,
@@ -108,7 +115,7 @@ public class ReviewAgent {
             promptTemplates.focusAreasGuidance(),
             promptTemplates.localSourceHeader(),
             promptTemplates.localReviewResultPrompt(),
-            defaultCollaborators(config, ctx)
+            DEFAULT_COLLABORATORS_FACTORY.create(config, ctx)
         );
     }
 

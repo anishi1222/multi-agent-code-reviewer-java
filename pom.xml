@@ -78,6 +78,12 @@
             <artifactId>logback-core</artifactId>
         </dependency>
 
+        <!-- Caching -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- GraalVM Native Image Support -->
         <dependency>
             <groupId>io.micronaut</groupId>

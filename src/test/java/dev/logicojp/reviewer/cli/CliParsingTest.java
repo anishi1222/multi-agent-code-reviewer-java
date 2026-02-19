@@ -172,4 +172,45 @@ class CliParsingTest {
                 .hasMessageContaining("Direct token passing via command line is not supported");
         }
     }
+
+    @Nested
+    @DisplayName("readToken")
+    class ReadToken {
+
+        @Test
+        @DisplayName("標準入力センチネルでパスワード入力を読み取る")
+        void readsPasswordInputWhenAvailable() {
+            CliParsing.TokenInput tokenInput = new CliParsing.TokenInput() {
+                @Override
+                public char[] readPassword() {
+                    return " ghp_from_password ".toCharArray();
+                }
+
+                @Override
+                public byte[] readStdin(int maxBytes) {
+                    return "ignored".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                }
+            };
+
+            assertThat(CliParsing.readToken("-", tokenInput)).isEqualTo("ghp_from_password");
+        }
+
+        @Test
+        @DisplayName("パスワード入力が無い場合はstdinから読み取る")
+        void fallsBackToStdinWhenPasswordUnavailable() {
+            CliParsing.TokenInput tokenInput = new CliParsing.TokenInput() {
+                @Override
+                public char[] readPassword() {
+                    return null;
+                }
+
+                @Override
+                public byte[] readStdin(int maxBytes) {
+                    return " ghp_from_stdin \n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                }
+            };
+
+            assertThat(CliParsing.readToken("-", tokenInput)).isEqualTo("ghp_from_stdin");
+        }
+    }
 }

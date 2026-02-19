@@ -16,10 +16,8 @@ public record ReviewResult(
     boolean success,
     @Nullable String errorMessage
 ) {
-    private static final Clock DEFAULT_CLOCK = Clock.systemUTC();
-
     public ReviewResult {
-        timestamp = (timestamp == null) ? DEFAULT_CLOCK.instant() : timestamp;
+        timestamp = (timestamp == null) ? Instant.now() : timestamp;
     }
 
     public static Builder builder() {
@@ -47,7 +45,6 @@ public record ReviewResult(
     }
 
     public static final class Builder {
-        private final Clock clock;
         private AgentConfig agentConfig;
         private String repository;
         private String content;
@@ -56,11 +53,10 @@ public record ReviewResult(
         private String errorMessage;
 
         Builder() {
-            this(DEFAULT_CLOCK);
+            this(Clock.systemUTC());
         }
 
         Builder(Clock clock) {
-            this.clock = clock;
             this.timestamp = Instant.now(clock);
         }
 

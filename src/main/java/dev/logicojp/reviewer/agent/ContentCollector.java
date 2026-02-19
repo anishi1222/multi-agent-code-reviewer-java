@@ -32,8 +32,8 @@ class ContentCollector {
     private final String agentName;
     private final LongSupplier clockMillisSupplier;
 
-    private volatile String joinedCache;
-    private volatile long joinedCacheVersion;
+    private String joinedCache;
+    private long joinedCacheVersion;
 
     ContentCollector(String agentName) {
         this(agentName, System::currentTimeMillis,
@@ -129,34 +129,20 @@ class ContentCollector {
     }
 
     private String joinAccumulated() {
-        // Fast path: check cache without lock contention
-        String cached;
-        long version;
-        char[] snapshot;
         synchronized (accumulatedLock) {
             if (accumulatedSize == 0) {
                 joinedCache = "";
                 joinedCacheVersion = accumulatedVersion;
                 return "";
             }
-            cached = joinedCache;
-            if (cached != null && joinedCacheVersion == accumulatedVersion) {
-                return cached;
+            if (joinedCache != null && joinedCacheVersion == accumulatedVersion) {
+                return joinedCache;
             }
-            // Copy char data under lock, then release lock before String construction
-            snapshot = new char[accumulatedSize];
-            accumulatedBuilder.getChars(0, accumulatedSize, snapshot, 0);
-            version = accumulatedVersion;
+            String result = accumulatedBuilder.toString();
+            joinedCache = result;
+            joinedCacheVersion = accumulatedVersion;
+            return result;
         }
-        // String construction outside lock to reduce lock hold time
-        String result = new String(snapshot);
-        synchronized (accumulatedLock) {
-            if (accumulatedVersion == version) {
-                joinedCache = result;
-                joinedCacheVersion = version;
-            }
-        }
-        return result;
     }
 
     String awaitResult(long maxTimeoutMs) throws Exception {

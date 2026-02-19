@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,19 +26,14 @@ public class TemplateService {
     private static final int MAX_TEMPLATE_CACHE_SIZE = 64;
 
     private final TemplateConfig config;
-    private final Object templateCacheLock = new Object();
-    private final Map<String, String> templateCache = new LinkedHashMap<>(16, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
-            return size() > MAX_TEMPLATE_CACHE_SIZE;
-        }
-    };
+    private final TemplateLruCache templateCache;
     private static final Pattern TEMPLATE_NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+\\.md");
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");
 
     @Inject
     public TemplateService(TemplateConfig config) {
         this.config = config;
+        this.templateCache = new TemplateLruCache(MAX_TEMPLATE_CACHE_SIZE);
     }
 
     /// Loads a template by name, applying placeholder substitutions.
@@ -56,22 +52,34 @@ public class TemplateService {
     /// @param templateName The template name
     /// @return The raw template content
     public String loadTemplateContent(String templateName) {
-        synchronized (templateCacheLock) {
-            String cached = templateCache.get(templateName);
-            if (cached != null) {
-                return cached;
-            }
+        return templateCache.getOrLoad(templateName, this::loadTemplateFromSource);
+    }
+
+    private static final class TemplateLruCache {
+        private final int maxSize;
+        private final LinkedHashMap<String, String> cache;
+
+        private TemplateLruCache(int maxSize) {
+            this.maxSize = maxSize;
+            this.cache = new LinkedHashMap<>(16, 0.75f, true);
         }
 
-        String loaded = loadTemplateFromSource(templateName);
-
-        synchronized (templateCacheLock) {
-            String raced = templateCache.get(templateName);
-            if (raced != null) {
-                return raced;
+        private synchronized String getOrLoad(String key, Function<String, String> loader) {
+            String existing = cache.get(key);
+            if (existing != null) {
+                return existing;
             }
-            templateCache.put(templateName, loaded);
+            String loaded = loader.apply(key);
+            cache.put(key, loaded);
+            evictIfNeeded();
             return loaded;
+        }
+
+        private void evictIfNeeded() {
+            while (cache.size() > maxSize) {
+                String eldestKey = cache.keySet().iterator().next();
+                cache.remove(eldestKey);
+            }
         }
     }
 

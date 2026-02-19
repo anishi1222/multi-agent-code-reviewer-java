@@ -2,6 +2,7 @@ package dev.logicojp.reviewer.skill;
 
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.util.StructuredConcurrencyUtils;
+import dev.logicojp.reviewer.util.ExecutorUtils;
 import com.github.copilot.sdk.CopilotClient;
 import com.github.copilot.sdk.SystemMessageMode;
 import com.github.copilot.sdk.json.MessageOptions;
@@ -164,7 +165,7 @@ public class SkillExecutor implements AutoCloseable {
     @Override
     public void close() {
         if (ownsExecutor && executor instanceof ExecutorService es) {
-            dev.logicojp.reviewer.util.ExecutorUtils.shutdownGracefully(es, executorShutdownTimeoutSeconds);
+            ExecutorUtils.shutdownGracefully(es, executorShutdownTimeoutSeconds);
         }
     }
 }

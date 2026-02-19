@@ -142,7 +142,11 @@ public record GithubMcpConfig(
         @Override public Set<Entry<String, Object>> entrySet() { return delegate.entrySet(); }
         @Override public Object get(Object key) { return delegate.get(key); }
         @Override public int size() { return delegate.size(); }
+        @Override public boolean isEmpty() { return delegate.isEmpty(); }
         @Override public boolean containsKey(Object key) { return delegate.containsKey(key); }
+        @Override public boolean containsValue(Object value) { return delegate.containsValue(value); }
+        @Override public Set<String> keySet() { return delegate.keySet(); }
+        @Override public Collection<Object> values() { return delegate.values(); }
         @Override public String toString() { return maskedString; }
     }
 
@@ -184,6 +188,36 @@ public record GithubMcpConfig(
                     return buildMaskedMapString(delegate);
                 }
             };
+        }
+
+        @Override
+        public String get(Object key) {
+            return delegate.get(key);
+        }
+
+        @Override
+        public Set<String> keySet() {
+            return delegate.keySet();
+        }
+
+        @Override
+        public int size() {
+            return delegate.size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return delegate.isEmpty();
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            return delegate.containsKey(key);
+        }
+
+        @Override
+        public boolean containsValue(Object value) {
+            return delegate.containsValue(value);
         }
 
         @Override

@@ -32,6 +32,8 @@ public class CopilotService {
     private final CopilotTimeoutResolver timeoutResolver;
     private final CopilotStartupErrorFormatter startupErrorFormatter;
     private final CopilotClientStarter clientStarter;
+    /// `volatile` provides safe publication for lock-free reads in `getClient()/isInitialized()`.
+    /// Mutations are serialized by synchronized lifecycle methods (`initialize`, `shutdown`).
     private volatile CopilotClient client;
     private volatile String initializedTokenFingerprint;
 
