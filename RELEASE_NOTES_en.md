@@ -11,6 +11,30 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 
 ## 2026-02-19
 
+## 2026-02-19 (v2)
+
+### Summary
+- Aligned the CodeQL workflow Java setup with the project Java 25.0.2 policy by switching the workflow JDK from 26 to 25.
+- Removed remaining CI/runtime JDK drift after `pom.xml` and main CI workflow had already been unified to Java 25.
+- Merged the workflow alignment via PR #74.
+
+### Highlights
+
+#### PR #74: CodeQL Workflow JDK Alignment
+- Updated `.github/workflows/codeql.yml` JDK setup from `26` to `25`.
+- Kept repository-wide Java policy consistent across build files and GitHub Actions workflows.
+
+### Validation
+- Local package validation succeeded: `mvn clean package`
+- PR #74 required checks passed: `Supply Chain Guard`, `dependency-review`, `submit-maven`, `Build and Test`, `Build Native Image`
+
+### Merged PRs
+- [#74](https://github.com/anishi1222/multi-agent-code-reviewer/pull/74): align CodeQL workflow JDK with Java 25
+
+---
+
+## 2026-02-19
+
 ### Summary
 - Addressed the performance finding on multi-pass review session reuse by ensuring passes for the same agent reuse a single `CopilotSession`.
 - Refactored orchestration from pass-granular execution to agent-granular execution while preserving multi-pass merge behavior.
