@@ -819,6 +819,8 @@ flowchart TB
       CopilotCliHealthChecker["CopilotCliHealthChecker
       gh copilot ヘルス/認証チェック"]
         TemplateService
+        SecurityAuditLogger["SecurityAuditLogger
+        構造化セキュリティ監査ログ"]
     end
 
     ReviewExecutionCoordinator --> CopilotService
@@ -898,13 +900,19 @@ reviewer:
 
 ## プロジェクト構造
 
-以下のツリーは 2026-02-19 (v7) 時点の現行ソース構成に同期済みです。
+以下のツリーは 2026-02-20 (v12) 時点の現行ソース構成に同期済みです。
 
 ```
 multi-agent-reviewer/
 ├── pom.xml                              # Maven設定
 ├── .sdkmanrc                            # SDKMAN GraalVM設定
 ├── .github/
+│   ├── workflows/                       # CI/CDワークフロー
+│   │   ├── ci.yml                       # ビルドとテスト
+│   │   ├── codeql.yml                   # CodeQL分析
+│   │   ├── dependency-audit.yml         # 週次OWASP依存関係監査
+│   │   ├── dependency-review.yml        # PR依存関係レビュー
+│   │   └── scorecard.yml               # OpenSSF Scorecard
 │   └── skills/                          # スキル定義（SKILL.md形式）
 │       ├── sql-injection-check/
 │       ├── secret-scan/
@@ -993,7 +1001,15 @@ multi-agent-reviewer/
     │   └── ScopedInstructionLoader.java # スコープ付きインストラクション読込
     ├── orchestrator/
     │   ├── AgentReviewExecutor.java     # エージェントレビュー実行
+    │   ├── AgentReviewer.java           # エージェントレビューアーインターフェース
+    │   ├── AgentReviewerFactory.java    # エージェントレビューアーファクトリ
+    │   ├── ExecutorResources.java       # エグゼキュータリソースバンドル
+    │   ├── LocalSourceCollector.java    # ローカルソース収集インターフェース
+    │   ├── LocalSourceCollectorFactory.java # ローカルソース収集ファクトリ
     │   ├── LocalSourcePrecomputer.java  # ローカルソース事前計算
+    │   ├── OrchestratorCollaborators.java # オーケストレータ協調インターフェース
+    │   ├── OrchestratorConfig.java      # オーケストレータ設定レコード
+    │   ├── PromptTexts.java             # プロンプトテキストレコード
     │   ├── ReviewContextFactory.java    # レビューコンテキストファクトリ
     │   ├── ReviewExecutionModeRunner.java # 実行モード選択
     │   ├── ReviewOrchestrator.java      # 並列実行制御
@@ -1063,7 +1079,9 @@ multi-agent-reviewer/
         ├── FeatureFlags.java            # 機能フラグ解決
         ├── FrontmatterParser.java       # YAMLフロントマターパーサー
         ├── GitHubTokenResolver.java     # GitHubトークン解決
-        └── StructuredConcurrencyUtils.java # Structured Concurrency ユーティリティ
+        ├── SecurityAuditLogger.java     # 構造化セキュリティ監査ログ
+        ├── StructuredConcurrencyUtils.java # Structured Concurrency ユーティリティ
+        └── TokenHashUtils.java          # SHA-256トークンハッシュユーティリティ
 
 └── src/main/resources/
     ├── defaults/
