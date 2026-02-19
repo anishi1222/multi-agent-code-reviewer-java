@@ -9,6 +9,25 @@ Reference checklist: `reports/anishi1222/multi-agent-code-reviewer/documentation
 3. Publish a GitHub Release from the tag and include EN/JA summary notes.
 4. Update `README_en.md` and `README_ja.md` with release references and URLs.
 
+## 2026-02-19 Daily Rollup
+
+### Executive Summary
+- Completed a same-day, staged remediation/documentation rollout from v1 through v5.
+- Final state is fully aligned across code, CI workflows, release notes, and README EN/JA references.
+
+### Progression (v1 → v5)
+- v1: Multi-pass review performance remediation (shared `CopilotSession` reuse).
+- v2: Java 25 policy alignment in CodeQL workflow (JDK 26 → 25).
+- v3: Reliability hardening for idle-timeout scheduler shutdown/rejection path.
+- v4: Operational completion checklist synchronization (2026-02-19 baseline, PR #76 traceability).
+- v5: Concise operations summary line added to README EN/JA for v2-v4 handoff context.
+
+### Key PR Chain
+- Core reliability/code path: [#74](https://github.com/anishi1222/multi-agent-code-reviewer/pull/74), [#76](https://github.com/anishi1222/multi-agent-code-reviewer/pull/76)
+- Documentation/release synchronization: [#78](https://github.com/anishi1222/multi-agent-code-reviewer/pull/78), [#79](https://github.com/anishi1222/multi-agent-code-reviewer/pull/79), [#80](https://github.com/anishi1222/multi-agent-code-reviewer/pull/80), [#81](https://github.com/anishi1222/multi-agent-code-reviewer/pull/81)
+
+---
+
 ## 2026-02-19 (v5)
 
 ### Summary
