@@ -1,12 +1,10 @@
 package dev.logicojp.reviewer.agent;
 
 import dev.logicojp.reviewer.report.core.ReviewResult;
+import dev.logicojp.reviewer.util.RetryPolicyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /// Executes review attempts with retry/backoff behavior.
@@ -162,9 +160,7 @@ final class ReviewRetryExecutor {
     }
 
     private void waitRetryBackoff(int attempt) {
-        long baseBackoffMs = Math.min(backoffBaseMs << Math.max(0, attempt - 1), backoffMaxMs);
-        long jitterMs = ThreadLocalRandom.current().nextLong((baseBackoffMs / 2) + 1);
-        long backoffMs = Math.min(baseBackoffMs + jitterMs, backoffMaxMs);
+        long backoffMs = RetryPolicyUtils.computeBackoffWithJitter(backoffBaseMs, backoffMaxMs, attempt);
         try {
             sleepStrategy.sleep(backoffMs);
         } catch (InterruptedException _) {
@@ -173,49 +169,11 @@ final class ReviewRetryExecutor {
     }
 
     private boolean isTransientException(Exception exception) {
-        if (exception instanceof TimeoutException) {
-            return true;
-        }
-        if (exception instanceof IOException) {
-            return true;
-        }
-        if (exception instanceof SessionEventException) {
-            return true;
-        }
-        String message = exception.getMessage();
-        if (message == null || message.isBlank()) {
-            return false;
-        }
-        String lower = message.toLowerCase();
-        return lower.contains("timeout")
-            || lower.contains("temporarily")
-            || lower.contains("rate limit")
-            || lower.contains("too many requests")
-            || lower.contains("429")
-            || lower.contains("503")
-            || lower.contains("connection reset")
-            || lower.contains("network");
+        return exception instanceof SessionEventException || RetryPolicyUtils.isTransientException(exception);
     }
 
     private boolean isRetryableFailure(ReviewResult result) {
-        String message = result.errorMessage();
-        if (message == null || message.isBlank()) {
-            return true;
-        }
-        String lower = message.toLowerCase();
-        if (lower.contains("unauthorized")
-            || lower.contains("forbidden")
-            || lower.contains("invalid token")
-            || lower.contains("authentication")
-            || lower.contains("invalid model")
-            || lower.contains("bad request")
-            || lower.contains("400")
-            || lower.contains("401")
-            || lower.contains("403")
-            || lower.contains("404")) {
-            return false;
-        }
-        return true;
+        return RetryPolicyUtils.isRetryableFailureMessage(result.errorMessage());
     }
 
     static final class SharedCircuitBreaker {

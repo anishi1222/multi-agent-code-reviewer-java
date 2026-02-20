@@ -3,6 +3,7 @@ package dev.logicojp.reviewer.skill;
 import dev.logicojp.reviewer.config.GithubMcpConfig;
 import dev.logicojp.reviewer.util.StructuredConcurrencyUtils;
 import dev.logicojp.reviewer.util.ExecutorUtils;
+import dev.logicojp.reviewer.util.RetryPolicyUtils;
 import com.github.copilot.sdk.CopilotClient;
 import com.github.copilot.sdk.SystemMessageMode;
 import com.github.copilot.sdk.json.MessageOptions;
@@ -12,15 +13,12 @@ import io.micronaut.core.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.StructuredTaskScope;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -135,9 +133,7 @@ public class SkillExecutor implements AutoCloseable {
     }
 
     private void waitRetryBackoff(int attempt) {
-        long baseBackoffMs = Math.min(BACKOFF_BASE_MS << Math.max(0, attempt - 1), BACKOFF_MAX_MS);
-        long jitterMs = ThreadLocalRandom.current().nextLong((baseBackoffMs / 2) + 1);
-        long backoffMs = Math.min(baseBackoffMs + jitterMs, BACKOFF_MAX_MS);
+        long backoffMs = RetryPolicyUtils.computeBackoffWithJitter(BACKOFF_BASE_MS, BACKOFF_MAX_MS, attempt);
         try {
             Thread.sleep(backoffMs);
         } catch (InterruptedException _) {
@@ -146,50 +142,15 @@ public class SkillExecutor implements AutoCloseable {
     }
 
     private boolean isRetryableFailure(SkillResult result) {
-        String errorMessage = result.errorMessage();
-        if (errorMessage == null || errorMessage.isBlank()) {
-            return true;
-        }
-        String lower = errorMessage.toLowerCase();
-        return !(lower.contains("missing required parameter")
-            || lower.contains("validation")
-            || lower.contains("unauthorized")
-            || lower.contains("forbidden")
-            || lower.contains("invalid token")
-            || lower.contains("invalid model")
-            || lower.contains("bad request")
-            || lower.contains("400")
-            || lower.contains("401")
-            || lower.contains("403")
-            || lower.contains("404"));
+        return RetryPolicyUtils.isRetryableFailureMessage(
+            result.errorMessage(),
+            "missing required parameter",
+            "validation"
+        );
     }
 
     private boolean isTransientException(Exception exception) {
-        Throwable rootCause = exception;
-        if (exception instanceof ExecutionException executionException && executionException.getCause() != null) {
-            rootCause = executionException.getCause();
-        }
-
-        if (rootCause instanceof TimeoutException) {
-            return true;
-        }
-        if (rootCause instanceof IOException) {
-            return true;
-        }
-
-        String message = rootCause.getMessage();
-        if (message == null || message.isBlank()) {
-            return false;
-        }
-        String lower = message.toLowerCase();
-        return lower.contains("timeout")
-            || lower.contains("temporarily")
-            || lower.contains("rate limit")
-            || lower.contains("too many requests")
-            || lower.contains("429")
-            || lower.contains("503")
-            || lower.contains("connection reset")
-            || lower.contains("network");
+        return RetryPolicyUtils.isTransientException(exception);
     }
 
     private SkillResult executeWithStructuredConcurrency(SkillDefinition skill,

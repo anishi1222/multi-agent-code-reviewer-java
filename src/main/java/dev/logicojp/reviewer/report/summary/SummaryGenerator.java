@@ -14,6 +14,7 @@ import com.github.copilot.sdk.json.SystemMessageConfig;
 import dev.logicojp.reviewer.config.ModelConfig;
 import dev.logicojp.reviewer.config.SummaryConfig;
 import dev.logicojp.reviewer.service.TemplateService;
+import dev.logicojp.reviewer.util.RetryPolicyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
@@ -202,9 +202,11 @@ public class SummaryGenerator {
     }
 
     private void waitRetryBackoff(int attempt) {
-        long baseBackoffMs = Math.min(RETRY_BACKOFF_BASE_MS << Math.max(0, attempt - 1), RETRY_BACKOFF_MAX_MS);
-        long jitterMs = ThreadLocalRandom.current().nextLong((baseBackoffMs / 2) + 1);
-        long backoffMs = Math.min(baseBackoffMs + jitterMs, RETRY_BACKOFF_MAX_MS);
+        long backoffMs = RetryPolicyUtils.computeBackoffWithJitter(
+            RETRY_BACKOFF_BASE_MS,
+            RETRY_BACKOFF_MAX_MS,
+            attempt
+        );
         try {
             Thread.sleep(backoffMs);
         } catch (InterruptedException _) {
@@ -213,26 +215,7 @@ public class SummaryGenerator {
     }
 
     private boolean isTransientFailure(Exception exception) {
-        Throwable cause = exception;
-        if (exception instanceof ExecutionException executionException && executionException.getCause() != null) {
-            cause = executionException.getCause();
-        }
-
-        String message = cause.getMessage();
-        if (message == null || message.isBlank()) {
-            return cause instanceof TimeoutException;
-        }
-
-        String lower = message.toLowerCase();
-        return cause instanceof TimeoutException
-            || lower.contains("timeout")
-            || lower.contains("temporarily")
-            || lower.contains("rate limit")
-            || lower.contains("too many requests")
-            || lower.contains("429")
-            || lower.contains("503")
-            || lower.contains("connection reset")
-            || lower.contains("network");
+        return RetryPolicyUtils.isTransientException(exception);
     }
 
     private SessionConfig createSummarySessionConfig() {
